@@ -1,0 +1,9 @@
+# Cursor Project Rules
+Always refer to the global architecture, boundaries, and routing rules defined in `AGENTS.md` before making any changes.
+
+1. **Routing**: Check `docs/ROUTING.md` to identify where to work for specific tasks.
+2. **Context**: Check `docs/CONTEXT.md` for the current feature focus and `docs/GOTCHAS.md` for known project weirdness.
+3. **Specific Contexts**: 
+   - When modifying frontend code, always read and follow `frontend/AGENTS.md`.
+   - When modifying backend code, always read and follow `backend/AGENTS.md`.
+4. **Boundaries**: NEVER import files across the frontend and backend divide. They are separate applications.

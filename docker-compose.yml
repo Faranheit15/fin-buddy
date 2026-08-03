@@ -60,6 +60,9 @@ services:
       PORT: "8000"
     volumes:
       - statement_data:/data/statements
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - fin-buddy
     healthcheck:
@@ -149,6 +152,24 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  db:
+    image: postgres:15-alpine
+    container_name: fin-buddy-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: finbuddy
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - fin-buddy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d finbuddy"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 networks:
   fin-buddy:
     name: fin-buddy-net
@@ -157,3 +178,5 @@ networks:
 volumes:
   statement_data:
     name: fin-buddy-statement-data
+  pgdata:
+    name: fin-buddy-pgdata

@@ -1,0 +1,109 @@
+import { env } from "@/lib/env";
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+    readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export type ApiClientOptions = {
+  accessToken?: string | null;
+  signal?: AbortSignal;
+};
+
+type ErrorBody = {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: unknown;
+  };
+};
+
+/**
+ * Resolve API base URL.
+ * - In the browser: always use same-origin `/backend` proxy (next.config rewrites)
+ *   so CORS never blocks auth.
+ * - On the server: call the real backend URL.
+ */
+function apiBase(): string {
+  if (typeof window !== "undefined") {
+    return "/backend";
+  }
+  return (env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001").replace(/\/$/, "");
+}
+
+/**
+ * Thin fetch wrapper for the FastAPI backend.
+ */
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  options: ApiClientOptions = {},
+): Promise<T> {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  const url = path.startsWith("http") ? path : `${apiBase()}${normalized}`;
+
+  const headers = new Headers(init.headers);
+  if (!headers.has("Content-Type") && init.body) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (options.accessToken) {
+    headers.set("Authorization", `Bearer ${options.accessToken}`);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers,
+      signal: options.signal ?? init.signal,
+    });
+  } catch (err) {
+    const hint =
+      typeof window !== "undefined"
+        ? "Is the Fin Buddy API running, and is BACKEND_URL / NEXT_PUBLIC_API_URL correct in next.config rewrites?"
+        : "Is the Fin Buddy API reachable from the Next.js server?";
+    const detail = err instanceof Error ? err.message : "network error";
+    throw new ApiError(`Failed to reach API (${url}): ${detail}. ${hint}`, 0, "network_error");
+  }
+
+  if (!response.ok) {
+    let code: string | undefined;
+    let message = response.statusText || "Request failed";
+    let details: unknown;
+
+    try {
+      const body = (await response.json()) as ErrorBody;
+      code = body.error?.code;
+      message = body.error?.message ?? message;
+      details = body.error?.details;
+    } catch {
+      // non-JSON error body
+    }
+
+    throw new ApiError(message, response.status, code, details);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
+}
+
+export type HealthResponse = {
+  status: "ok" | "degraded" | "error";
+  app: string;
+  version: string;
+  environment: string;
+};
+
+export function getApiHealth(signal?: AbortSignal) {
+  return apiFetch<HealthResponse>("/api/v1/health", { method: "GET" }, { signal });
+}

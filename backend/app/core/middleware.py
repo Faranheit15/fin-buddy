@@ -1,0 +1,115 @@
+"""HTTP middleware: request ID, API request logging, error persistence."""
+
+import time
+import traceback
+import uuid
+
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.requests import Request
+from starlette.responses import Response
+
+from app.core.config import get_settings
+from app.core.logging import get_logger
+from app.db.session import get_async_session_factory
+from app.models.enums import ErrorSeverity
+from app.services.logging_service import log_api_request, log_error
+
+logger = get_logger(__name__)
+
+SKIP_PATH_PREFIXES = ("/docs", "/redoc", "/openapi.json", "/favicon")
+
+
+class RequestContextMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+        request.state.request_id = request_id
+        start = time.perf_counter()
+        status_code = 500
+        error_message: str | None = None
+        response: Response | None = None
+
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            response.headers["X-Request-Id"] = request_id
+            return response
+        except Exception as exc:
+            error_message = str(exc)
+            await self._persist_error(request, request_id, exc)
+            raise
+        finally:
+            duration_ms = int((time.perf_counter() - start) * 1000)
+            await self._persist_request_log(
+                request=request,
+                request_id=request_id,
+                status_code=status_code,
+                duration_ms=duration_ms,
+                error_message=error_message,
+            )
+
+    async def _persist_request_log(
+        self,
+        *,
+        request: Request,
+        request_id: str,
+        status_code: int,
+        duration_ms: int,
+        error_message: str | None,
+    ) -> None:
+        settings = get_settings()
+        if not settings.log_api_requests or not settings.database_configured:
+            return
+        if any(request.url.path.startswith(p) for p in SKIP_PATH_PREFIXES):
+            return
+        # Avoid logging health spam at info volume — still store for admin
+        try:
+            factory = get_async_session_factory()
+        except RuntimeError:
+            return
+
+        ip = request.client.host if request.client else None
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            ip = forwarded.split(",")[0].strip()
+
+        try:
+            async with factory() as session:
+                await log_api_request(
+                    session,
+                    request_id=request_id,
+                    method=request.method,
+                    path=request.url.path,
+                    query_string=request.url.query or None,
+                    status_code=status_code,
+                    duration_ms=duration_ms,
+                    ip_address=ip,
+                    user_agent=request.headers.get("user-agent"),
+                    error_message=error_message,
+                    commit=True,
+                )
+        except Exception:
+            logger.exception("api_request_log_failed", request_id=request_id)
+
+    async def _persist_error(self, request: Request, request_id: str, exc: Exception) -> None:
+        settings = get_settings()
+        if not settings.database_configured:
+            return
+        try:
+            factory = get_async_session_factory()
+        except RuntimeError:
+            return
+        try:
+            async with factory() as session:
+                await log_error(
+                    session,
+                    message=str(exc),
+                    severity=ErrorSeverity.ERROR,
+                    exception_type=type(exc).__name__,
+                    stack_trace="".join(traceback.format_exception(exc)),
+                    path=request.url.path,
+                    method=request.method,
+                    request_id=request_id,
+                    commit=True,
+                )
+        except Exception:
+            logger.exception("error_log_failed", request_id=request_id)

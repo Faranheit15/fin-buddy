@@ -1,0 +1,25 @@
+# VCS / IDE
+.git
+.gitignore
+.idea
+.vscode
+**/.DS_Store
+
+# Local env & secrets
+.env
+.env.*
+.env.local
+!.env.example
+
+# Dependencies & build output (rebuilt in image)
+node_modules
+.next
+out
+coverage
+.turbo
+*.tsbuildinfo
+
+# Docs / agent files not needed at runtime
+*.md
+AGENTS.md
+CLAUDE.md

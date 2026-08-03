@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-27T00:00:00.000Z",
+  "title": "Design System: Fin Buddy",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Ledger Ink",
+        "canonical": "oklch(0.205 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.205 0 0)",
+          "oklch(0.3 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.556 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.87 0 0)",
+          "oklch(0.97 0 0)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.145 0 0)",
+          "oklch(0.205 0 0)",
+          "oklch(0.269 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.922 0 0)",
+          "oklch(0.97 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Ink Quiet",
+        "canonical": "oklch(0.556 0 0)",
+        "tonalRamp": [
+          "oklch(0.25 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.556 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.75 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "destructive": {
+        "role": "destructive",
+        "displayName": "Alert Coral",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": [
+          "oklch(0.35 0.16 27)",
+          "oklch(0.45 0.2 27)",
+          "oklch(0.577 0.245 27.325)",
+          "oklch(0.65 0.2 27)",
+          "oklch(0.704 0.191 22.216)",
+          "oklch(0.8 0.12 27)",
+          "oklch(0.9 0.06 27)",
+          "oklch(0.97 0.02 27)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar Paper",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": [
+          "oklch(0.205 0 0)",
+          "oklch(0.269 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.87 0 0)",
+          "oklch(0.922 0 0)",
+          "oklch(0.97 0 0)",
+          "oklch(0.985 0 0)"
+        ]
+      },
+      "marketing-glow": {
+        "role": "accent",
+        "displayName": "Cool Halo",
+        "canonical": "oklch(0.95 0.02 250)",
+        "tonalRamp": [
+          "oklch(0.25 0.04 250)",
+          "oklch(0.4 0.04 250)",
+          "oklch(0.55 0.03 250)",
+          "oklch(0.7 0.025 250)",
+          "oklch(0.82 0.02 250)",
+          "oklch(0.9 0.02 250)",
+          "oklch(0.95 0.02 250)",
+          "oklch(0.98 0.01 250)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Landing heroes only; not used in dense app chrome."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page and auth titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default UI copy."
+      },
+      "label": {
+        "displayName": "Label / Eyebrow",
+        "purpose": "Uppercase wide-tracked section labels."
+      },
+      "mono": {
+        "displayName": "Mono Data",
+        "purpose": "INR amounts, last4, IDs, technical strings."
+      }
+    },
+    "shadows": [
+      {
+        "name": "panel-lift",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Default soft lift on cards, auth panels, feature tiles (shadow-sm)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-standard",
+        "value": "150ms–250ms ease",
+        "purpose": "State transitions only; no page-load choreography."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Compact primary action — Ledger Ink fill.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Get started</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; border: none; border-radius: 0.625rem; background: oklch(0.205 0 0); color: oklch(0.985 0 0); font: 500 0.875rem/1 Geist, ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: background 0.15s ease; } .ds-btn-primary:hover { background: color-mix(in oklch, oklch(0.205 0 0) 80%, transparent); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action with hairline border.",
+      "html": "<button class=\"ds-btn-outline\" type=\"button\">Sign in</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 1.75rem; padding: 0 0.625rem; border: 1px solid oklch(0.922 0 0); border-radius: 0.625rem; background: oklch(1 0 0); color: oklch(0.145 0 0); font: 500 0.8rem/1 Geist, ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: background 0.15s ease; } .ds-btn-outline:hover { background: oklch(0.97 0 0); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Tertiary text action.",
+      "html": "<button class=\"ds-btn-ghost\" type=\"button\">API docs</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; height: 2.25rem; padding: 0 0.625rem; border: none; border-radius: 0.625rem; background: transparent; color: oklch(0.145 0 0); font: 500 0.875rem/1 Geist, ui-sans-serif, system-ui, sans-serif; cursor: pointer; } .ds-btn-ghost:hover { background: oklch(0.97 0 0); }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Soft coral danger action — not solid red brand CTA.",
+      "html": "<button class=\"ds-btn-destructive\" type=\"button\">Delete</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; border: none; border-radius: 0.625rem; background: color-mix(in oklch, oklch(0.577 0.245 27.325) 10%, transparent); color: oklch(0.577 0.245 27.325); font: 500 0.875rem/1 Geist, ui-sans-serif, system-ui, sans-serif; cursor: pointer; } .ds-btn-destructive:hover { background: color-mix(in oklch, oklch(0.577 0.245 27.325) 20%, transparent); }"
+    },
+    {
+      "name": "Shelf Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Default panel: border + soft lift.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Cards & cycles</div><p class=\"ds-card-body\">Limits, utilization, statement day, and due dates in one place.</p></div>",
+      "css": ".ds-card { border: 1px solid oklch(0.922 0 0); border-radius: 0.875rem; background: color-mix(in oklch, oklch(1 0 0) 80%, transparent); padding: 1.25rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); backdrop-filter: blur(4px); font-family: Geist, ui-sans-serif, system-ui, sans-serif; } .ds-card-title { font-weight: 500; color: oklch(0.145 0 0); } .ds-card-body { margin: 0.5rem 0 0; font-size: 0.875rem; color: oklch(0.556 0 0); line-height: 1.5; }"
+    },
+    {
+      "name": "Auth Panel",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Login container — larger radius and padding.",
+      "html": "<div class=\"ds-auth-panel\"><div class=\"ds-mark\">FB</div><h1 class=\"ds-auth-title\">Sign in to Fin Buddy</h1></div>",
+      "css": ".ds-auth-panel { width: 100%; max-width: 28rem; border: 1px solid oklch(0.922 0 0); border-radius: 1.125rem; background: oklch(1 0 0); padding: 2rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); text-align: center; font-family: Geist, ui-sans-serif, system-ui, sans-serif; } .ds-mark { display: inline-flex; width: 2.5rem; height: 2.5rem; align-items: center; justify-content: center; border-radius: 0.625rem; background: oklch(0.205 0 0); color: oklch(0.985 0 0); font-size: 0.875rem; font-weight: 600; } .ds-auth-title { margin: 1rem 0 0; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; color: oklch(0.145 0 0); }"
+    },
+    {
+      "name": "Brand Mark",
+      "kind": "custom",
+      "refersTo": "mark-brand",
+      "description": "FB monogram tile used in headers and auth.",
+      "html": "<span class=\"ds-mark-brand\">FB</span>",
+      "css": ".ds-mark-brand { display: inline-flex; width: 2rem; height: 2rem; align-items: center; justify-content: center; border-radius: 0.625rem; background: oklch(0.205 0 0); color: oklch(0.985 0 0); font: 600 0.875rem/1 Geist, ui-sans-serif, system-ui, sans-serif; }"
+    },
+    {
+      "name": "Text Field (token scaffold)",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Scaffold from tokens — few inputs built yet.",
+      "html": "<input class=\"ds-input\" type=\"email\" placeholder=\"you@example.com\" />",
+      "css": ".ds-input { width: 100%; height: 2.25rem; padding: 0 0.75rem; border: 1px solid oklch(0.922 0 0); border-radius: 0.625rem; background: oklch(1 0 0); color: oklch(0.145 0 0); font: 400 0.875rem/1 Geist, ui-sans-serif, system-ui, sans-serif; } .ds-input::placeholder { color: oklch(0.556 0 0); } .ds-input:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ledger Shelf",
+    "overview": "Fin Buddy’s visual system is an authoritative, scannable money ledger dressed for daily use — not a lifestyle wallet and not a conceptual art world. Surfaces should feel like a shelf of permanent records: dense enough for multi-card power users, calm enough for a morning dues check. The craft bar is category-standard Indian fintech ops (Zerodha Kite / Coin density), with structural density allowed to echo finance-admin shells without cloning template chrome. Personality is warm professional with soft marketing edges: marketing routes may breathe while the authenticated app stays cooler, denser, and task-first. Dark mode is first-class.",
+    "keyCharacteristics": [
+      "Operate-first density for app surfaces; marketing may open the measure",
+      "Near-monochrome primary ink with semantic red for danger",
+      "Soft card lift (shadow-sm) as the default elevation language",
+      "Gentle 10px-class radii; rounded-lg controls, rounded-xl/2xl panels",
+      "Dark mode parity; India presentation in formatters not motifs",
+      "No purple gradients, no nested card soup, no display-serif fintech editorial"
+    ],
+    "rules": [
+      {
+        "name": "The One Ink Rule",
+        "body": "Brand primary is near-black (or near-white in dark). Do not introduce a saturated brand purple/blue as the default primary without an explicit redesign of DESIGN.md.",
+        "section": "colors"
+      },
+      {
+        "name": "The Quiet Accent Rule",
+        "body": "Secondary/accent fills stay mist-gray. Color beyond ink is reserved for semantic state — rarity is the point.",
+        "section": "colors"
+      },
+      {
+        "name": "The Marketing Halo Rule",
+        "body": "Radial cool wash is a landing/auth device only, never a global app background.",
+        "section": "colors"
+      },
+      {
+        "name": "The Single Family Rule",
+        "body": "Stay on Geist for UI. Do not pair a decorative serif for premium finance aesthetics.",
+        "section": "typography"
+      },
+      {
+        "name": "The Money is Mono Rule",
+        "body": "Prefer mono or tabular-nums for monetary amounts and fixed-width codes.",
+        "section": "typography"
+      },
+      {
+        "name": "The Shelf Density Rule",
+        "body": "Authenticated views prioritize scannable information per viewport over hero whitespace.",
+        "section": "layout"
+      },
+      {
+        "name": "The Soft Shelf Rule",
+        "body": "Default panels lift lightly. Reserve stronger elevation for true overlays.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Gentle Corner Rule",
+        "body": "Stay in the 6–18px radius band. No full-pill primary app actions; no sharp 0px industrial corners.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do keep app UI dense, scannable, and monochrome-first — Ledger Shelf, not lifestyle fintech.",
+      "Do use Geist + soft card lift + hairline borders as the default panel language.",
+      "Do format money as INR (en-IN) and time in IST at the presentation layer; store paise integers.",
+      "Do support dark mode with the existing .dark token set.",
+      "Do use mono/tabular treatment for amounts, last4, and IDs.",
+      "Do reserve marketing halo and open whitespace for landing/auth only."
+    ],
+    "donts": [
+      "Don't introduce purple-to-blue gradients, neon glows, or AI SaaS glassmorphism as the product identity.",
+      "Don't nest cards inside cards or wrap every list row in a heavy elevated tile.",
+      "Don't use display serifs, Inter-as-brand, or random third typefaces without updating DESIGN.md.",
+      "Don't store or display full card numbers; last4 + metadata only.",
+      "Don't invent testimonials, bank partnerships, or performance claims in UI copy.",
+      "Don't make primary actions solid coral; coral is for danger, not brand CTA.",
+      "Don't ship bounce/elastic motion; keep state transitions ~150–250ms when motion is added."
+    ]
+  }
+}

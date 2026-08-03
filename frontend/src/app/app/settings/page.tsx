@@ -1,0 +1,282 @@
+"use client";
+
+import { useState } from "react";
+import { Building2, Save, User } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/features/auth/auth-provider";
+import {
+  updateOrganization,
+  updateProfile,
+  type OrganizationSummary,
+  type ProfileResponse,
+} from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
+
+function ProfileSettingsForm({
+  profile,
+  accessToken,
+  onSaved,
+}: {
+  profile: ProfileResponse;
+  accessToken: string;
+  onSaved: () => Promise<void>;
+}) {
+  const [displayName, setDisplayName] = useState(profile.display_name ?? "");
+  const [timezone, setTimezone] = useState(profile.timezone || "Asia/Kolkata");
+  const [dueSoonDays, setDueSoonDays] = useState(profile.due_soon_days ?? 7);
+  const [highUtil, setHighUtil] = useState(profile.high_utilization_percent ?? 80);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      await updateProfile(accessToken, {
+        display_name: displayName.trim() || null,
+        timezone: timezone.trim() || "Asia/Kolkata",
+        due_soon_days: dueSoonDays,
+        high_utilization_percent: highUtil,
+      });
+      await onSaved();
+      setMsg("Saved profile and notification thresholds.");
+    } catch (error) {
+      setErr(error instanceof ApiError ? error.message : "Failed to save profile");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={(e) => void handleSave(e)} className="flex flex-col gap-4 pt-1">
+      <div className="grid gap-2">
+        <Label htmlFor="display_name">Display name</Label>
+        <Input
+          id="display_name"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder="Your name"
+          maxLength={200}
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="timezone">Timezone</Label>
+        <Input
+          id="timezone"
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          placeholder="Asia/Kolkata"
+        />
+        <p className="text-xs text-muted-foreground">
+          Billing dates use IST for cycle math; this is your display preference.
+        </p>
+      </div>
+
+      <div className="rounded-xl border bg-muted/20 p-3">
+        <p className="text-sm font-medium">In-app notification thresholds</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Controls dashboard attention and notification sync. No email or SMS in v1.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="due_soon_days">Due soon (days)</Label>
+            <Input
+              id="due_soon_days"
+              type="number"
+              min={1}
+              max={30}
+              value={dueSoonDays}
+              onChange={(e) => setDueSoonDays(Number(e.target.value) || 7)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Flag cards due within this many days (1–30).
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="high_util">High utilization (%)</Label>
+            <Input
+              id="high_util"
+              type="number"
+              min={50}
+              max={100}
+              value={highUtil}
+              onChange={(e) => setHighUtil(Number(e.target.value) || 80)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Alert when a card is at or above this % (50–100).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {err ? <p className="text-sm text-destructive">{err}</p> : null}
+      {msg ? (
+        <p className="text-sm text-emerald-700 dark:text-emerald-400">{msg}</p>
+      ) : null}
+
+      <div>
+        <Button type="submit" size="sm" disabled={saving}>
+          <Save className="size-3.5" />
+          {saving ? "Saving…" : "Save profile"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function OrgSettingsForm({
+  org,
+  accessToken,
+  onSaved,
+}: {
+  org: OrganizationSummary;
+  accessToken: string;
+  onSaved: () => Promise<void>;
+}) {
+  const [orgName, setOrgName] = useState(org.name);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      await updateOrganization(accessToken, org.id, { name: orgName.trim() });
+      await onSaved();
+      setMsg("Workspace name updated.");
+    } catch (error) {
+      setErr(error instanceof ApiError ? error.message : "Failed to rename workspace");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={(e) => void handleSave(e)} className="flex flex-col gap-4 pt-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="font-mono text-[10px] uppercase">
+          {org.role}
+        </Badge>
+        <span className="font-mono text-xs text-muted-foreground">{org.slug}</span>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="org_name">Workspace name</Label>
+        <Input
+          id="org_name"
+          value={orgName}
+          onChange={(e) => setOrgName(e.target.value)}
+          required
+          minLength={1}
+          maxLength={200}
+        />
+      </div>
+      {err ? <p className="text-sm text-destructive">{err}</p> : null}
+      {msg ? (
+        <p className="text-sm text-emerald-700 dark:text-emerald-400">{msg}</p>
+      ) : null}
+      <div>
+        <Button type="submit" size="sm" variant="outline" disabled={saving || !orgName.trim()}>
+          <Save className="size-3.5" />
+          {saving ? "Saving…" : "Rename workspace"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export default function SettingsPage() {
+  const { accessToken, ready, profile, organizations, refreshProfile } = useAuth();
+  const primaryOrg = organizations[0] ?? null;
+
+  if (!ready) {
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
+
+  if (!accessToken || !profile) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Sign in to manage profile and notification preferences.
+      </p>
+    );
+  }
+
+  const profileFormKey = [
+    profile.id,
+    profile.display_name ?? "",
+    profile.timezone,
+    profile.due_soon_days,
+    profile.high_utilization_percent,
+  ].join("|");
+
+  const orgFormKey = primaryOrg ? `${primaryOrg.id}|${primaryOrg.name}` : "none";
+
+  return (
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Settings</h2>
+        <p className="text-sm text-muted-foreground">
+          Profile, workspace, and in-app notification preferences
+        </p>
+      </div>
+
+      <Card className="shadow-sm ring-1 ring-foreground/10">
+        <CardHeader className="border-b pb-3!">
+          <div className="flex items-center gap-2">
+            <User className="size-4 text-muted-foreground" />
+            <CardTitle>Profile</CardTitle>
+          </div>
+          <CardDescription>
+            {profile.email ? (
+              <span className="font-mono text-xs">{profile.email}</span>
+            ) : (
+              "Display name and timezone for your account"
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProfileSettingsForm
+            key={profileFormKey}
+            profile={profile}
+            accessToken={accessToken}
+            onSaved={refreshProfile}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm ring-1 ring-foreground/10">
+        <CardHeader className="border-b pb-3!">
+          <div className="flex items-center gap-2">
+            <Building2 className="size-4 text-muted-foreground" />
+            <CardTitle>Workspace</CardTitle>
+          </div>
+          <CardDescription>
+            Personal organization for cards, contacts, and the ledger.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {primaryOrg ? (
+            <OrgSettingsForm
+              key={orgFormKey}
+              org={primaryOrg}
+              accessToken={accessToken}
+              onSaved={refreshProfile}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">No workspace found.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

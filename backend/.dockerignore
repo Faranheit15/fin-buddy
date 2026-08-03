@@ -1,0 +1,37 @@
+# VCS / IDE
+.git
+.gitignore
+.idea
+.vscode
+**/.DS_Store
+
+# Local env & secrets
+.env
+.env.*
+!.env.example
+
+# Python junk
+.venv
+**/__pycache__
+**/*.py[cod]
+**/*$py.class
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.htmlcov
+.coverage
+coverage.xml
+dist
+*.egg-info
+.tox
+.nox
+
+# Tests not needed in runtime image
+tests
+
+# Local statement uploads (use a volume in compose)
+storage
+
+# Docs / misc
+*.md
+!README.md

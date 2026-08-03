@@ -1,0 +1,159 @@
+# Fin Buddy — production-oriented Docker Compose
+#
+# Secrets: load from backend/.env (existing local setup) and/or root .env.
+#   cp .env.example .env          # optional docker-only overrides
+#   # OR keep using backend/.env  # already used for local uv/uvicorn
+#
+# Usage:
+#   docker compose up -d --build
+#   open http://localhost:3000
+#
+# Stack:
+#   frontend  Next.js (standalone)  → :3000
+#   backend   FastAPI + Uvicorn     → :8000
+#   Data/Auth: external Supabase — not run in this compose file.
+
+name: fin-buddy
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: fin-buddy-api:${IMAGE_TAG:-latest}
+    container_name: fin-buddy-api
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_HOST_PORT:-8000}:8000"
+    # Compose only auto-loads root `.env` for ${…} interpolation.
+    # Service env files inject secrets into the container (no host ${VAR:?} needed).
+    # Later files override earlier ones.
+    env_file:
+      - path: backend/.env
+        required: false
+      - path: .env
+        required: false
+    environment:
+      # Docker runtime overrides (must not blank out secrets from env_file).
+      # Do NOT set DATABASE_URL / SUPABASE_* here — that would override env_file
+      # with empty strings when root `.env` is missing.
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      APP_NAME: ${APP_NAME:-Fin Buddy API}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      DATABASE_ECHO: ${DATABASE_ECHO:-false}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}
+      SUPABASE_JWT_AUDIENCE: ${SUPABASE_JWT_AUDIENCE:-authenticated}
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      # Migrations once via entrypoint; keep AUTO_MIGRATE off with multi-worker
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      AUTO_MIGRATE: "false"
+      AUTO_SEED: ${AUTO_SEED:-false}
+      DEMO_AUTH_ENABLED: ${DEMO_AUTH_ENABLED:-false}
+      STATEMENT_STORAGE_DIR: /data/statements
+      STATEMENT_MAX_UPLOAD_BYTES: ${STATEMENT_MAX_UPLOAD_BYTES:-15728640}
+      LOG_API_REQUESTS: ${LOG_API_REQUESTS:-true}
+      LOG_REQUEST_BODY: ${LOG_REQUEST_BODY:-false}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      PORT: "8000"
+    volumes:
+      - statement_data:/data/statements
+    networks:
+      - fin-buddy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    security_opt:
+      - no-new-privileges:true
+    # Drop everything, then re-add only what entrypoint + runtime need:
+    #   CHOWN/FOWNER/DAC_OVERRIDE — fix named volume ownership on first start
+    #   SETUID/SETGID — runuser drop to finbuddy
+    #   NET_BIND_SERVICE — not required (port 8000 > 1024)
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: "${BACKEND_CPU_LIMIT:-2.0}"
+          memory: ${BACKEND_MEMORY_LIMIT:-512M}
+        reservations:
+          cpus: "${BACKEND_CPU_RESERVATION:-0.25}"
+          memory: ${BACKEND_MEMORY_RESERVATION:-128M}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        BACKEND_URL: ${BACKEND_INTERNAL_URL:-http://backend:8000}
+    image: fin-buddy-web:${IMAGE_TAG:-latest}
+    container_name: fin-buddy-web
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_HOST_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      BACKEND_URL: ${BACKEND_INTERNAL_URL:-http://backend:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - fin-buddy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: "${FRONTEND_CPU_LIMIT:-1.5}"
+          memory: ${FRONTEND_MEMORY_LIMIT:-512M}
+        reservations:
+          cpus: "${FRONTEND_CPU_RESERVATION:-0.25}"
+          memory: ${FRONTEND_MEMORY_RESERVATION:-128M}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  fin-buddy:
+    name: fin-buddy-net
+    driver: bridge
+
+volumes:
+  statement_data:
+    name: fin-buddy-statement-data

@@ -1,0 +1,199 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Bell, LogOut, Menu, Plus, User } from "lucide-react";
+
+import { BrandMark } from "@/components/brand/mark";
+import { AppSidebar } from "@/components/layout/app-sidebar";
+import { appNavItems } from "@/components/layout/nav-items";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/features/auth/auth-provider";
+import { getUnreadNotificationCount } from "@/lib/api/notifications";
+import { cn } from "@/lib/utils";
+
+function titleFromPath(pathname: string): string {
+  const match = appNavItems.find((item) =>
+    item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href),
+  );
+  if (match) return match.label;
+  if (pathname.startsWith("/app/cards/")) return "Card detail";
+  if (pathname.startsWith("/app/contacts/")) return "Contact detail";
+  if (pathname.startsWith("/app/notifications")) return "Notifications";
+  if (pathname.startsWith("/app/statements/")) return "Statement review";
+  return "Fin Buddy";
+}
+
+function initials(name: string | null | undefined, email: string | null | undefined): string {
+  if (name?.trim()) {
+    return name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? "")
+      .join("");
+  }
+  if (email) return email.slice(0, 2).toUpperCase();
+  return "You";
+}
+
+export function AppHeader() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const title = titleFromPath(pathname);
+  const [open, setOpen] = useState(false);
+  const [unreadSnap, setUnreadSnap] = useState<{ token: string | null; count: number }>({
+    token: null,
+    count: 0,
+  });
+  const { profile, signOut, ready, accessToken } = useAuth();
+
+  const label = profile?.display_name || profile?.email || "Account";
+  const unread =
+    ready && accessToken && unreadSnap.token === accessToken ? unreadSnap.count : 0;
+
+  useEffect(() => {
+    if (!ready || !accessToken) return;
+
+    const token = accessToken;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await getUnreadNotificationCount(token, { sync: true });
+        if (cancelled) return;
+        setUnreadSnap({ token, count: res.unread });
+      } catch {
+        if (cancelled) return;
+        setUnreadSnap({ token, count: 0 });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, accessToken, pathname]);
+
+  async function handleSignOut() {
+    await signOut();
+    router.replace("/login");
+    router.refresh();
+  }
+
+  return (
+    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger
+          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
+          aria-label="Open menu"
+        >
+          <Menu className="size-4" />
+        </SheetTrigger>
+        <SheetContent side="left" className="w-60 p-0">
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <AppSidebar onNavigate={() => setOpen(false)} className="w-full border-0" />
+        </SheetContent>
+      </Sheet>
+
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <BrandMark className="md:hidden" />
+        <div className="min-w-0">
+          <h1 className="truncate text-base font-semibold tracking-tight">{title}</h1>
+          <p className="hidden text-xs text-muted-foreground sm:block">
+            Scan dues, utilization, and friend balances
+          </p>
+        </div>
+      </div>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "hidden sm:inline-flex")}
+        >
+          <Plus className="size-3.5" />
+          Quick add
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-48">
+          <DropdownMenuLabel>Create</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem>
+            <Link href="/app/transactions" className="flex w-full">
+              Log spend
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/app/contacts" className="flex w-full">
+              Record settlement
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/app/statements" className="flex w-full">
+              Upload statement
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/app/cards" className="flex w-full">
+              Add card
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Link
+        href="/app/notifications"
+        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative")}
+        aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+      >
+        <Bell className="size-4" />
+        {unread > 0 ? (
+          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        ) : null}
+      </Link>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className="flex size-8 items-center justify-center rounded-lg bg-muted text-[11px] font-semibold"
+          aria-label="Account menu"
+        >
+          {ready ? initials(profile?.display_name, profile?.email) : "…"}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-52">
+          <DropdownMenuLabel className="space-y-0.5 font-normal">
+            <span className="block text-sm font-medium">{label}</span>
+            {profile?.email ? (
+              <span className="block truncate text-xs text-muted-foreground">
+                {profile.email}
+              </span>
+            ) : null}
+            {profile?.platform_role && profile.platform_role !== "user" ? (
+              <span className="mt-1 inline-block font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                {profile.platform_role}
+              </span>
+            ) : null}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem>
+            <Link href="/app/settings" className="flex w-full items-center gap-2">
+              <User className="size-3.5" />
+              Settings
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => void handleSignOut()}>
+            <span className="flex items-center gap-2">
+              <LogOut className="size-3.5" />
+              Sign out
+            </span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </header>
+  );
+}

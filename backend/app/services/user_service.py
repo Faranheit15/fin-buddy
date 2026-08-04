@@ -1,7 +1,7 @@
 """Profile + personal organization bootstrap."""
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -13,6 +13,8 @@ from app.models.enums import ActivityAction, OrgRole, PlatformRole
 from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
 from app.services.logging_service import log_activity
+
+_LAST_LOGIN_TOUCH_AFTER = timedelta(hours=1)
 
 
 def _slugify(value: str) -> str:
@@ -64,13 +66,20 @@ async def ensure_profile_and_org(
         await session.flush()
         created_profile = True
     else:
-        profile.email = email or profile.email
-        profile.phone = phone or profile.phone
-        if display_name:
+        if email and email != profile.email:
+            profile.email = email
+        if phone and phone != profile.phone:
+            profile.phone = phone
+        if display_name and display_name != profile.display_name:
             profile.display_name = display_name
-        if avatar_url:
+        if avatar_url and avatar_url != profile.avatar_url:
             profile.avatar_url = avatar_url
-        profile.last_login_at = datetime.now(UTC)
+        now = datetime.now(UTC)
+        last_login = profile.last_login_at
+        if last_login is not None and last_login.tzinfo is None:
+            last_login = last_login.replace(tzinfo=UTC)
+        if last_login is None or last_login < now - _LAST_LOGIN_TOUCH_AFTER:
+            profile.last_login_at = now
         if is_platform_admin and profile.platform_role == PlatformRole.USER:
             profile.platform_role = PlatformRole.SUPER_ADMIN
 
@@ -128,7 +137,8 @@ async def ensure_profile_and_org(
             user_agent=user_agent,
         )
 
-    await session.commit()
-    await session.refresh(profile)
-    await session.refresh(org)
+    if session.new or session.dirty or session.deleted:
+        await session.commit()
+        await session.refresh(profile)
+        await session.refresh(org)
     return profile, org

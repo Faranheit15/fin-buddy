@@ -24,6 +24,13 @@ export type DashboardCardSummary = {
   status: CardStatus;
 };
 
+export type DashboardContactSummary = {
+  id: string;
+  name: string;
+  outstanding_paise: number;
+  updated_at: string;
+};
+
 export type DashboardData = {
   total_credit_limit_paise: number;
   total_outstanding_paise: number;
@@ -34,6 +41,7 @@ export type DashboardData = {
   transactions_count: number;
   attention: AttentionItem[];
   cards: DashboardCardSummary[];
+  top_contacts: DashboardContactSummary[];
 };
 
 export function fetchDashboard(accessToken: string) {

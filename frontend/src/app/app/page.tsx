@@ -16,8 +16,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BootstrapBanner } from "@/features/auth/bootstrap-banner";
 import { useAuth } from "@/features/auth/auth-provider";
-import { listContacts, type Contact } from "@/lib/api/contacts";
-import { fetchDashboard, type DashboardData } from "@/lib/api/dashboard";
+import {
+  fetchDashboard,
+  type DashboardContactSummary,
+  type DashboardData,
+} from "@/lib/api/dashboard";
 import { ApiError } from "@/lib/api/client";
 import {
   attentionItems,
@@ -78,18 +81,17 @@ function mapAttention(data: DashboardData): DemoAttentionItem[] {
   }));
 }
 
-function mapLiveContacts(items: Contact[]): DemoContact[] {
+function mapLiveContacts(items: DashboardContactSummary[]): DemoContact[] {
   return items.map((c) => ({
     id: c.id,
     name: c.name,
-    outstandingPaise: c.outstanding_paise ?? 0,
+    outstandingPaise: c.outstanding_paise,
     lastActivity: c.updated_at,
   }));
 }
 
 type DashSnapshot = {
   live: DashboardData | null;
-  contacts: Contact[];
   error: string | null;
   gen: number;
 };
@@ -99,30 +101,25 @@ export default function DashboardPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [snapshot, setSnapshot] = useState<DashSnapshot>({
     live: null,
-    contacts: [],
     error: null,
     gen: -1,
   });
 
   useEffect(() => {
-    if (!ready || !accessToken) return;
+    if (!accessToken) return;
 
     const gen = reloadKey;
     let cancelled = false;
 
     void (async () => {
       try {
-        const [data, contactRes] = await Promise.all([
-          fetchDashboard(accessToken),
-          listContacts(accessToken, { pageSize: 20 }),
-        ]);
+        const data = await fetchDashboard(accessToken);
         if (cancelled) return;
-        setSnapshot({ live: data, contacts: contactRes.items, error: null, gen });
+        setSnapshot({ live: data, error: null, gen });
       } catch (err) {
         if (cancelled) return;
         setSnapshot({
           live: null,
-          contacts: [],
           error: err instanceof ApiError ? err.message : "Failed to load dashboard",
           gen,
         });
@@ -132,7 +129,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [ready, accessToken, reloadKey]);
+  }, [accessToken, reloadKey]);
 
   const live = snapshot.live;
   const error = snapshot.error;
@@ -160,7 +157,9 @@ export default function DashboardPage() {
 
   const attention = useLive ? mapAttention(live!) : attentionItems();
   const cards = useLive ? mapLiveCards(live!) : demoCards;
-  const contacts = useLive ? mapLiveContacts(snapshot.contacts) : demoContacts;
+  const contacts = useLive
+    ? mapLiveContacts(live!.top_contacts ?? [])
+    : demoContacts;
   const emptyLive = useLive && live!.cards_count === 0;
 
   return (

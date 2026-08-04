@@ -76,7 +76,7 @@ async def get_unread_count(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgContext,
-    sync: bool = Query(True),
+    sync: bool = Query(False),
 ) -> NotificationUnreadCount:
     org, _ = org_ctx
     if sync:

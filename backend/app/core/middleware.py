@@ -1,5 +1,6 @@
 """HTTP middleware: request ID, API request logging, error persistence."""
 
+import asyncio
 import time
 import traceback
 import uuid
@@ -39,12 +40,15 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             raise
         finally:
             duration_ms = int((time.perf_counter() - start) * 1000)
-            await self._persist_request_log(
-                request=request,
-                request_id=request_id,
-                status_code=status_code,
-                duration_ms=duration_ms,
-                error_message=error_message,
+            # Don't block the HTTP response on request-log writes.
+            asyncio.create_task(
+                self._persist_request_log(
+                    request=request,
+                    request_id=request_id,
+                    status_code=status_code,
+                    duration_ms=duration_ms,
+                    error_message=error_message,
+                )
             )
 
     async def _persist_request_log(

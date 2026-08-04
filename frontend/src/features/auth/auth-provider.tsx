@@ -117,10 +117,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!mounted) return;
+        // Unblock dashboard fetches as soon as we have a token; profile loads in parallel.
         setAccessToken(session.accessToken);
+        setReady(true);
         await loadProfile(session.accessToken);
-      } finally {
-        if (mounted) setReady(true);
+      } catch {
+        if (mounted) {
+          setAccessToken(null);
+          setProfile(null);
+          setOrganizations([]);
+          setReady(true);
+        }
       }
     })();
 

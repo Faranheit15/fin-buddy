@@ -63,13 +63,13 @@ export function AppHeader() {
     ready && accessToken && unreadSnap.token === accessToken ? unreadSnap.count : 0;
 
   useEffect(() => {
-    if (!ready || !accessToken) return;
+    if (!accessToken) return;
 
     const token = accessToken;
     let cancelled = false;
     void (async () => {
       try {
-        const res = await getUnreadNotificationCount(token, { sync: true });
+        const res = await getUnreadNotificationCount(token, { sync: false });
         if (cancelled) return;
         setUnreadSnap({ token, count: res.unread });
       } catch {
@@ -80,7 +80,7 @@ export function AppHeader() {
     return () => {
       cancelled = true;
     };
-  }, [ready, accessToken, pathname]);
+  }, [accessToken]);
 
   async function handleSignOut() {
     await signOut();

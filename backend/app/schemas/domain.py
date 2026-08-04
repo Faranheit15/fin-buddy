@@ -304,6 +304,13 @@ class DashboardCardSummary(BaseModel):
     status: CardStatus
 
 
+class DashboardContactSummary(BaseModel):
+    id: UUID
+    name: str
+    outstanding_paise: int
+    updated_at: datetime
+
+
 class DashboardResponse(BaseModel):
     total_credit_limit_paise: int
     total_outstanding_paise: int
@@ -314,3 +321,4 @@ class DashboardResponse(BaseModel):
     transactions_count: int
     attention: list[AttentionItem] = Field(default_factory=list)
     cards: list[DashboardCardSummary] = Field(default_factory=list)
+    top_contacts: list[DashboardContactSummary] = Field(default_factory=list)

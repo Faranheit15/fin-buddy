@@ -13,8 +13,9 @@ const backendUrl = (
 ).replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
-  // Lean production image via `output: "standalone"` (see frontend/Dockerfile).
-  output: "standalone",
+  // `standalone` is for Docker Compose images only — on Vercel it breaks routing
+  // (platform 404 NOT_FOUND). Dockerfile sets DOCKER_BUILD=1.
+  ...(process.env.DOCKER_BUILD === "1" ? { output: "standalone" as const } : {}),
   async rewrites() {
     return [
       {

@@ -57,6 +57,7 @@ Redeploy after env changes if required by the platform. Probe:
 ## 3. Frontend → Vercel
 
 - Root directory: `frontend`
+- Framework preset: **Next.js** (do not leave as Other / unset)
 - Install: `bun install` / Build: `bun run build`
 - Env:
   - `NEXT_PUBLIC_APP_URL=https://<your-app>.vercel.app`
@@ -64,6 +65,8 @@ Redeploy after env changes if required by the platform. Probe:
   - `BACKEND_URL=https://<your-api>`
 
 Do **not** put service role or JWT secret in Vercel.
+
+**Gotcha:** `output: "standalone"` is Docker-only (`DOCKER_BUILD=1`). Enabling it on Vercel can yield a green build that still returns platform `404 NOT_FOUND`.
 
 ## 4. Smoke checklist
 

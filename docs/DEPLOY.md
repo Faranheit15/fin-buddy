@@ -27,9 +27,13 @@ From `backend/`:
 ```bash
 uv lock
 uv sync --group dev
+# Verify CLI extras (required by FastAPI Cloud):
+uv run python -c "import fastapi_cli; print('ok')"
 fastapi login
 fastapi deploy
 ```
+
+**Required deps:** `fastapi[standard]` **and** a lockfile that actually installs `fastapi-cli`. If Cloud logs say `pip install "fastapi[standard]"`, the deployed lock is stale — run `uv lock` locally and redeploy. Python is pinned to **3.12** via `.python-version` / `requires-python` (avoid 3.14 on Cloud).
 
 Set env (use `--secret` for secrets):
 
@@ -59,12 +63,23 @@ Redeploy after env changes if required by the platform. Probe:
 - Root directory: `frontend`
 - Framework preset: **Next.js** (do not leave as Other / unset)
 - Install: `bun install` / Build: `bun run build`
-- Env:
-  - `NEXT_PUBLIC_APP_URL=https://<your-app>.vercel.app`
-  - `NEXT_PUBLIC_API_URL=https://<your-api>`
-  - `BACKEND_URL=https://<your-api>`
+- Env (Production) — browser calls `/backend/*`; Next rewrites that to `BACKEND_URL` **at build time**:
+
+| Variable | Value |
+|----------|--------|
+| `NEXT_PUBLIC_APP_URL` | `https://fin-buddy-dev.vercel.app` |
+| `NEXT_PUBLIC_API_URL` | `https://fin-buddy.fastapicloud.dev` |
+| `BACKEND_URL` | `https://fin-buddy.fastapicloud.dev` |
 
 Do **not** put service role or JWT secret in Vercel.
+
+After changing these, **Redeploy** the frontend (Settings alone are not enough for rewrites).
+
+On FastAPI Cloud, allow the Vercel origin:
+
+```bash
+fastapi cloud env set CORS_ORIGINS "https://fin-buddy-dev.vercel.app"
+```
 
 **Gotcha:** `output: "standalone"` is Docker-only (`DOCKER_BUILD=1`). Enabling it on Vercel can yield a green build that still returns platform `404 NOT_FOUND`.
 

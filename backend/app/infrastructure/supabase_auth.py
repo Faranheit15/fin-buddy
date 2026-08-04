@@ -44,10 +44,16 @@ class SupabaseAuthClient:
         password: str,
         *,
         data: dict[str, Any] | None = None,
+        email_redirect_to: str | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {"email": email, "password": password}
+        options: dict[str, Any] = {}
         if data:
-            payload["data"] = data
+            options["data"] = data
+        if email_redirect_to:
+            options["email_redirect_to"] = email_redirect_to
+        if options:
+            payload["options"] = options
         return await self._post("/signup", payload)
 
     async def sign_in_email(self, email: str, password: str) -> dict[str, Any]:

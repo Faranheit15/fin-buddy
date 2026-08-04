@@ -66,7 +66,12 @@ export function signupWithPassword(
 ) {
   return apiFetch<AuthResponse>("/api/v1/auth/signup", {
     method: "POST",
-    body: JSON.stringify({ email, password, display_name: display_name || null }),
+    body: JSON.stringify({
+      email,
+      password,
+      display_name: display_name || null,
+      redirect_to: `${env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+    }),
   });
 }
 

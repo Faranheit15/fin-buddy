@@ -76,6 +76,7 @@ async def signup(
         email=body.email,
         password=body.password,
         display_name=body.display_name,
+        email_redirect_to=body.redirect_to,
         ip_address=ip,
         user_agent=ua,
     )

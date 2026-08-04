@@ -87,6 +87,10 @@ class Settings(BaseSettings):
     supabase_jwt_audience: str = "authenticated"
     supabase_jwt_issuer: str | None = None  # defaults to {supabase_url}/auth/v1
 
+    # Public frontend origin — used for email confirmation / magic-link redirects
+    # Example: https://fin-buddy-dev.vercel.app
+    frontend_app_url: str | None = None
+
     # Platform bootstrap: emails granted super_admin on seed/login (comma-separated)
     platform_admin_emails: Annotated[list[str], NoDecode] = Field(default_factory=list)
 

@@ -102,10 +102,24 @@ bun run dev
 **Auth flow:** browser → FastAPI (`/api/v1/auth/*`) → Supabase (server-side).  
 Session cookies are stored on the Next.js origin after the backend returns tokens.
 
-In Supabase → **Authentication → URL Configuration** (for OAuth / magic-link redirects only):
+In Supabase → **Authentication → URL Configuration** (required for production auth emails):
 
-- Site URL: `http://localhost:3000`
-- Redirect URLs: `http://localhost:3000/auth/callback`
+- **Site URL:** `https://fin-buddy-dev.vercel.app`
+- **Redirect URLs:** include
+  - `https://fin-buddy-dev.vercel.app/auth/callback`
+  - `http://localhost:3000/auth/callback` (local)
+- Do **not** leave Site URL as `http://localhost:3000` once you use the Vercel app — dashboard “Send Magic Link” and confirmation emails use Site URL.
+
+Also set on FastAPI Cloud:
+
+```bash
+fastapi cloud env set FRONTEND_APP_URL "https://fin-buddy-dev.vercel.app"
+fastapi cloud env set CORS_ORIGINS "https://fin-buddy-dev.vercel.app"
+```
+
+And on Vercel (rebuild after changing):
+
+- `NEXT_PUBLIC_APP_URL=https://fin-buddy-dev.vercel.app`
 
 Enable Email (and optionally Google) under **Authentication → Providers**.
 

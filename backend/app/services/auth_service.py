@@ -76,12 +76,23 @@ async def signup_with_email(
     email: str,
     password: str,
     display_name: str | None,
+    email_redirect_to: str | None = None,
     ip_address: str | None = None,
     user_agent: str | None = None,
 ) -> tuple[Profile | None, Organization | None, dict[str, Any], dict[str, Any]]:
     client = SupabaseAuthClient(settings)
     data = {"full_name": display_name} if display_name else None
-    auth_response = await client.sign_up_email(email, password, data=data)
+    redirect = email_redirect_to or (
+        f"{settings.frontend_app_url.rstrip('/')}/auth/callback"
+        if settings.frontend_app_url
+        else None
+    )
+    auth_response = await client.sign_up_email(
+        email,
+        password,
+        data=data,
+        email_redirect_to=redirect,
+    )
 
     # Email confirmation may leave session empty
     if not auth_response.get("access_token"):

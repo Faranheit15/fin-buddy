@@ -12,6 +12,7 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -96,9 +97,9 @@ export function AppHeader() {
         >
           <Menu className="size-4" />
         </SheetTrigger>
-        <SheetContent side="left" className="w-60 p-0">
+        <SheetContent side="left" className="flex h-full w-60 flex-col p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <AppSidebar onNavigate={() => setOpen(false)} className="w-full border-0" />
+          <AppSidebar onNavigate={() => setOpen(false)} className="h-full w-full border-0" />
         </SheetContent>
       </Sheet>
 
@@ -120,28 +121,21 @@ export function AppHeader() {
           Quick add
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-48">
-          <DropdownMenuLabel>Create</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <Link href="/app/transactions" className="flex w-full">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Create</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => router.push("/app/transactions")}>
               Log spend
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/app/contacts" className="flex w-full">
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/app/contacts")}>
               Record settlement
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/app/statements" className="flex w-full">
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/app/statements")}>
               Upload statement
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/app/cards" className="flex w-full">
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/app/cards")}>
               Add card
-            </Link>
-          </DropdownMenuItem>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -166,31 +160,29 @@ export function AppHeader() {
           {ready ? initials(profile?.display_name, profile?.email) : "…"}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-52">
-          <DropdownMenuLabel className="space-y-0.5 font-normal">
-            <span className="block text-sm font-medium">{label}</span>
-            {profile?.email ? (
-              <span className="block truncate text-xs text-muted-foreground">
-                {profile.email}
-              </span>
-            ) : null}
-            {profile?.platform_role && profile.platform_role !== "user" ? (
-              <span className="mt-1 inline-block font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                {profile.platform_role}
-              </span>
-            ) : null}
-          </DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="space-y-0.5 font-normal">
+              <span className="block text-sm font-medium">{label}</span>
+              {profile?.email ? (
+                <span className="block truncate text-xs text-muted-foreground">
+                  {profile.email}
+                </span>
+              ) : null}
+              {profile?.platform_role && profile.platform_role !== "user" ? (
+                <span className="mt-1 inline-block font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {profile.platform_role}
+                </span>
+              ) : null}
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <Link href="/app/settings" className="flex w-full items-center gap-2">
-              <User className="size-3.5" />
-              Settings
-            </Link>
+          <DropdownMenuItem onClick={() => router.push("/app/settings")}>
+            <User className="size-3.5" />
+            Settings
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => void handleSignOut()}>
-            <span className="flex items-center gap-2">
-              <LogOut className="size-3.5" />
-              Sign out
-            </span>
+            <LogOut className="size-3.5" />
+            Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

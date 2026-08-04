@@ -15,7 +15,7 @@ type AppSidebarProps = {
 
 export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
   const pathname = usePathname();
-  const { organizations, profile } = useAuth();
+  const { organizations, profile, ready, accessToken } = useAuth();
   const workspace = organizations[0]?.name ?? "Personal workspace";
 
   return (
@@ -25,7 +25,7 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
         className,
       )}
     >
-      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
+      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border px-4">
         <BrandMark />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold tracking-tight">Fin Buddy</p>
@@ -33,7 +33,7 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 p-2" aria-label="Main">
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2" aria-label="Main">
         {appNavItems.map((item) => {
           const active =
             item.href === "/app"
@@ -59,16 +59,24 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border p-3">
+      <div className="mt-auto shrink-0 border-t border-sidebar-border p-3">
         <p className="truncate text-[11px] leading-snug text-muted-foreground">
           {workspace}
-          {profile ? (
+          {!ready ? (
+            <span className="mt-1 block font-mono text-[10px] tracking-wide">
+              Checking session…
+            </span>
+          ) : profile ? (
             <span className="mt-1 block truncate font-mono text-[10px] tracking-wide">
               {profile.email}
             </span>
+          ) : accessToken ? (
+            <span className="mt-1 block font-mono text-[10px] tracking-wide">
+              Loading profile…
+            </span>
           ) : (
-            <span className="mt-1 block font-mono text-[10px] tracking-wide uppercase">
-              Demo / unauthenticated bootstrap
+            <span className="mt-1 block font-mono text-[10px] tracking-wide">
+              Sign in to sync your workspace
             </span>
           )}
         </p>

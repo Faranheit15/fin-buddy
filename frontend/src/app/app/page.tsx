@@ -13,6 +13,7 @@ import { QuickActions } from "@/components/dashboard/quick-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BootstrapBanner } from "@/features/auth/bootstrap-banner";
 import { useAuth } from "@/features/auth/auth-provider";
 import { listContacts, type Contact } from "@/lib/api/contacts";
@@ -27,6 +28,31 @@ import {
 } from "@/lib/demo-data";
 import type { DemoAttentionItem, DemoCard, DemoContact } from "@/lib/demo-data";
 import { cn } from "@/lib/utils";
+
+function DashboardLoading() {
+  return (
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4" aria-busy="true">
+      <div className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2">
+        <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-wide">
+          Loading
+        </Badge>
+        <span className="text-xs text-muted-foreground">Loading your workspace…</span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Skeleton className="h-72 rounded-xl xl:col-span-2" />
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-40 rounded-xl" />
+          <Skeleton className="h-40 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function mapLiveCards(data: DashboardData): DemoCard[] {
   return data.cards.map((c) => ({
@@ -108,10 +134,21 @@ export default function DashboardPage() {
     };
   }, [ready, accessToken, reloadKey]);
 
-  const loading = Boolean(ready && accessToken && snapshot.gen !== reloadKey);
   const live = snapshot.live;
   const error = snapshot.error;
   const useLive = Boolean(live && accessToken);
+  const showSynthetic = ready && !accessToken;
+  const showLoading = !useLive && !error && (!ready || Boolean(accessToken));
+
+  if (showLoading) {
+    return (
+      <>
+        <BootstrapBanner />
+        <DashboardLoading />
+      </>
+    );
+  }
+
   const kpis = useLive
     ? {
         totalLimitPaise: live!.total_credit_limit_paise,
@@ -149,20 +186,29 @@ export default function DashboardPage() {
             Refresh
           </Button>
         </div>
-      ) : (
+      ) : showSynthetic ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed bg-muted/40 px-3 py-2 text-xs text-muted-foreground shadow-sm">
           <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wide">
-            {loading ? "Loading" : "Synthetic"}
+            Sample
           </Badge>
-          <span>
-            {loading
-              ? "Loading live dashboard…"
-              : error
-                ? `Live dashboard unavailable (${error}). Showing sample layout.`
-                : "Showing sample data — sign in with demo to use the API."}
-          </span>
+          <span>Showing sample layout. Sign in to load your workspace.</span>
         </div>
-      )}
+      ) : error ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed bg-muted/40 px-3 py-2 text-xs text-muted-foreground shadow-sm">
+          <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wide">
+            Error
+          </Badge>
+          <span>Live dashboard unavailable ({error}).</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-7"
+            onClick={() => setReloadKey((k) => k + 1)}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : null}
 
       {emptyLive ? (
         <Card className="shadow-sm ring-1 ring-foreground/10">
@@ -221,7 +267,7 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      ) : (
+      ) : useLive || showSynthetic ? (
         <>
           <AttentionStrip items={attention} />
           <KpiRow
@@ -239,9 +285,9 @@ export default function DashboardPage() {
               <QuickActions />
             </div>
           </div>
-          {!useLive && <ActivityFeed items={demoActivity} />}
+          {showSynthetic && <ActivityFeed items={demoActivity} />}
         </>
-      )}
+      ) : null}
     </div>
   );
 }

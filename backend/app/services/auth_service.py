@@ -138,7 +138,12 @@ async def request_magic_link(
     redirect_to: str | None,
 ) -> dict[str, Any]:
     client = SupabaseAuthClient(settings)
-    return await client.sign_in_magic_link(email, redirect_to=redirect_to)
+    redirect = redirect_to or (
+        f"{settings.frontend_app_url.rstrip('/')}/auth/callback"
+        if settings.frontend_app_url
+        else None
+    )
+    return await client.sign_in_magic_link(email, redirect_to=redirect)
 
 
 async def send_phone_otp(settings: Settings, *, phone: str) -> dict[str, Any]:

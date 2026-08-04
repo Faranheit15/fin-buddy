@@ -80,9 +80,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if not settings.auth_configured and not (
-        settings.demo_login_allowed and (settings.supabase_jwt_secret or True)
-    ):
+    if not settings.auth_configured and not settings.demo_login_allowed:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication is not configured (set Supabase env vars)",

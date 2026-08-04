@@ -1,0 +1,18 @@
+# FastAPI Cloud upload ignore (gitignore syntax; overrides .gitignore for deploy)
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+storage/
+*.pyc
+.env
+.env.*
+!.env.example
+tests/
+htmlcov/
+.coverage
+*.egg-info/
+dist/
+build/
+.fastapicloud/

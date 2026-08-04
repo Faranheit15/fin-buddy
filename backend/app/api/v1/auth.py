@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AppSettings, CurrentUser, DbSession, client_meta
 from app.core.exceptions import ForbiddenError, NotFoundError
+from app.core.rate_limit import AUTH_LIMIT, enforce_rate_limit
 from app.models.enums import ActivityAction, OrgRole
 from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
@@ -37,6 +38,10 @@ from app.services.logging_service import log_activity
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _auth_rate_limit(request: Request) -> None:
+    enforce_rate_limit(request, bucket="auth", limit=AUTH_LIMIT, window_seconds=60.0)
+
+
 def _profile_out(profile: Any) -> ProfileResponse:
     return ProfileResponse.model_validate(profile)
 
@@ -63,6 +68,7 @@ async def signup(
     db: DbSession,
     settings: AppSettings,
 ) -> AuthResponse:
+    _auth_rate_limit(request)
     ip, ua = client_meta(request)
     profile, org, tokens, raw = await auth_service.signup_with_email(
         db,
@@ -95,6 +101,7 @@ async def login(
     db: DbSession,
     settings: AppSettings,
 ) -> AuthResponse:
+    _auth_rate_limit(request)
     ip, ua = client_meta(request)
     profile, org, tokens = await auth_service.login_with_email(
         db,
@@ -125,6 +132,7 @@ async def demo_login_endpoint(
     """
     if not settings.demo_login_allowed:
         raise ForbiddenError("Demo login is disabled", code="demo_auth_disabled")
+    _auth_rate_limit(request)
     ip, ua = client_meta(request)
     profile, org, tokens = await demo_login(
         db, settings, ip_address=ip, user_agent=ua
@@ -146,7 +154,12 @@ async def demo_available(settings: AppSettings) -> MessageResponse:
 
 
 @router.post("/magic-link", response_model=MessageResponse)
-async def magic_link(body: MagicLinkRequest, settings: AppSettings) -> MessageResponse:
+async def magic_link(
+    body: MagicLinkRequest,
+    request: Request,
+    settings: AppSettings,
+) -> MessageResponse:
+    _auth_rate_limit(request)
     await auth_service.request_magic_link(
         settings, email=body.email, redirect_to=body.redirect_to
     )
@@ -154,7 +167,12 @@ async def magic_link(body: MagicLinkRequest, settings: AppSettings) -> MessageRe
 
 
 @router.post("/otp/phone", response_model=MessageResponse)
-async def phone_otp(body: PhoneOtpRequest, settings: AppSettings) -> MessageResponse:
+async def phone_otp(
+    body: PhoneOtpRequest,
+    request: Request,
+    settings: AppSettings,
+) -> MessageResponse:
+    _auth_rate_limit(request)
     await auth_service.send_phone_otp(settings, phone=body.phone)
     return MessageResponse(message="OTP sent if the phone number is valid")
 
@@ -166,6 +184,7 @@ async def verify_otp(
     db: DbSession,
     settings: AppSettings,
 ) -> AuthResponse:
+    _auth_rate_limit(request)
     ip, ua = client_meta(request)
     profile, org, tokens = await auth_service.verify_otp(
         db,
@@ -193,6 +212,7 @@ async def refresh(
     db: DbSession,
     settings: AppSettings,
 ) -> AuthResponse:
+    _auth_rate_limit(request)
     ip, ua = client_meta(request)
     profile, org, tokens = await auth_service.refresh_session(
         db,
@@ -220,6 +240,7 @@ async def establish_session(
     Establish app profile/org from tokens already issued by Supabase
     (OAuth / magic-link redirect completion). Auth verification is server-side.
     """
+    _auth_rate_limit(request)
     ip, ua = client_meta(request)
     profile, org, tokens = await auth_service.session_from_tokens(
         db,
@@ -366,9 +387,11 @@ async def update_organization(
 
 @router.get("/oauth/google", response_model=GoogleOAuthResponse)
 async def google_oauth(
+    request: Request,
     settings: AppSettings,
     redirect_to: str = Query(..., description="Frontend callback URL"),
 ) -> GoogleOAuthResponse:
+    _auth_rate_limit(request)
     url = auth_service.google_oauth_url(settings, redirect_to=redirect_to)
     # Append apikey is handled by Supabase hosted authorize page
     if settings.supabase_anon_key:

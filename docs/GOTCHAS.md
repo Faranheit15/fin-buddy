@@ -8,6 +8,7 @@ Agents must review this document to avoid common pitfalls in this specific repos
 ## Supabase Quirks
 - Service-role keys must NEVER be exposed to the frontend. They are backend-only.
 - Always check the allowed redirect URLs in Supabase if authentication flows fail locally.
+- Statement PDFs: use `STATEMENT_STORAGE_BACKEND=supabase` on FastAPI Cloud. Local disk is ephemeral there.
 
 ## Retired Approaches
 - *(Add any technical approaches that were tried and failed here, so agents do not attempt them again)*

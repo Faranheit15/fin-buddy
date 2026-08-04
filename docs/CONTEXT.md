@@ -1,5 +1,5 @@
 # Active Context
 
-*Feature focus: Bootstrapping the initial AI agentic environment.*
+*Feature focus: Personal production deploy (Vercel + FastAPI Cloud + Supabase).*
 
-We are currently establishing the agentic framework and multi-agent coordination layer across the repository. No active product features are currently being implemented.
+Phases 0–5 product features are in place. Current work hardens the stack for personal production: durable statement storage, rate limits, CI/git, and deploy wiring. Monetization and public packaging remain out of scope.

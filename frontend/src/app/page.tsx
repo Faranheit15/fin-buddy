@@ -42,14 +42,6 @@ export default function HomePage() {
           <Link href="/login" className={cn(buttonVariants({ variant: "outline", size: "lg" }))}>
             Sign in
           </Link>
-          <a
-            href="http://localhost:8000/docs"
-            target="_blank"
-            rel="noreferrer"
-            className={cn(buttonVariants({ variant: "ghost", size: "lg" }))}
-          >
-            API docs
-          </a>
         </div>
 
         <dl className="mt-16 grid gap-4 sm:grid-cols-3">

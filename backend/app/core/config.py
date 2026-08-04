@@ -95,8 +95,12 @@ class Settings(BaseSettings):
     demo_user_email: str = "demo@finbuddy.local"
     demo_user_name: str = "Demo User"
 
-    # Statement PDF / text storage (local filesystem for v1)
+    # Statement PDF / text storage
+    # local = filesystem under statement_storage_dir (dev / docker volume)
+    # supabase = private bucket via Storage API (required for FastAPI Cloud)
+    statement_storage_backend: Literal["local", "supabase"] = "local"
     statement_storage_dir: str = "storage/statements"
+    statement_storage_bucket: str = "statements"
     statement_max_upload_bytes: int = 15 * 1024 * 1024  # 15 MB
 
     # Request / activity logging
@@ -135,9 +139,7 @@ class Settings(BaseSettings):
         """Demo auth: on in development/test by default; off in production unless DEMO_AUTH_ENABLED=true."""
         if self.is_production:
             return self.demo_auth_enabled is True
-        if self.demo_auth_enabled is False:
-            return False
-        return True
+        return self.demo_auth_enabled is not False
 
     @property
     def database_configured(self) -> bool:

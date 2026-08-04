@@ -227,7 +227,7 @@ Near-neutral monochrome with a single ink primary and a warm-coral **destructive
 - **Container:** Marketing content ~`max-w-6xl` (72rem) with horizontal padding `px-6` (1.5rem).
 - **Rhythm:** Vertical stacks use Tailwind scale gaps (`gap-3`–`gap-4` for clusters; `mt-6`–`mt-16` for section separation on landing).
 - **Density:** App surfaces (per PRODUCT / shape brief) target **power-user density** — compact controls (default button height 2rem / 32px), tight tables, sidebar + main. Marketing can open spacing.
-- **App shell (planned, not yet built):** Collapsible sidebar + top bar; content region full remaining width. Desktop-first; collapse sidebar and stack KPIs on narrow widths.
+- **App shell (built):** Collapsible sidebar + top bar; content region full remaining width. Desktop-first; collapse sidebar and stack KPIs on narrow widths.
 - **Responsive:** Prefer structural collapse (columns → stack, table scroll) over fluid display type in the app. Landing display may use stepped Tailwind sizes.
 
 ### Named Rules
@@ -298,7 +298,7 @@ Compact, medium-weight, no uppercase forced.
 ### Navigation
 
 - **Marketing header:** Horizontal, max-w-6xl, wordmark + outline Sign in.
-- **App shell (intended):** Sidebar with muted rail (`sidebar` tokens), active item via `sidebar-primary` / accent fill; top bar for notifications and user. Document fully when implemented; do not invent a second nav language.
+- **App shell:** Sidebar with muted rail (`sidebar` tokens), active item via `sidebar-primary` / accent fill; top bar for notifications and user.
 
 ### Status chips (intended for dashboard; not yet built)
 

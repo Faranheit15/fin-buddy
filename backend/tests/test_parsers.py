@@ -51,10 +51,10 @@ def test_generic_parse() -> None:
     result = parse_statement_text(GENERIC)
     assert result.parser_name == "generic_text"
     assert len(result.lines) >= 3
-    merchants = " ".join(l.merchant for l in result.lines).upper()
+    merchants = " ".join(line.merchant for line in result.lines).upper()
     assert "SWIGGY" in merchants
     # Total row should be skipped
-    assert all("total" not in (l.merchant or "").lower() for l in result.lines)
+    assert all("total" not in (line.merchant or "").lower() for line in result.lines)
 
 
 def test_empty_text_no_crash() -> None:

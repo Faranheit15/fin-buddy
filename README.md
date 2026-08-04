@@ -127,6 +127,25 @@ bun run build
 | **5** (done) | Polish, empty states, notifications, settings, deploy docs |
 | **Later** | Issuer-specific parsers, public packaging, external reminders |
 
+## Statement sample format
+
+For reliable imports (demos and personal use), upload a `.txt` file starting with `FINBUDDY_STATEMENT`:
+
+```text
+FINBUDDY_STATEMENT
+CARD:4821
+PERIOD:2026-06-15..2026-07-14
+STATEMENT_DATE:2026-07-15
+DUE_DATE:2026-08-04
+---
+2026-07-01|purchase|SWIGGY BANGALORE|2450.00
+2026-07-05|purchase|AMAZON PAY|1299.00
+2026-07-10|refund|AMAZON PAY|500.00
+2026-07-12|payment_to_issuer|PAYMENT THANK YOU|15000.00
+```
+
+Body rows are `date|type|merchant|amount_inr`. Supported types: `purchase`, `refund`, `fee`, `interest`, `payment_to_issuer`, `opening_balance`. Issuer bank PDFs still go through the generic text extractor (imperfect by design — review before import).
+
 ## Docker Compose (local / personal production)
 
 Runs **frontend** (`:3000`) and **backend** (`:8000`) against your existing Supabase project (Postgres + Auth stay external).
@@ -162,6 +181,8 @@ Notes:
 
 ## Personal production deploy
 
+See **[docs/DEPLOY.md](docs/DEPLOY.md)** for the full Vercel + FastAPI Cloud + Supabase runbook.
+
 ### 1. Supabase (already used in local)
 
 - Keep **pooler** `DATABASE_URL` for the API.
@@ -185,7 +206,13 @@ cd backend
 
 Health probe: `GET /api/v1/health`
 
-Statement PDFs are stored under `STATEMENT_STORAGE_DIR` (local disk by default). For durable multi-instance deploys, mount persistent volume or point storage at object storage later.
+Statement PDFs are stored via `STATEMENT_STORAGE_BACKEND`:
+- `local` — disk under `STATEMENT_STORAGE_DIR` (Compose volume works for single-host).
+- `supabase` — private Storage bucket (`STATEMENT_STORAGE_BUCKET`, default `statements`)
+  using the service role. **Required for FastAPI Cloud** (ephemeral disks).
+
+Create the bucket in Supabase → Storage as **private**. The API uses the service
+role key; no public read policies are required.
 
 ### 3. Frontend → Vercel
 
@@ -209,7 +236,7 @@ Do **not** put Supabase service role or JWT secret in the frontend.
 4. Upload sample statement → review → import.
 5. Open **Notifications** (bell) and **Settings** thresholds.
 
-See also [backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md).
+See also [backend/README.md](backend/README.md), [frontend/README.md](frontend/README.md), and [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Security notes
 

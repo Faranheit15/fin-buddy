@@ -8,10 +8,14 @@ import {
   type StoredSession,
 } from "@/lib/auth/session";
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+const useSecureCookies =
+  process.env.NODE_ENV === "production" || appUrl.startsWith("https://");
+
 const COOKIE_BASE = {
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  secure: useSecureCookies,
   path: "/",
 };
 

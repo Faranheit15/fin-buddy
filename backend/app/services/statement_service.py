@@ -141,7 +141,7 @@ async def create_statement_from_upload(
 
     statement_id = uuid4()
     relative = storage.statement_relative_path(org_id, statement_id, ext)
-    storage.save_bytes(relative, data, settings)
+    await storage.save_bytes(relative, data, settings)
 
     statement = Statement(
         id=statement_id,
@@ -190,7 +190,7 @@ async def run_parse(
     try:
         if not statement.pdf_storage_path:
             raise AppError("No file stored for statement", code="missing_file")
-        data = storage.read_bytes(statement.pdf_storage_path, settings)
+        data = await storage.read_bytes(statement.pdf_storage_path, settings)
         filename = statement.pdf_storage_path.rsplit("/", 1)[-1]
         text = extract_text_from_bytes(data, filename)
         result = parse_statement_text(text, issuer=card.issuer)
@@ -293,8 +293,10 @@ async def update_line(
 ) -> StatementLineCandidate:
     statement = await get_statement_or_404(db, org_id, statement_id)
     if statement.status == StatementStatus.IMPORTED:
-        # Allow viewing; block edits that would re-open unless not committed
-        pass
+        raise AppError(
+            "Statement is already imported; line edits are locked",
+            code="statement_already_imported",
+        )
 
     result = await db.execute(
         select(StatementLineCandidate).where(
@@ -326,13 +328,14 @@ async def update_line(
 
     if review_status is not None:
         line.review_status = review_status
-    elif any(
-        v is not None
-        for v in (merchant, amount_paise, occurred_at, proposed_type, proposed_contact_id)
-    ) or clear_contact:
-        # Field edits auto-mark as edited if still pending
-        if line.review_status == LineReviewStatus.PENDING:
-            line.review_status = LineReviewStatus.EDITED
+    elif line.review_status == LineReviewStatus.PENDING and (
+        clear_contact
+        or any(
+            v is not None
+            for v in (merchant, amount_paise, occurred_at, proposed_type, proposed_contact_id)
+        )
+    ):
+        line.review_status = LineReviewStatus.EDITED
 
     await db.flush()
     return line
@@ -346,7 +349,12 @@ async def bulk_set_review_status(
     review_status: LineReviewStatus,
     only_pending: bool = True,
 ) -> int:
-    await get_statement_or_404(db, org_id, statement_id)
+    statement = await get_statement_or_404(db, org_id, statement_id)
+    if statement.status == StatementStatus.IMPORTED:
+        raise AppError(
+            "Statement is already imported; review status is locked",
+            code="statement_already_imported",
+        )
     result = await db.execute(
         select(StatementLineCandidate).where(
             StatementLineCandidate.statement_id == statement_id,
@@ -357,13 +365,12 @@ async def bulk_set_review_status(
     lines = list(result.scalars().all())
     count = 0
     for line in lines:
+        if only_pending and line.review_status == LineReviewStatus.REJECTED:
+            continue
         if only_pending and line.review_status not in {
             LineReviewStatus.PENDING,
             LineReviewStatus.EDITED,
         }:
-            if review_status == LineReviewStatus.ACCEPTED and line.review_status == LineReviewStatus.REJECTED:
-                continue
-        if only_pending and line.review_status == LineReviewStatus.REJECTED:
             continue
         line.review_status = review_status
         count += 1
@@ -381,8 +388,7 @@ async def import_statement(
 ) -> dict[str, int]:
     """Commit accepted/edited lines as transactions. Idempotent."""
     if statement.status == StatementStatus.IMPORTED:
-        # Still allow importing any leftover accepted lines (should be 0)
-        pass
+        return {"created": 0, "skipped": 0}
     if statement.status in {StatementStatus.UPLOADED, StatementStatus.PARSING, StatementStatus.FAILED}:
         raise AppError(
             "Statement is not ready for import. Parse and review first.",
@@ -439,11 +445,13 @@ async def import_statement(
     )
     pending_left = list(remaining.scalars().all())
     # If user only accepted some, still mark imported when no pending left
-    still_pending = [l for l in pending_left if l.review_status == LineReviewStatus.PENDING]
+    still_pending = [
+        line for line in pending_left if line.review_status == LineReviewStatus.PENDING
+    ]
     still_to_import = [
-        l
-        for l in pending_left
-        if l.review_status in {LineReviewStatus.ACCEPTED, LineReviewStatus.EDITED}
+        line
+        for line in pending_left
+        if line.review_status in {LineReviewStatus.ACCEPTED, LineReviewStatus.EDITED}
     ]
 
     if not still_pending and not still_to_import:
@@ -462,8 +470,9 @@ async def import_statement(
     )
     all_lines = list(all_lines_result.scalars().all())
     if all_lines and all(
-        l.committed_transaction_id is not None or l.review_status == LineReviewStatus.REJECTED
-        for l in all_lines
+        line.committed_transaction_id is not None
+        or line.review_status == LineReviewStatus.REJECTED
+        for line in all_lines
     ):
         statement.status = StatementStatus.IMPORTED
 

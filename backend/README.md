@@ -137,8 +137,12 @@ Set the same env vars as secrets (see `.env.example`). Minimum production set:
 | `AUTO_MIGRATE` | `true` for single instance; release-step migrate + `false` for multi-instance |
 | `AUTO_SEED` | Prefer `false` in production |
 | `PLATFORM_ADMIN_EMAILS` | Your email(s) |
+| `STATEMENT_STORAGE_BACKEND` | `supabase` on FastAPI Cloud |
+| `STATEMENT_STORAGE_BUCKET` | Private bucket name (default `statements`) |
 
 Demo login is disabled when `ENVIRONMENT=production` (unless explicitly re-enabled).
+
+Entrypoint is `app.main:app` (`[tool.fastapi]` in `pyproject.toml`). Deploy with `fastapi deploy` from this directory. Full runbook: [`docs/DEPLOY.md`](../docs/DEPLOY.md).
 
 Health probe: `GET /api/v1/health`
 

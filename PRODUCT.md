@@ -59,12 +59,12 @@ Undecided (record only): public packaging, monetization, and marketing brand wor
 - Platform **admin observability** (activity / error / request logs) is part of the product story for operators, not a hidden debug console.
 - **Visual direction (standing preference):** play the **category standard** for finance/ops dashboards at full craft — no conceptual “world” overlay, no irony. Craft bar named for the app dashboard: **Zerodha Coin / Kite**-like Indian fintech ops density (scan positions, urgency, money figures). Structural density may still reference Kanakku-style shell layouts without cloning chrome.
 
-Visual identity is documented in **`DESIGN.md`** (North Star: *The Ledger Shelf*; OKLCH tokens from the shadcn/Geist implementation). Re-run `/impeccable document` when the app shell and dashboard land so tokens and components stay current.
+Visual identity is documented in **`DESIGN.md`** (North Star: *The Ledger Shelf*; OKLCH tokens from the shadcn/Geist implementation). Keep tokens in sync when shell chrome changes materially.
 
 ## Evidence on Hand
 
 - PRD: `docs/prd/2026-07-27-fin-buddy-prd.md`
-- Early frontend shell: `frontend/` (landing, login placeholder, shadcn tokens in `globals.css`)
+- Authenticated app shell + feature pages: `frontend/` (landing, auth, dashboard, cards, contacts, ledger, statements, notifications, settings)
 - Backend API and domain model: `backend/`
 - UI inspiration reference (external): Kanakku admin template demo (layout density only)
 - No customer testimonials, press, or marketing assets yet — do not fabricate them

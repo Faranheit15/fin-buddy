@@ -87,9 +87,16 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(AppError)
     async def app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
+        headers: dict[str, str] = {}
+        if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            retry = 60
+            if isinstance(exc.details, dict) and "retry_after_seconds" in exc.details:
+                retry = int(exc.details["retry_after_seconds"])
+            headers["Retry-After"] = str(retry)
         return JSONResponse(
             status_code=exc.status_code,
             content=_error_body(code=exc.code, message=exc.message, details=exc.details or None),
+            headers=headers,
         )
 
     @app.exception_handler(StarletteHTTPException)

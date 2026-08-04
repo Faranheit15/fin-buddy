@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import AppSettings, CurrentUser, DbSession, OrgContext, client_meta
 from app.core.exceptions import AppError
+from app.core.rate_limit import UPLOAD_LIMIT, enforce_rate_limit
 from app.models.enums import LineReviewStatus, StatementStatus
 from app.models.statement import Statement, StatementLineCandidate
 from app.schemas.common import PaginatedResponse
@@ -112,6 +113,7 @@ async def upload_statement(
     auto_parse: bool = Form(True),
 ) -> StatementDetailResponse:
     """Upload a statement PDF or FinBuddy sample .txt and optionally parse immediately."""
+    enforce_rate_limit(request, bucket="statement_upload", limit=UPLOAD_LIMIT, window_seconds=60.0)
     org, _ = org_ctx
     card = await statement_service.ensure_card(db, org.id, credit_card_id)
     data = await file.read()
@@ -208,7 +210,9 @@ async def list_lines(
             StatementLineCandidate.created_at.asc(),
         )
     )
-    return [StatementLineResponse.model_validate(l) for l in result.scalars().all()]
+    return [
+        StatementLineResponse.model_validate(row) for row in result.scalars().all()
+    ]
 
 
 @router.patch("/{statement_id}/lines/{line_id}", response_model=StatementLineResponse)
@@ -326,5 +330,7 @@ async def _detail(
             StatementLineCandidate.created_at.asc(),
         )
     )
-    lines = [StatementLineResponse.model_validate(l) for l in result.scalars().all()]
+    lines = [
+        StatementLineResponse.model_validate(row) for row in result.scalars().all()
+    ]
     return StatementDetailResponse(**base.model_dump(), lines=lines)

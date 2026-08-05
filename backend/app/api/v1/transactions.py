@@ -1,20 +1,23 @@
-"""Transaction ledger endpoints."""
+"""Transaction ledger endpoints — draft/posted, reverse, adjust."""
 
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession, OrgContext, client_meta
-from app.core.exceptions import NotFoundError
-from app.models.contact import Contact
-from app.models.credit_card import CreditCard
-from app.models.enums import ActivityAction, TransactionType
+from app.models.enums import PostingStatus, TransactionType
 from app.models.transaction import Transaction
 from app.schemas.common import PaginatedResponse
-from app.schemas.domain import TransactionCreate, TransactionResponse, TransactionUpdate
-from app.services.logging_service import log_activity
+from app.schemas.domain import (
+    TransactionAdjustRequest,
+    TransactionCreate,
+    TransactionResponse,
+    TransactionReverseRequest,
+    TransactionUpdate,
+)
+from app.services import transaction_service
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -28,6 +31,7 @@ async def list_transactions(
     card_id: UUID | None = None,
     contact_id: UUID | None = None,
     type: TransactionType | None = None,
+    posting_status: PostingStatus | None = None,
     q: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
@@ -40,6 +44,8 @@ async def list_transactions(
         filters.append(Transaction.contact_id == contact_id)
     if type:
         filters.append(Transaction.type == type)
+    if posting_status:
+        filters.append(Transaction.posting_status == posting_status)
     if date_from:
         filters.append(Transaction.occurred_at >= date_from)
     if date_to:
@@ -59,6 +65,34 @@ async def list_transactions(
     return PaginatedResponse(items=items, total=int(total), page=page, page_size=page_size)
 
 
+@router.post("/adjust", response_model=TransactionResponse, status_code=201)
+async def adjust_transaction(
+    body: TransactionAdjustRequest,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    org_ctx: OrgContext,
+) -> TransactionResponse:
+    org, _ = org_ctx
+    ip, ua = client_meta(request)
+    tx = await transaction_service.adjust_balance(
+        db,
+        organization_id=org.id,
+        user_id=user.id,
+        credit_card_id=body.credit_card_id,
+        delta_paise=body.delta_paise,
+        reason=body.reason,
+        contact_id=body.contact_id,
+        occurred_at=body.occurred_at,
+        merchant=body.merchant,
+        ip=ip,
+        ua=ua,
+    )
+    await db.commit()
+    await db.refresh(tx)
+    return TransactionResponse.model_validate(tx)
+
+
 @router.post("", response_model=TransactionResponse, status_code=201)
 async def create_transaction(
     body: TransactionCreate,
@@ -68,35 +102,72 @@ async def create_transaction(
     org_ctx: OrgContext,
 ) -> TransactionResponse:
     org, _ = org_ctx
-    await _ensure_card(db, org.id, body.credit_card_id)
-    if body.contact_id is not None:
-        await _ensure_contact(db, org.id, body.contact_id)
-    tx = Transaction(
-        id=uuid4(),
+    ip, ua = client_meta(request)
+    tx = await transaction_service.create_transaction(
+        db,
         organization_id=org.id,
+        user_id=user.id,
         credit_card_id=body.credit_card_id,
-        contact_id=body.contact_id,
-        type=body.type,
+        tx_type=body.type,
         amount_paise=body.amount_paise,
-        currency=body.currency,
         occurred_at=body.occurred_at,
         merchant=body.merchant,
+        contact_id=body.contact_id,
         category=body.category,
         notes=body.notes,
-        created_by=user.id,
+        currency=body.currency,
+        posting_status=body.posting_status,
+        ip=ip,
+        ua=ua,
     )
-    db.add(tx)
+    await db.commit()
+    await db.refresh(tx)
+    return TransactionResponse.model_validate(tx)
+
+
+@router.post("/{transaction_id}/post", response_model=TransactionResponse)
+async def post_transaction(
+    transaction_id: UUID,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    org_ctx: OrgContext,
+) -> TransactionResponse:
+    org, _ = org_ctx
     ip, ua = client_meta(request)
-    await log_activity(
+    tx = await transaction_service.post_draft(
         db,
-        action=ActivityAction.TRANSACTION_CREATE,
-        summary=f"Transaction {body.type.value} {body.amount_paise} paise @ {body.merchant}",
-        actor_user_id=user.id,
         organization_id=org.id,
-        resource_type="transaction",
-        resource_id=str(tx.id),
-        ip_address=ip,
-        user_agent=ua,
+        user_id=user.id,
+        transaction_id=transaction_id,
+        ip=ip,
+        ua=ua,
+    )
+    await db.commit()
+    await db.refresh(tx)
+    return TransactionResponse.model_validate(tx)
+
+
+@router.post("/{transaction_id}/reverse", response_model=TransactionResponse, status_code=201)
+async def reverse_transaction(
+    transaction_id: UUID,
+    body: TransactionReverseRequest,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    org_ctx: OrgContext,
+) -> TransactionResponse:
+    org, _ = org_ctx
+    ip, ua = client_meta(request)
+    tx = await transaction_service.reverse_transaction(
+        db,
+        organization_id=org.id,
+        user_id=user.id,
+        transaction_id=transaction_id,
+        reason=body.reason,
+        occurred_at=body.occurred_at,
+        ip=ip,
+        ua=ua,
     )
     await db.commit()
     await db.refresh(tx)
@@ -113,20 +184,15 @@ async def update_transaction(
     org_ctx: OrgContext,
 ) -> TransactionResponse:
     org, _ = org_ctx
-    tx = await _get(db, org.id, transaction_id)
-    for key, value in body.model_dump(exclude_unset=True).items():
-        setattr(tx, key, value)
     ip, ua = client_meta(request)
-    await log_activity(
+    tx = await transaction_service.update_transaction(
         db,
-        action=ActivityAction.TRANSACTION_UPDATE,
-        summary=f"Updated transaction {tx.id}",
-        actor_user_id=user.id,
         organization_id=org.id,
-        resource_type="transaction",
-        resource_id=str(tx.id),
-        ip_address=ip,
-        user_agent=ua,
+        user_id=user.id,
+        transaction_id=transaction_id,
+        patch=body.model_dump(exclude_unset=True),
+        ip=ip,
+        ua=ua,
     )
     await db.commit()
     await db.refresh(tx)
@@ -142,44 +208,13 @@ async def delete_transaction(
     org_ctx: OrgContext,
 ) -> None:
     org, _ = org_ctx
-    tx = await _get(db, org.id, transaction_id)
     ip, ua = client_meta(request)
-    await log_activity(
+    await transaction_service.delete_transaction(
         db,
-        action=ActivityAction.TRANSACTION_DELETE,
-        summary=f"Deleted transaction {tx.id}",
-        actor_user_id=user.id,
         organization_id=org.id,
-        resource_type="transaction",
-        resource_id=str(tx.id),
-        ip_address=ip,
-        user_agent=ua,
+        user_id=user.id,
+        transaction_id=transaction_id,
+        ip=ip,
+        ua=ua,
     )
-    await db.delete(tx)
     await db.commit()
-
-
-async def _get(db: DbSession, org_id: UUID, tx_id: UUID) -> Transaction:
-    result = await db.execute(
-        select(Transaction).where(Transaction.id == tx_id, Transaction.organization_id == org_id)
-    )
-    tx = result.scalar_one_or_none()
-    if tx is None:
-        raise NotFoundError("Transaction not found")
-    return tx
-
-
-async def _ensure_card(db: DbSession, org_id: UUID, card_id: UUID) -> None:
-    result = await db.execute(
-        select(CreditCard.id).where(CreditCard.id == card_id, CreditCard.organization_id == org_id)
-    )
-    if result.scalar_one_or_none() is None:
-        raise NotFoundError("Credit card not found")
-
-
-async def _ensure_contact(db: DbSession, org_id: UUID, contact_id: UUID) -> None:
-    result = await db.execute(
-        select(Contact.id).where(Contact.id == contact_id, Contact.organization_id == org_id)
-    )
-    if result.scalar_one_or_none() is None:
-        raise NotFoundError("Contact not found")

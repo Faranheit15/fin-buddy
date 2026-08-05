@@ -12,6 +12,7 @@ Agents must review this document to avoid common pitfalls in this specific repos
 
 ## Alembic / Postgres enums
 - Extending `transaction_type` with `ALTER TYPE … ADD VALUE` is one-way: downgrade of `20260805_0003` drops ledger columns and `posting_status`, but **cannot** remove `'adjustment'` / `'reversal'` labels from `transaction_type`. Do not recreate that enum to “clean” labels — it is shared with `statement_line_candidates.proposed_type`.
+- Same for `activity_action` labels added in `20260805_0004` (`transaction_post` / `transaction_reverse` / `transaction_adjust`).
 
 ## Retired Approaches
 - *(Add any technical approaches that were tried and failed here, so agents do not attempt them again)*

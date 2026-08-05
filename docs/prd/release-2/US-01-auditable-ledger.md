@@ -52,7 +52,7 @@
 
 - [x] **US-01.I1** Backend: enums + model columns + migration + backfill.
 - [x] **US-01.I2** Backend: domain/service balance filters for `posted` only.
-- [ ] **US-01.I3** Backend: transaction API changes (create draft/post, reverse, adjust; lock posted mutate/delete).
+- [x] **US-01.I3** Backend: transaction API changes (create draft/post, reverse, adjust; lock posted mutate/delete).
 - [ ] **US-01.I4** Frontend: API client types + ledger UI (status badge, draft/post, reverse/correct) — follow **impeccable craft-floor**; preserve existing transactions page patterns.
 - [ ] **US-01.I5** Ensure statement import confirm creates `posted` rows only.
 
@@ -507,4 +507,14 @@ Implemented:
 - `app/domain/ledger.py` — pure `card_contribution_paise` / `contact_contribution_paise` (draft→0; adjustment via `delta_sign`; reversal negates original type effects).
 - `ledger_service` — all card/contact outstanding queries filter `posting_status=posted`; outer-join original for reversal math; adjustment/reversal included in SQL case expressions.
 - Tests: `tests/test_ledger_posting.py` (T1/T2/T3 contribution coverage).
+
+### US-01.I3 — Transaction API (2026-08-05)
+
+Implemented:
+- `transaction_service`: create (default posted) / post_draft / update+delete draft-only / reverse / adjust.
+- Routes: `POST /adjust`, `POST /{id}/post`, `POST /{id}/reverse`; list filter `posting_status`.
+- Schemas: posting fields on response; create/reverse/adjust request models.
+- Activity actions + Alembic `20260805_0004`.
+- Opening balance + statement import set `posting_status=posted` explicitly.
+- Tests: `tests/test_transaction_api_posting.py` (immutability, reverse, adjust).
 

@@ -10,6 +10,7 @@ from app.models.enums import (
     CardStatus,
     DueRuleType,
     LineReviewStatus,
+    PostingStatus,
     SettlementMethod,
     StatementStatus,
     TransactionType,
@@ -125,6 +126,7 @@ class TransactionCreate(BaseModel):
     category: str | None = None
     notes: str | None = None
     currency: str = "INR"
+    posting_status: PostingStatus = PostingStatus.POSTED
 
 
 class TransactionUpdate(BaseModel):
@@ -137,6 +139,20 @@ class TransactionUpdate(BaseModel):
     notes: str | None = None
 
 
+class TransactionReverseRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=2000)
+    occurred_at: datetime | None = None
+
+
+class TransactionAdjustRequest(BaseModel):
+    credit_card_id: UUID
+    delta_paise: int  # signed; must be non-zero (enforced in service)
+    reason: str = Field(min_length=1, max_length=2000)
+    contact_id: UUID | None = None
+    occurred_at: datetime | None = None
+    merchant: str | None = Field(default=None, min_length=1, max_length=255)
+
+
 class TransactionResponse(ORMModel):
     id: UUID
     organization_id: UUID
@@ -144,12 +160,17 @@ class TransactionResponse(ORMModel):
     contact_id: UUID | None
     statement_id: UUID | None
     type: TransactionType
+    posting_status: PostingStatus
     amount_paise: int
     currency: str
     occurred_at: datetime
     merchant: str
     category: str | None
     notes: str | None
+    correction_reason: str | None
+    delta_sign: int | None
+    reverses_id: UUID | None
+    reversed_by_id: UUID | None
     created_by: UUID | None
     created_at: datetime
     updated_at: datetime

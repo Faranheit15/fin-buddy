@@ -15,6 +15,7 @@ from app.models.credit_card import CreditCard
 from app.models.enums import (
     ActivityAction,
     LineReviewStatus,
+    PostingStatus,
     StatementStatus,
     TransactionType,
 )
@@ -420,6 +421,7 @@ async def import_statement(
             contact_id=line.proposed_contact_id,
             statement_id=statement.id,
             type=line.proposed_type,
+            posting_status=PostingStatus.POSTED,
             amount_paise=line.amount_paise,
             currency="INR",
             occurred_at=line.occurred_at,

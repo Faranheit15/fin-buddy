@@ -11,6 +11,7 @@ import type { Contact } from "@/lib/api/contacts";
 import {
   createTransaction,
   TRANSACTION_TYPES,
+  type PostingStatus,
   type Transaction,
   type TransactionType,
 } from "@/lib/api/transactions";
@@ -48,12 +49,11 @@ export function TransactionForm({
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
   const [occurredAt, setOccurredAt] = useState(todayLocalInput);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<"posted" | "draft" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
+  async function submit(postingStatus: PostingStatus) {
+    setLoading(postingStatus);
     setError(null);
     try {
       if (!cardId) throw new Error("Select a card");
@@ -73,6 +73,7 @@ export function TransactionForm({
         contact_id: contactId || null,
         category: category.trim() || null,
         notes: notes.trim() || null,
+        posting_status: postingStatus,
       });
       onCreated(tx);
     } catch (err) {
@@ -84,7 +85,7 @@ export function TransactionForm({
             : "Could not create transaction",
       );
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   }
 
@@ -96,8 +97,16 @@ export function TransactionForm({
     );
   }
 
+  const busy = loading !== null;
+
   return (
-    <form className="space-y-3" onSubmit={(e) => void onSubmit(e)}>
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit("posted");
+      }}
+    >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="tx-card">Card</Label>
@@ -202,11 +211,19 @@ export function TransactionForm({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={loading}>
-          {loading ? "Saving…" : "Add transaction"}
+        <Button type="submit" disabled={busy}>
+          {loading === "posted" ? "Posting…" : "Add transaction"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onClick={() => void submit("draft")}
+        >
+          {loading === "draft" ? "Saving…" : "Save draft"}
         </Button>
         {onCancel ? (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
         ) : null}

@@ -6,7 +6,11 @@ export type TransactionType =
   | "fee"
   | "interest"
   | "payment_to_issuer"
-  | "opening_balance";
+  | "opening_balance"
+  | "adjustment"
+  | "reversal";
+
+export type PostingStatus = "draft" | "posted";
 
 export type Transaction = {
   id: string;
@@ -15,12 +19,17 @@ export type Transaction = {
   contact_id: string | null;
   statement_id: string | null;
   type: TransactionType;
+  posting_status: PostingStatus;
   amount_paise: number;
   currency: string;
   occurred_at: string;
   merchant: string;
   category: string | null;
   notes: string | null;
+  correction_reason: string | null;
+  delta_sign: number | null;
+  reverses_id: string | null;
+  reversed_by_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -36,6 +45,7 @@ export type TransactionCreate = {
   category?: string | null;
   notes?: string | null;
   currency?: string;
+  posting_status?: PostingStatus;
 };
 
 export type TransactionUpdate = Partial<{
@@ -61,10 +71,20 @@ export type ListTransactionsOpts = {
   cardId?: string;
   contactId?: string;
   type?: TransactionType;
+  postingStatus?: PostingStatus;
   q?: string;
   dateFrom?: string;
   dateTo?: string;
 };
+
+/** Types offered on the create form (corrections use reverse/adjust). */
+export const TRANSACTION_TYPES: { value: TransactionType; label: string }[] = [
+  { value: "purchase", label: "Purchase" },
+  { value: "refund", label: "Refund" },
+  { value: "fee", label: "Fee" },
+  { value: "interest", label: "Interest" },
+  { value: "payment_to_issuer", label: "Payment to issuer" },
+];
 
 export function listTransactions(accessToken: string, opts: ListTransactionsOpts = {}) {
   const q = new URLSearchParams({
@@ -74,6 +94,7 @@ export function listTransactions(accessToken: string, opts: ListTransactionsOpts
   if (opts.cardId) q.set("card_id", opts.cardId);
   if (opts.contactId) q.set("contact_id", opts.contactId);
   if (opts.type) q.set("type", opts.type);
+  if (opts.postingStatus) q.set("posting_status", opts.postingStatus);
   if (opts.q) q.set("q", opts.q);
   if (opts.dateFrom) q.set("date_from", opts.dateFrom);
   if (opts.dateTo) q.set("date_to", opts.dateTo);
@@ -87,6 +108,26 @@ export function listTransactions(accessToken: string, opts: ListTransactionsOpts
 export function createTransaction(accessToken: string, body: TransactionCreate) {
   return apiFetch<Transaction>(
     "/api/v1/transactions",
+    { method: "POST", body: JSON.stringify(body) },
+    { accessToken },
+  );
+}
+
+export function postTransaction(accessToken: string, id: string) {
+  return apiFetch<Transaction>(
+    `/api/v1/transactions/${id}/post`,
+    { method: "POST" },
+    { accessToken },
+  );
+}
+
+export function reverseTransaction(
+  accessToken: string,
+  id: string,
+  body: { reason: string; occurred_at?: string },
+) {
+  return apiFetch<Transaction>(
+    `/api/v1/transactions/${id}/reverse`,
     { method: "POST", body: JSON.stringify(body) },
     { accessToken },
   );
@@ -107,11 +148,3 @@ export function updateTransaction(
 export function deleteTransaction(accessToken: string, id: string) {
   return apiFetch<void>(`/api/v1/transactions/${id}`, { method: "DELETE" }, { accessToken });
 }
-
-export const TRANSACTION_TYPES: { value: TransactionType; label: string }[] = [
-  { value: "purchase", label: "Purchase" },
-  { value: "refund", label: "Refund" },
-  { value: "fee", label: "Fee" },
-  { value: "interest", label: "Interest" },
-  { value: "payment_to_issuer", label: "Payment to issuer" },
-];

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/auth-provider";
+import { ReverseTransactionDialog } from "@/features/transactions/reverse-transaction-dialog";
 import { TransactionForm } from "@/features/transactions/transaction-form";
 import { listCards, type CreditCard } from "@/lib/api/cards";
 import { listContacts, type Contact } from "@/lib/api/contacts";
@@ -18,7 +19,9 @@ import { ApiError } from "@/lib/api/client";
 import {
   deleteTransaction,
   listTransactions,
+  postTransaction,
   TRANSACTION_TYPES,
+  type PostingStatus,
   type Transaction,
   type TransactionType,
 } from "@/lib/api/transactions";
@@ -32,6 +35,16 @@ type Snapshot = {
   gen: number;
 };
 
+function friendlyLedgerError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.code === "posted_immutable") {
+      return "Posted entries can’t be edited or deleted. Reverse instead.";
+    }
+    return err.message;
+  }
+  return fallback;
+}
+
 function TransactionsInner() {
   const searchParams = useSearchParams();
   const { accessToken, ready } = useAuth();
@@ -42,12 +55,15 @@ function TransactionsInner() {
   const [cardFilter, setCardFilter] = useState(initialCard);
   const [contactFilter, setContactFilter] = useState(initialContact);
   const [typeFilter, setTypeFilter] = useState<TransactionType | "">("");
+  const [statusFilter, setStatusFilter] = useState<PostingStatus | "">("");
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [cards, setCards] = useState<CreditCard[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [reverseTarget, setReverseTarget] = useState<Transaction | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot>({
     items: [],
     total: 0,
@@ -94,6 +110,7 @@ function TransactionsInner() {
           cardId: cardFilter || undefined,
           contactId: contactFilter || undefined,
           type: typeFilter || undefined,
+          postingStatus: statusFilter || undefined,
           q: qDebounced || undefined,
         });
         if (cancelled) return;
@@ -112,7 +129,16 @@ function TransactionsInner() {
     return () => {
       cancelled = true;
     };
-  }, [ready, accessToken, reloadKey, cardFilter, contactFilter, typeFilter, qDebounced]);
+  }, [
+    ready,
+    accessToken,
+    reloadKey,
+    cardFilter,
+    contactFilter,
+    typeFilter,
+    statusFilter,
+    qDebounced,
+  ]);
 
   const cardMap = useMemo(
     () => Object.fromEntries(cards.map((c) => [c.id, c])),
@@ -125,13 +151,28 @@ function TransactionsInner() {
 
   async function onDelete(id: string) {
     if (!accessToken) return;
-    if (!confirm("Delete this transaction? This cannot be undone.")) return;
+    if (!confirm("Delete this draft? This cannot be undone.")) return;
     setBusyId(id);
+    setActionError(null);
     try {
       await deleteTransaction(accessToken, id);
       setReloadKey((k) => k + 1);
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Delete failed");
+      setActionError(friendlyLedgerError(err, "Delete failed"));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function onPost(id: string) {
+    if (!accessToken) return;
+    setBusyId(id);
+    setActionError(null);
+    try {
+      await postTransaction(accessToken, id);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setActionError(friendlyLedgerError(err, "Could not post draft"));
     } finally {
       setBusyId(null);
     }
@@ -192,7 +233,7 @@ function TransactionsInner() {
       )}
 
       <Card className="shadow-sm ring-1 ring-foreground/10">
-        <CardContent className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-4">
+        <CardContent className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1">
             <p className="text-[11px] font-medium text-muted-foreground">Card</p>
             <select
@@ -239,6 +280,18 @@ function TransactionsInner() {
             </select>
           </div>
           <div className="space-y-1">
+            <p className="text-[11px] font-medium text-muted-foreground">Status</p>
+            <select
+              className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as PostingStatus | "")}
+            >
+              <option value="">All</option>
+              <option value="posted">Posted</option>
+              <option value="draft">Draft</option>
+            </select>
+          </div>
+          <div className="space-y-1">
             <p className="text-[11px] font-medium text-muted-foreground">Search merchant</p>
             <Input
               value={q}
@@ -250,8 +303,10 @@ function TransactionsInner() {
         </CardContent>
       </Card>
 
-      {error && (
-        <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+      {(error || actionError) && (
+        <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {actionError ?? error}
+        </p>
       )}
 
       {loading ? (
@@ -260,7 +315,7 @@ function TransactionsInner() {
         <EmptyState
           icon={ArrowLeftRight}
           title="No transactions yet"
-          description="Record a purchase, refund, fee, interest, or payment to the issuer. Attribute spends to contacts to track friend balances."
+          description="Post a purchase or save a draft. Drafts stay off balances until you post them."
           action={
             !showForm ? (
               <Button size="sm" onClick={() => setShowForm(true)}>
@@ -273,7 +328,7 @@ function TransactionsInner() {
       ) : (
         <Card className="shadow-sm ring-1 ring-foreground/10">
           <CardContent className="overflow-x-auto p-0">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table className="w-full min-w-[820px] text-left text-sm">
               <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">When</th>
@@ -281,6 +336,7 @@ function TransactionsInner() {
                   <th className="px-4 py-2.5 font-medium">Card</th>
                   <th className="px-4 py-2.5 font-medium">Who</th>
                   <th className="px-4 py-2.5 font-medium">Type</th>
+                  <th className="px-4 py-2.5 font-medium">Status</th>
                   <th className="px-4 py-2.5 font-medium">Amount</th>
                   <th className="px-4 py-2.5 font-medium" />
                 </tr>
@@ -290,7 +346,12 @@ function TransactionsInner() {
                   const card = cardMap[tx.credit_card_id];
                   const contact = tx.contact_id ? contactMap[tx.contact_id] : null;
                   const reduce =
-                    tx.type === "refund" || tx.type === "payment_to_issuer";
+                    tx.type === "refund" ||
+                    tx.type === "payment_to_issuer" ||
+                    tx.type === "reversal" ||
+                    (tx.type === "adjustment" && (tx.delta_sign ?? 1) < 0);
+                  const isDraft = tx.posting_status === "draft";
+                  const alreadyReversed = Boolean(tx.reversed_by_id);
                   return (
                     <tr key={tx.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
@@ -301,6 +362,9 @@ function TransactionsInner() {
                         {tx.category && (
                           <p className="text-[11px] text-muted-foreground">{tx.category}</p>
                         )}
+                        {alreadyReversed ? (
+                          <p className="text-[11px] text-muted-foreground">Reversed</p>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3 text-xs">
                         {card ? (
@@ -331,6 +395,14 @@ function TransactionsInner() {
                           {tx.type.replaceAll("_", " ")}
                         </Badge>
                       </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant={isDraft ? "secondary" : "outline"}
+                          className="font-mono text-[10px] uppercase tracking-wide"
+                        >
+                          {isDraft ? "Draft" : "Posted"}
+                        </Badge>
+                      </td>
                       <td
                         className={cn(
                           "px-4 py-3 font-mono text-sm tabular-nums",
@@ -341,15 +413,40 @@ function TransactionsInner() {
                         {formatInrFromPaise(tx.amount_paise)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-muted-foreground"
-                          disabled={busyId === tx.id}
-                          onClick={() => void onDelete(tx.id)}
-                        >
-                          Delete
-                        </Button>
+                        <div className="flex flex-wrap justify-end gap-1">
+                          {isDraft ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={busyId === tx.id}
+                                onClick={() => void onPost(tx.id)}
+                              >
+                                Post
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs text-muted-foreground"
+                                disabled={busyId === tx.id}
+                                onClick={() => void onDelete(tx.id)}
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          ) : tx.type !== "reversal" ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              disabled={busyId === tx.id || alreadyReversed}
+                              onClick={() => setReverseTarget(tx)}
+                            >
+                              {alreadyReversed ? "Reversed" : "Reverse"}
+                            </Button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -359,6 +456,19 @@ function TransactionsInner() {
           </CardContent>
         </Card>
       )}
+
+      <ReverseTransactionDialog
+        accessToken={accessToken}
+        transaction={reverseTarget}
+        open={reverseTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setReverseTarget(null);
+        }}
+        onReversed={() => {
+          setActionError(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
     </div>
   );
 }

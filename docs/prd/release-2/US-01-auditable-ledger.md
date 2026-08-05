@@ -53,7 +53,7 @@
 - [x] **US-01.I1** Backend: enums + model columns + migration + backfill.
 - [x] **US-01.I2** Backend: domain/service balance filters for `posted` only.
 - [x] **US-01.I3** Backend: transaction API changes (create draft/post, reverse, adjust; lock posted mutate/delete).
-- [ ] **US-01.I4** Frontend: API client types + ledger UI (status badge, draft/post, reverse/correct) — follow **impeccable craft-floor**; preserve existing transactions page patterns.
+- [x] **US-01.I4** Frontend: API client types + ledger UI (status badge, draft/post, reverse/correct) — follow **impeccable craft-floor**; preserve existing transactions page patterns.
 - [ ] **US-01.I5** Ensure statement import confirm creates `posted` rows only.
 
 ### Test
@@ -517,4 +517,13 @@ Implemented:
 - Activity actions + Alembic `20260805_0004`.
 - Opening balance + statement import set `posting_status=posted` explicitly.
 - Tests: `tests/test_transaction_api_posting.py` (immutability, reverse, adjust).
+
+### US-01.I4 — Ledger UI (2026-08-05)
+
+Implemented (Impeccable Operate / Ledger Shelf craft-floor):
+- API client: `PostingStatus`, posting fields, `postTransaction` / `reverseTransaction`.
+- Form: primary **Add transaction** (posted) + outline **Save draft**.
+- List: Status filter + Status column badges; draft Post/Delete; posted Reverse dialog (reason required).
+- `components/ui/dialog.tsx` centered modal; `reverse-transaction-dialog.tsx`.
+- Adjust UI deferred to US-02 per P3.
 

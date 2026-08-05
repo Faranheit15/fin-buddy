@@ -64,6 +64,25 @@ def test_reversal_negates_purchase_on_card() -> None:
     )
 
 
+def test_reversal_of_purchase_nets_zero_outstanding() -> None:
+    """T2: Posted purchase 250_00 + reversal → net card outstanding 0."""
+    amount = 250_00
+    purchase = card_contribution_paise(
+        tx_type=TransactionType.PURCHASE,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+    )
+    reversal = card_contribution_paise(
+        tx_type=TransactionType.REVERSAL,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+        original_type=TransactionType.PURCHASE,
+    )
+    assert purchase == amount
+    assert reversal == -amount
+    assert purchase + reversal == 0
+
+
 def test_reversal_negates_refund_on_card() -> None:
     assert (
         card_contribution_paise(
@@ -74,6 +93,44 @@ def test_reversal_negates_refund_on_card() -> None:
         )
         == 40_00
     )
+
+
+def test_reversal_of_refund_restores_outstanding() -> None:
+    """T2: Posted refund 40_00 then reverse → outstanding returns +40_00 net from pair."""
+    amount = 40_00
+    refund = card_contribution_paise(
+        tx_type=TransactionType.REFUND,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+    )
+    reversal = card_contribution_paise(
+        tx_type=TransactionType.REVERSAL,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+        original_type=TransactionType.REFUND,
+    )
+    assert refund == -amount
+    assert reversal == amount
+    assert refund + reversal == 0
+
+
+def test_reversal_negates_purchase_on_contact() -> None:
+    """T2: Contact-attributed purchase reversed → contact contribution nets to 0."""
+    amount = 90_00
+    spend = contact_contribution_paise(
+        tx_type=TransactionType.PURCHASE,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+        contact_id_present=True,
+    )
+    reversal = contact_contribution_paise(
+        tx_type=TransactionType.REVERSAL,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+        contact_id_present=True,
+        original_type=TransactionType.PURCHASE,
+    )
+    assert spend + reversal == 0
 
 
 def test_adjustment_positive_and_negative_delta() -> None:

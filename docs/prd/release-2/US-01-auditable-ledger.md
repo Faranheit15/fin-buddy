@@ -59,7 +59,7 @@
 ### Test
 
 - [x] **US-01.T1** Unit: draft excluded from outstanding.
-- [ ] **US-01.T2** Unit: reversal negates; double-reverse blocked.
+- [x] **US-01.T2** Unit: reversal negates; double-reverse blocked.
 - [ ] **US-01.T3** Unit: adjustment delta math.
 - [ ] **US-01.T4** API: posted update/delete → 4xx; reverse/adjust succeed with authz.
 - [ ] **US-01.T5** Run backend DoD: `pytest`, `ruff`, `mypy`; frontend `lint` + `typecheck` for touched UI.

@@ -173,7 +173,14 @@ async def test_post_already_posted_conflicts() -> None:
 async def test_reverse_posted_purchase_links_rows() -> None:
     org_id = uuid4()
     card_id = uuid4()
-    original = _posted_purchase(organization_id=org_id, credit_card_id=card_id)
+    original = _posted_purchase(
+        organization_id=org_id, credit_card_id=card_id, amount_paise=250_00
+    )
+    before = card_contribution_paise(
+        tx_type=TransactionType.PURCHASE,
+        amount_paise=original.amount_paise,
+        posting_status=PostingStatus.POSTED,
+    )
     db = _RecordingSession([original])
     reversal = await transaction_service.reverse_transaction(
         db,  # type: ignore[arg-type]
@@ -188,6 +195,43 @@ async def test_reverse_posted_purchase_links_rows() -> None:
     assert reversal.amount_paise == original.amount_paise
     assert original.reversed_by_id == reversal.id
     assert any(obj is reversal for obj in db.added)
+    after_reversal = card_contribution_paise(
+        tx_type=TransactionType.REVERSAL,
+        amount_paise=reversal.amount_paise,
+        posting_status=PostingStatus.POSTED,
+        original_type=TransactionType.PURCHASE,
+    )
+    assert before + after_reversal == 0
+
+
+@pytest.mark.asyncio
+async def test_double_reverse_blocked_after_successful_reverse() -> None:
+    """T2: Reverse once, then reverse again → already_reversed; only one reversal row."""
+    org_id = uuid4()
+    original = _posted_purchase(organization_id=org_id, amount_paise=100_00)
+    db = _RecordingSession([original])
+    first = await transaction_service.reverse_transaction(
+        db,  # type: ignore[arg-type]
+        organization_id=org_id,
+        user_id=uuid4(),
+        transaction_id=original.id,
+        reason="First reverse",
+    )
+    assert original.reversed_by_id == first.id
+    # Second reverse: get_transaction returns the already-linked original
+    db2 = _RecordingSession([original])
+    with pytest.raises(ConflictError) as exc:
+        await transaction_service.reverse_transaction(
+            db2,  # type: ignore[arg-type]
+            organization_id=org_id,
+            user_id=uuid4(),
+            transaction_id=original.id,
+            reason="Second reverse",
+        )
+    assert exc.value.code == "already_reversed"
+    assert not any(
+        getattr(obj, "type", None) == TransactionType.REVERSAL for obj in db2.added
+    )
 
 
 @pytest.mark.asyncio

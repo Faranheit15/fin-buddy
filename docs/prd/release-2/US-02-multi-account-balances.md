@@ -46,7 +46,7 @@
 - [x] **US-02.P1** Spec `accounts` schema + RLS policies + indexes.
 - [x] **US-02.P2** Spec migration/backfill: card → account; transaction `account_id`.
 - [x] **US-02.P3** Spec `/api/v1/accounts` endpoints and balance response shape.
-- [ ] **US-02.P4** Spec frontend routes, empty states, Correct Balance dialog — **impeccable `shape`** (+ `onboard` notes for first bank/cash/wallet); keep `/app/cards` working.
+- [x] **US-02.P4** Spec frontend routes, empty states, Correct Balance dialog — **impeccable `shape`** (+ `onboard` notes for first bank/cash/wallet); keep `/app/cards` working.
 
 ### Implement
 
@@ -477,5 +477,65 @@ AccountUpdate
 #### 7. Out of P3
 
 Frontend routes / Correct Balance dialog shape → **P4**. Implement balance helpers → **I2**.
+
+### US-02.P4 — Frontend shape brief (2026-08-05)
+
+**Impeccable:** `context.mjs` (Operate; Ledger Shelf / PRODUCT+DESIGN; target cards page as incumbent). **`shape`** for accounts list/detail + Correct Balance. **Assumptions** (Ralph autonomous — no human interview): refine within existing app shell density (match `/app/cards` + `/app/transactions`); do not invent a new visual world; Cards nav stays; Accounts is additive.
+
+#### Job and audience
+Owner scanning liquid money + card liabilities in one place (Zerodha/Kite-like ops). Need: see bank/cash/wallet balances at a glance; open an account; reconcile with Correct Balance without leaving the shelf.
+
+#### Outcome and proof
+1. Sidebar **Accounts** → list with kind + INR balance (G2 labels). 2. Add bank/cash/wallet in-page (not card — cards stay on Cards). 3. Detail shows balance + Correct Balance. 4. Empty first-run nudges one cash/bank account without a tutorial carousel. 5. `/app/cards` unchanged in behavior.
+
+#### Selected direction
+- **Visual authority:** incumbent cards/contacts/transactions pages — `max-w-5xl`, header + primary CTA, optional inline form Card, dense table or compact list rows, `EmptyState`, mono tabular INR.
+- **Thesis:** Accounts = money pots; Cards = billing specialization. List mixes kinds with a quiet kind badge; card rows link through to `/app/cards/[id]` when `credit_card_id` set.
+- **Focal moment:** Correct Balance dialog (reuse Dialog primitive from reverse flow) — current / target / delta preview / reason / optional effective at.
+
+#### Scope and boundaries
+
+| In | Out |
+|----|-----|
+| Routes `/app/accounts`, `/app/accounts/[id]` | Redesign dashboard net worth (US-06) |
+| Nav item **Accounts** (Wallet/Landmark icon) between Dashboard and Cards | Nested KPI strip / purple glow |
+| List + add form (bank/cash/wallet) + archive | Creating credit_card accounts from Accounts UI |
+| Detail: balance, Correct Balance, link to card if any, recent txs if API provides | Full transaction edit on detail |
+| Tx form: optional account picker (I4) preferring account_id | Replacing card picker entirely in R2B |
+
+#### States and ranges (onboard)
+- **Empty (no bank/cash/wallet yet):** EmptyState — title “No accounts yet”; body “Add cash, bank, or wallet. Card balances stay under Cards.” CTA **Add account**. Card-only orgs after migration still see **credit_card** rows in list — empty state only when **zero accounts of any kind** OR when filtered to assets and none exist. **Decision:** empty when `items.length === 0`; after backfill card accounts exist so empty is rare — onboard copy on first **Add account** form helper instead: one line “Start with Cash if you track pocket money.”
+- Loading / error: same compact patterns as cards (text + Retry).
+- Archived: muted row or hidden by default; toggle “Show archived” like cards’ closed filter.
+
+#### Interaction and layout
+1. **Nav:** `{ href: "/app/accounts", label: "Accounts", icon: Wallet }` — insert after Dashboard.
+2. **List page:** header “Accounts” / subtitle “Balances from posted ledger entries”; primary **Add account**; kind filter chips or select (All / Bank / Cash / Wallet / Cards); table or stacked rows: Name · Kind badge · Balance (mono) · actions (Open).
+3. **Add form:** kind select (bank/cash/wallet), name, institution optional, opening ₹ optional; submit posts then refreshes list.
+4. **Detail:** large balance (kind-aware caption Outstanding vs Balance); **Correct balance** button; for card kind secondary link “View card”; Archive.
+5. **Correct Balance dialog:** fields per G3 — current read-only, target, delta preview, reason, effective at; confirm **Post adjustment**; errors `already_at_target` / network inline.
+6. **Transactions:** add Account select on create form (accounts list); keep Card select for compatibility or derive card from account when kind=credit_card — **Decision:** Account select primary for new spends; when account is credit_card, set card implicitly; bank/cash/wallet clear card.
+
+#### Components to touch (I4)
+- `nav-items.ts` — Accounts entry
+- `app/app/accounts/page.tsx`, `app/app/accounts/[id]/page.tsx`
+- `features/accounts/*` — form, correct-balance-dialog, maybe list row
+- `lib/api/accounts.ts` — client types matching P3
+- `transaction-form.tsx` — account picker
+- Reuse `Dialog`, `EmptyState`, `Badge`, `Button`, `Card`
+
+#### Copy (clarify-ready)
+- Correct balance title / Post adjustment (G3)
+- `already_at_target`: “Already at that balance.”
+- Archive confirm: “Archive this account? History stays; it hides from the default list.”
+
+#### Anti-goals
+- No marketing hero on Accounts
+- No duplicate “card outstanding” widgets that fight Cards page
+- Don’t remove or demote Cards nav
+
+#### Open for builder
+- List as table vs card-rows: prefer **table** on desktop to match transactions density
+- Whether detail shows recent txs: yes if cheap (P3 optional detail payload)
 
 

@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Request
 
 from app.api.deps import CurrentUser, DbSession, OrgContext, client_meta
-from app.schemas.domain import TransferCreate, TransferResponse, TransactionResponse
+from app.schemas.domain import TransactionResponse, TransferCreate, TransferResponse
 from app.services import transaction_service
 
 router = APIRouter(prefix="/transfers", tags=["transfers"])
@@ -35,6 +35,7 @@ async def create_transfer(
     await db.commit()
     await db.refresh(tx_out)
     await db.refresh(tx_in)
+    assert tx_out.transfer_group_id is not None
     return TransferResponse(
         transfer_group_id=tx_out.transfer_group_id,
         out_transaction=TransactionResponse.model_validate(tx_out),

@@ -1,7 +1,7 @@
 """Spend ledger transactions."""
 
 from datetime import datetime
-from typing import Optional, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
@@ -23,8 +23,8 @@ from app.db.base import Base
 from app.models.enums import PostingStatus, TransactionType
 
 if TYPE_CHECKING:
-    from app.models.transaction_split import TransactionSplit
     from app.models.category import Category
+    from app.models.transaction_split import TransactionSplit
 
 
 class Transaction(Base):
@@ -97,7 +97,7 @@ class Transaction(Base):
     merchant: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    tags: Mapped[List[str] | None] = mapped_column(ARRAY(String(50)), nullable=True)
+    tags: Mapped[list[str] | None] = mapped_column(ARRAY(String(50)), nullable=True)
     correction_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     delta_sign: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     reverses_id: Mapped[UUID | None] = mapped_column(
@@ -115,7 +115,7 @@ class Transaction(Base):
         nullable=True,
         index=True,
     )
-    splits: Mapped[List["TransactionSplit"]] = relationship(
+    splits: Mapped[list["TransactionSplit"]] = relationship(
         "TransactionSplit", back_populates="transaction", cascade="all, delete-orphan"
     )
     category_rel: Mapped[Optional["Category"]] = relationship("Category", back_populates="transactions")

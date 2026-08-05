@@ -9,11 +9,11 @@ from sqlalchemy.orm import aliased
 
 from app.domain.ledger import ASSET_EFFECT, CARD_EFFECT, CONTACT_EFFECT
 from app.models.account import Account
+from app.models.category import Category, CategoryKind
 from app.models.enums import AccountKind, PostingStatus, TransactionType
 from app.models.settlement import Settlement
 from app.models.transaction import Transaction
 from app.models.transaction_split import TransactionSplit
-from app.models.category import Category, CategoryKind
 
 _OriginalTx = aliased(Transaction, name="tx_original")
 

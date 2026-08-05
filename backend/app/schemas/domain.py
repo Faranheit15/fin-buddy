@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.models.category import CategoryKind
 from app.models.enums import (
     AccountKind,
     CardNetwork,
@@ -16,7 +17,6 @@ from app.models.enums import (
     StatementStatus,
     TransactionType,
 )
-from app.models.category import CategoryKind
 from app.schemas.common import ORMModel
 
 # ---- Contacts ----

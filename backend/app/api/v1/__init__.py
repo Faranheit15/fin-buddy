@@ -7,6 +7,7 @@ from app.api.v1 import (
     admin,
     auth,
     cards,
+    categories,
     contacts,
     dashboard,
     health,
@@ -14,7 +15,6 @@ from app.api.v1 import (
     settlements,
     statements,
     transactions,
-    categories,
     transfers,
 )
 

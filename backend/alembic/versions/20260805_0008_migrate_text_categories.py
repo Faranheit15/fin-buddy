@@ -5,21 +5,19 @@ Revises: 20260805_0007
 Create Date: 2026-08-05 23:14:36.378040
 
 """
-from typing import Sequence, Union
+import uuid
+from collections.abc import Sequence
+from datetime import UTC, datetime
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'd01947b0fa9e'
-down_revision: Union[str, Sequence[str], None] = '20260805_0007'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = '20260805_0007'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
-
-import uuid
-from datetime import datetime, timezone
 
 def upgrade() -> None:
     conn = op.get_bind()
@@ -49,7 +47,7 @@ def upgrade() -> None:
             cat_id = row[0]
         else:
             cat_id = str(uuid.uuid4())
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             conn.execute(
                 sa.text("""
                     INSERT INTO categories (id, organization_id, name, kind, created_at, updated_at)

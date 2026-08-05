@@ -1,10 +1,12 @@
-import pytest
 from uuid import uuid4
 
-from app.services import transaction_service
+import pytest
+
 from app.core.exceptions import AppError
 from app.models.enums import PostingStatus
+from app.services import transaction_service
 from tests.test_transaction_api_posting import _posted_purchase, _RecordingSession
+
 
 @pytest.mark.asyncio
 async def test_replace_transaction_splits_valid() -> None:
@@ -16,7 +18,7 @@ async def test_replace_transaction_splits_valid() -> None:
         {"amount_paise": 150_00, "category_id": uuid4()}
     ]
     
-    updated_tx = await transaction_service.replace_transaction_splits(
+    await transaction_service.replace_transaction_splits(
         db, # type: ignore[arg-type]
         organization_id=tx.organization_id,
         user_id=uuid4(),

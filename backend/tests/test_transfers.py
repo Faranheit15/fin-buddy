@@ -1,11 +1,13 @@
-import pytest
+from datetime import UTC, datetime
 from uuid import uuid4
-from datetime import datetime, UTC
 
-from app.models.enums import PostingStatus, TransactionType, AccountKind
+import pytest
+
+from app.domain.ledger import ASSET_EFFECT, CARD_EFFECT
+from app.models.enums import AccountKind, TransactionType
 from app.services import transaction_service
-from app.domain.ledger import CARD_EFFECT, ASSET_EFFECT
 from tests.test_transaction_api_posting import _RecordingSession
+
 
 @pytest.mark.asyncio
 async def test_transfer_creates_linked_legs() -> None:

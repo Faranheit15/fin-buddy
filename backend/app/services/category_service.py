@@ -1,14 +1,14 @@
 """Category management and seeding defaults."""
 
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
-from datetime import datetime, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AppError, NotFoundError
+from app.core.exceptions import NotFoundError
 from app.models.category import Category, CategoryKind
-
 
 DEFAULT_EXPENSE_CATEGORIES = [
     "Food & Dining",
@@ -100,7 +100,7 @@ async def get_category(session: AsyncSession, org_id: UUID, category_id: UUID) -
 
 
 async def update_category(
-    session: AsyncSession, org_id: UUID, category_id: UUID, patch: dict
+    session: AsyncSession, org_id: UUID, category_id: UUID, patch: dict[str, Any]
 ) -> Category:
     cat = await get_category(session, org_id, category_id)
     if "archived" in patch:

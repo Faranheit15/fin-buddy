@@ -58,7 +58,7 @@
 - [x] **US-03.T1** Unit: transfer legs equal; excluded from income/expense.
 - [x] **US-03.T2** Unit: split sum validation.
 - [x] **US-03.T3** API: atomic transfer (no partial post on failure).
-- [ ] **US-03.T4** Backend + frontend DoD.
+- [x] **US-03.T4** Backend + frontend DoD.
 
 ### Validate
 

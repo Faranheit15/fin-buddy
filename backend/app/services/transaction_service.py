@@ -541,7 +541,7 @@ async def replace_transaction_splits(
     organization_id: UUID,
     user_id: UUID,
     transaction_id: UUID,
-    splits_data: list[dict],
+    splits_data: list[dict[str, Any]],
     ip: str | None = None,
     ua: str | None = None,
 ) -> Transaction:

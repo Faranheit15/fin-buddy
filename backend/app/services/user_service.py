@@ -12,6 +12,7 @@ from app.core.config import Settings
 from app.models.enums import ActivityAction, OrgRole, PlatformRole
 from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
+from app.services.category_service import seed_default_categories
 from app.services.logging_service import log_activity
 
 _LAST_LOGIN_TOUCH_AFTER = timedelta(hours=1)
@@ -107,6 +108,10 @@ async def ensure_profile_and_org(
         )
         session.add(membership)
         await session.flush()
+        
+        await seed_default_categories(session, org.id)
+        await session.flush()
+        
         await log_activity(
             session,
             action=ActivityAction.ORG_CREATE,

@@ -44,6 +44,8 @@ class TransactionType(enum.StrEnum):
     OPENING_BALANCE = "opening_balance"
     ADJUSTMENT = "adjustment"
     REVERSAL = "reversal"
+    TRANSFER_OUT = "transfer_out"
+    TRANSFER_IN = "transfer_in"
 
 
 class PostingStatus(enum.StrEnum):

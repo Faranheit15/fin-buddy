@@ -14,9 +14,10 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.domain import (
     TransactionAdjustRequest,
     TransactionCreate,
-    TransactionResponse,
     TransactionReverseRequest,
     TransactionUpdate,
+    TransactionSplitBase,
+    TransactionResponse,
 )
 from app.services import account_service, transaction_service
 
@@ -139,8 +140,11 @@ async def create_transaction(
         occurred_at=body.occurred_at,
         merchant=body.merchant,
         contact_id=body.contact_id,
+        category_id=body.category_id,
         category=body.category,
         notes=body.notes,
+        tags=body.tags,
+        transfer_group_id=body.transfer_group_id,
         currency=body.currency,
         posting_status=body.posting_status,
         ip=ip,
@@ -244,3 +248,28 @@ async def delete_transaction(
         ua=ua,
     )
     await db.commit()
+
+
+@router.put("/{transaction_id}/splits", response_model=TransactionResponse)
+async def replace_transaction_splits(
+    transaction_id: UUID,
+    body: list[TransactionSplitBase],
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    org_ctx: OrgContext,
+) -> TransactionResponse:
+    org, _ = org_ctx
+    ip, ua = client_meta(request)
+    tx = await transaction_service.replace_transaction_splits(
+        db,
+        organization_id=org.id,
+        user_id=user.id,
+        transaction_id=transaction_id,
+        splits_data=[s.model_dump(exclude_unset=True) for s in body],
+        ip=ip,
+        ua=ua,
+    )
+    await db.commit()
+    await db.refresh(tx)
+    return TransactionResponse.model_validate(tx)

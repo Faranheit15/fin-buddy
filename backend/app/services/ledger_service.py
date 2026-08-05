@@ -12,6 +12,8 @@ from app.models.account import Account
 from app.models.enums import AccountKind, PostingStatus, TransactionType
 from app.models.settlement import Settlement
 from app.models.transaction import Transaction
+from app.models.transaction_split import TransactionSplit
+from app.models.category import Category, CategoryKind
 
 _OriginalTx = aliased(Transaction, name="tx_original")
 
@@ -218,3 +220,69 @@ async def total_friend_dues(session: AsyncSession, organization_id: UUID) -> int
 
 def base_org_query(model: type[object], organization_id: UUID) -> Select[tuple[object]]:
     return select(model).where(model.organization_id == organization_id)  # type: ignore[attr-defined]
+
+
+async def income_expense_summary(
+    session: AsyncSession, organization_id: UUID
+) -> dict[str, int]:
+    """Returns total income and expense (excluding transfers, adjustments, reversals).
+    
+    If a transaction has splits, they should theoretically be aggregated. 
+    For a simplified summary, we sum the absolute value of tx amounts based on CategoryKind.
+    Transactions without a category are assumed Expense if amount reduces asset, Income if increases, 
+    but for now we'll just sum where category is present, or fallback based on type.
+    """
+    # Exclude non-reporting types
+    excluded_types = {
+        TransactionType.TRANSFER_OUT,
+        TransactionType.TRANSFER_IN,
+        TransactionType.ADJUSTMENT,
+        TransactionType.REVERSAL,
+        TransactionType.OPENING_BALANCE,
+    }
+    
+    # 1. Sum whole transactions that have a category
+    tx_stmt = _with_original_join(
+        select(Category.kind, func.sum(Transaction.amount_paise))
+        .select_from(Transaction)
+        .join(Category, Category.id == Transaction.category_id)
+        .where(
+            and_(
+                Transaction.organization_id == organization_id,
+                _posted_clause(),
+                Transaction.type.not_in(excluded_types)
+            )
+        )
+        .group_by(Category.kind)
+    )
+    
+    # 2. Sum splits
+    split_stmt = (
+        select(Category.kind, func.sum(TransactionSplit.amount_paise))
+        .select_from(TransactionSplit)
+        .join(Transaction, Transaction.id == TransactionSplit.transaction_id)
+        .join(Category, Category.id == TransactionSplit.category_id)
+        .where(
+            and_(
+                Transaction.organization_id == organization_id,
+                Transaction.posting_status == PostingStatus.POSTED,
+                Transaction.type.not_in(excluded_types)
+            )
+        )
+        .group_by(Category.kind)
+    )
+    
+    tx_res = await session.execute(tx_stmt)
+    split_res = await session.execute(split_stmt)
+    
+    summary = {"income": 0, "expense": 0}
+    
+    for kind, amount in tx_res.all():
+        key = "income" if kind == CategoryKind.income else "expense"
+        summary[key] += int(amount or 0)
+        
+    for kind, amount in split_res.all():
+        key = "income" if kind == CategoryKind.income else "expense"
+        summary[key] += int(amount or 0)
+        
+    return summary

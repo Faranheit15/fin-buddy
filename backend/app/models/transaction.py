@@ -1,9 +1,11 @@
 """Spend ledger transactions."""
 
 from datetime import datetime
+from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    ARRAY,
     BigInteger,
     CheckConstraint,
     DateTime,
@@ -15,10 +17,14 @@ from sqlalchemy import (
 )
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import PostingStatus, TransactionType
+
+if TYPE_CHECKING:
+    from app.models.transaction_split import TransactionSplit
+    from app.models.category import Category
 
 
 class Transaction(Base):
@@ -55,6 +61,12 @@ class Transaction(Base):
         nullable=True,
         index=True,
     )
+    category_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     statement_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("statements.id", ondelete="SET NULL"),
@@ -85,6 +97,7 @@ class Transaction(Base):
     merchant: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tags: Mapped[List[str] | None] = mapped_column(ARRAY(String(50)), nullable=True)
     correction_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     delta_sign: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     reverses_id: Mapped[UUID | None] = mapped_column(
@@ -97,6 +110,15 @@ class Transaction(Base):
         ForeignKey("transactions.id", ondelete="SET NULL"),
         nullable=True,
     )
+    transfer_group_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
+    splits: Mapped[List["TransactionSplit"]] = relationship(
+        "TransactionSplit", back_populates="transaction", cascade="all, delete-orphan"
+    )
+    category_rel: Mapped[Optional["Category"]] = relationship("Category", back_populates="transactions")
     created_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("profiles.id", ondelete="SET NULL"),

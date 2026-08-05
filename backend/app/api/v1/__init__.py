@@ -14,6 +14,8 @@ from app.api.v1 import (
     settlements,
     statements,
     transactions,
+    categories,
+    transfers,
 )
 
 api_router = APIRouter()
@@ -28,3 +30,5 @@ api_router.include_router(settlements.router)
 api_router.include_router(statements.router)
 api_router.include_router(notifications.router)
 api_router.include_router(admin.router)
+api_router.include_router(categories.router)
+api_router.include_router(transfers.router)

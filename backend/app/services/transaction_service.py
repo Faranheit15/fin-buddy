@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+import sqlalchemy as sa
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +19,12 @@ from app.models.transaction import Transaction
 from app.services.account_service import get_account, resolve_account_id_for_card
 from app.services.logging_service import log_activity
 
-_CREATE_BLOCKED_TYPES = {TransactionType.ADJUSTMENT, TransactionType.REVERSAL}
+_CREATE_BLOCKED_TYPES = {
+    TransactionType.ADJUSTMENT,
+    TransactionType.REVERSAL,
+    TransactionType.TRANSFER_OUT,
+    TransactionType.TRANSFER_IN,
+}
 
 
 async def create_transaction(
@@ -33,8 +39,11 @@ async def create_transaction(
     merchant: str,
     account_id: UUID | None = None,
     contact_id: UUID | None = None,
+    category_id: UUID | None = None,
     category: str | None = None,
     notes: str | None = None,
+    tags: list[str] | None = None,
+    transfer_group_id: UUID | None = None,
     currency: str = "INR",
     posting_status: PostingStatus = PostingStatus.POSTED,
     ip: str | None = None,
@@ -71,6 +80,9 @@ async def create_transaction(
         notes=notes,
         delta_sign=None,
         created_by=user_id,
+        transfer_group_id=transfer_group_id,
+        tags=tags,
+        category_id=category_id,
     )
     db.add(tx)
     await log_activity(
@@ -426,6 +438,88 @@ async def adjust_account_balance(
     return tx
 
 
+async def create_transfer(
+    db: AsyncSession,
+    *,
+    organization_id: UUID,
+    user_id: UUID,
+    from_account_id: UUID,
+    to_account_id: UUID,
+    amount_paise: int,
+    occurred_at: datetime,
+    notes: str | None = None,
+    tags: list[str] | None = None,
+    ip: str | None = None,
+    ua: str | None = None,
+) -> tuple[Transaction, Transaction]:
+    if amount_paise <= 0:
+        raise AppError("Transfer amount must be positive", code="invalid_amount")
+    if from_account_id == to_account_id:
+        raise AppError("Cannot transfer to the same account", code="invalid_transfer")
+
+    from_account, from_card = await _resolve_transaction_account(
+        db, organization_id=organization_id, account_id=from_account_id, credit_card_id=None, currency="INR"
+    )
+    to_account, to_card = await _resolve_transaction_account(
+        db, organization_id=organization_id, account_id=to_account_id, credit_card_id=None, currency="INR"
+    )
+
+    transfer_group_id = uuid4()
+    
+    # Create the OUT leg (from)
+    tx_out = Transaction(
+        id=uuid4(),
+        organization_id=organization_id,
+        account_id=from_account,
+        credit_card_id=from_card,
+        type=TransactionType.TRANSFER_OUT,
+        posting_status=PostingStatus.POSTED,
+        amount_paise=amount_paise,
+        currency="INR",
+        occurred_at=occurred_at,
+        merchant="Transfer Out",
+        notes=notes,
+        tags=tags or [],
+        transfer_group_id=transfer_group_id,
+        created_by=user_id,
+    )
+    
+    # Create the IN leg (to)
+    tx_in = Transaction(
+        id=uuid4(),
+        organization_id=organization_id,
+        account_id=to_account,
+        credit_card_id=to_card,
+        type=TransactionType.TRANSFER_IN,
+        posting_status=PostingStatus.POSTED,
+        amount_paise=amount_paise,
+        currency="INR",
+        occurred_at=occurred_at,
+        merchant="Transfer In",
+        notes=notes,
+        tags=tags or [],
+        transfer_group_id=transfer_group_id,
+        created_by=user_id,
+    )
+    
+    db.add(tx_out)
+    db.add(tx_in)
+    
+    await log_activity(
+        db,
+        action=ActivityAction.TRANSACTION_CREATE,
+        summary=f"Transfer {amount_paise} from {from_account} to {to_account}",
+        actor_user_id=user_id,
+        organization_id=organization_id,
+        resource_type="transaction",
+        resource_id=str(tx_out.id),
+        ip_address=ip,
+        user_agent=ua,
+        metadata={"transfer_group_id": str(transfer_group_id)},
+    )
+    await db.flush()
+    return tx_out, tx_in
+
 async def get_transaction(
     db: AsyncSession, organization_id: UUID, transaction_id: UUID
 ) -> Transaction:
@@ -440,6 +534,64 @@ async def get_transaction(
         raise NotFoundError("Transaction not found")
     return tx
 
+
+async def replace_transaction_splits(
+    db: AsyncSession,
+    *,
+    organization_id: UUID,
+    user_id: UUID,
+    transaction_id: UUID,
+    splits_data: list[dict],
+    ip: str | None = None,
+    ua: str | None = None,
+) -> Transaction:
+    from app.models.transaction_split import TransactionSplit
+    
+    tx = await get_transaction(db, organization_id, transaction_id)
+    if tx.posting_status != PostingStatus.DRAFT:
+        raise ConflictError(
+            "Splits can only be modified on draft transactions.",
+            code="posted_immutable",
+        )
+        
+    sum_splits = sum(s["amount_paise"] for s in splits_data)
+    if sum_splits != tx.amount_paise:
+        raise AppError("Splits amount must equal transaction amount", code="invalid_splits_sum")
+        
+    # Delete existing splits (cascade is handled by the ORM, but we can also do it explicitly)
+    await db.execute(
+        sa.delete(TransactionSplit).where(TransactionSplit.transaction_id == tx.id)
+    )
+    
+    # Add new splits
+    for sd in splits_data:
+        split = TransactionSplit(
+            id=uuid4(),
+            transaction_id=tx.id,
+            category_id=sd.get("category_id"),
+            amount_paise=sd["amount_paise"],
+            notes=sd.get("notes"),
+            tags=sd.get("tags", []),
+        )
+        db.add(split)
+        
+    # Nullify parent category if splits exist
+    if splits_data:
+        tx.category_id = None
+        
+    await log_activity(
+        db,
+        action=ActivityAction.TRANSACTION_UPDATE,
+        summary=f"Replaced splits for transaction {tx.id}",
+        actor_user_id=user_id,
+        organization_id=organization_id,
+        resource_type="transaction",
+        resource_id=str(tx.id),
+        ip_address=ip,
+        user_agent=ua,
+    )
+    await db.flush()
+    return tx
 
 async def _ensure_card(db: AsyncSession, org_id: UUID, card_id: UUID) -> None:
     result = await db.execute(

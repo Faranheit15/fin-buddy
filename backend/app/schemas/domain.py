@@ -16,6 +16,7 @@ from app.models.enums import (
     StatementStatus,
     TransactionType,
 )
+from app.models.category import CategoryKind
 from app.schemas.common import ORMModel
 
 # ---- Contacts ----
@@ -125,10 +126,13 @@ class TransactionCreate(BaseModel):
     occurred_at: datetime
     merchant: str = Field(min_length=1, max_length=255)
     contact_id: UUID | None = None
+    category_id: UUID | None = None
     category: str | None = None
     notes: str | None = None
+    tags: list[str] | None = None
     currency: str = "INR"
     posting_status: PostingStatus = PostingStatus.POSTED
+    transfer_group_id: UUID | None = None
 
 
 class TransactionUpdate(BaseModel):
@@ -137,8 +141,10 @@ class TransactionUpdate(BaseModel):
     occurred_at: datetime | None = None
     merchant: str | None = None
     contact_id: UUID | None = None
+    category_id: UUID | None = None
     category: str | None = None
     notes: str | None = None
+    tags: list[str] | None = None
 
 
 class TransactionReverseRequest(BaseModel):
@@ -156,6 +162,16 @@ class TransactionAdjustRequest(BaseModel):
     merchant: str | None = Field(default=None, min_length=1, max_length=255)
 
 
+class TransactionSplitBase(BaseModel):
+    category_id: UUID | None = None
+    amount_paise: int = Field(gt=0)
+    notes: str | None = None
+    tags: list[str] | None = None
+
+class TransactionSplitResponse(TransactionSplitBase, ORMModel):
+    id: UUID
+    transaction_id: UUID
+
 class TransactionResponse(ORMModel):
     id: UUID
     organization_id: UUID
@@ -170,6 +186,9 @@ class TransactionResponse(ORMModel):
     occurred_at: datetime
     merchant: str
     category: str | None
+    category_id: UUID | None
+    transfer_group_id: UUID | None
+    tags: list[str] | None
     notes: str | None
     correction_reason: str | None
     delta_sign: int | None
@@ -178,7 +197,49 @@ class TransactionResponse(ORMModel):
     created_by: UUID | None
     created_at: datetime
     updated_at: datetime
+    splits: list[TransactionSplitResponse] = Field(default_factory=list)
 
+
+# ---- Transfers ----
+
+class TransferCreate(BaseModel):
+    from_account_id: UUID
+    to_account_id: UUID
+    amount_paise: int = Field(gt=0)
+    occurred_at: datetime
+    notes: str | None = None
+    tags: list[str] | None = None
+
+class TransferResponse(BaseModel):
+    transfer_group_id: UUID
+    out_transaction: TransactionResponse
+    in_transaction: TransactionResponse
+
+# ---- Categories ----
+
+class CategoryCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    kind: CategoryKind
+    color: str | None = Field(default=None, max_length=30)
+    icon: str | None = Field(default=None, max_length=50)
+
+class CategoryUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    kind: CategoryKind | None = None
+    color: str | None = Field(default=None, max_length=30)
+    icon: str | None = Field(default=None, max_length=50)
+    archived: bool | None = None
+
+class CategoryResponse(ORMModel):
+    id: UUID
+    org_id: UUID
+    name: str
+    kind: CategoryKind
+    color: str | None
+    icon: str | None
+    archived_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
 
 # ---- Settlements ----
 

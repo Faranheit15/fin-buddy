@@ -12,6 +12,8 @@ CARD_EFFECT: dict[TransactionType, int] = {
     TransactionType.OPENING_BALANCE: 1,
     TransactionType.REFUND: -1,
     TransactionType.PAYMENT_TO_ISSUER: -1,
+    TransactionType.TRANSFER_OUT: 1,
+    TransactionType.TRANSFER_IN: -1,
 }
 
 # Effects on asset cash held (bank / cash / wallet)
@@ -22,6 +24,8 @@ ASSET_EFFECT: dict[TransactionType, int] = {
     TransactionType.REFUND: 1,
     TransactionType.INTEREST: 1,
     TransactionType.OPENING_BALANCE: 1,
+    TransactionType.TRANSFER_OUT: -1,
+    TransactionType.TRANSFER_IN: 1,
 }
 
 # Effects on contact balance (what they owe the card owner)
@@ -32,6 +36,8 @@ CONTACT_EFFECT: dict[TransactionType, int] = {
     TransactionType.OPENING_BALANCE: 0,  # typically self
     TransactionType.REFUND: -1,
     TransactionType.PAYMENT_TO_ISSUER: 0,
+    TransactionType.TRANSFER_OUT: 0,
+    TransactionType.TRANSFER_IN: 0,
 }
 
 

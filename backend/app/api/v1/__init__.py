@@ -12,6 +12,7 @@ from app.api.v1 import (
     dashboard,
     health,
     notifications,
+    obligations,
     settlements,
     statements,
     transactions,
@@ -26,6 +27,7 @@ api_router.include_router(accounts.router)
 api_router.include_router(cards.router)
 api_router.include_router(contacts.router)
 api_router.include_router(transactions.router)
+api_router.include_router(obligations.router)
 api_router.include_router(settlements.router)
 api_router.include_router(statements.router)
 api_router.include_router(notifications.router)

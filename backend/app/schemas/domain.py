@@ -12,6 +12,8 @@ from app.models.enums import (
     CardStatus,
     DueRuleType,
     LineReviewStatus,
+    ObligationStatus,
+    ObligationType,
     PostingStatus,
     SettlementMethod,
     StatementStatus,
@@ -448,3 +450,56 @@ class AccountResponse(ORMModel):
     name: str
     institution: str | None
     currency: str
+
+
+# ---- Obligations ----
+
+
+class ObligationCreate(BaseModel):
+    contact_id: UUID | None = None
+    counterparty_name: str | None = Field(default=None, max_length=255)
+    type: ObligationType
+    amount_paise: int = Field(gt=0)
+    currency: str = "INR"
+    notes: str | None = None
+
+
+class ObligationUpdate(BaseModel):
+    status: ObligationStatus | None = None
+    notes: str | None = None
+
+
+class ObligationResponse(ORMModel):
+    id: UUID
+    organization_id: UUID
+    contact_id: UUID | None
+    counterparty_name: str | None
+    type: ObligationType
+    amount_paise: int
+    currency: str
+    status: ObligationStatus
+    notes: str | None
+    created_by: UUID | None
+    created_at: datetime
+    updated_at: datetime
+    remaining_paise: int | None = None
+
+
+class ObligationPaymentCreate(BaseModel):
+    amount_paise: int = Field(gt=0)
+    date: datetime
+    account_id: UUID | None = None
+    notes: str | None = None
+
+
+class ObligationPaymentResponse(ORMModel):
+    id: UUID
+    organization_id: UUID
+    obligation_id: UUID
+    account_id: UUID | None
+    amount_paise: int
+    date: datetime
+    notes: str | None
+    created_by: UUID | None
+    created_at: datetime
+    updated_at: datetime

@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-04 |
-| **Current subtask** | US-04.I3 |
+| **Current subtask** | US-04.I4 |
 | **Overall** | 3 / 6 stories done |
 
 ## Story status
@@ -70,6 +70,7 @@
 | 2026-08-05 | US-04 | US-04.G1-P4 | Decided to keep settlements separate, friend dues unchanged, warn on overpayment. Planned schema and UI. Next: I1. |
 | 2026-08-05 | US-04 | US-04.I1 | Added Obligation and ObligationPayment models, generated Alembic migration with RLS. Next: I2. |
 | 2026-08-06 | US-04 | US-04.I2 | Implemented obligation_service with CRUD, payments, remaining balance formula, and filters. Next: I3. |
+| 2026-08-06 | US-04 | US-04.I3 | Implemented and registered FastAPI endpoints for obligations and payments. Next: I4. |
 
 ## Blockers
 

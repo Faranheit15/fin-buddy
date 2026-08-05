@@ -4,14 +4,14 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-01 |
-| **Current subtask** | US-01.V4 |
+| **Current subtask** | US-01.V5 |
 | **Overall** | 0 / 6 stories done |
 
 ## Story status
 
 | Story | Status | Notes |
 |-------|--------|-------|
-| US-01 Auditable ledger | In progress | V3 import validated via tests + residuals → next V4 Impeccable |
+| US-01 Auditable ledger | In progress | V4 polish/harden done → next V5 mark Done |
 | US-02 Multi-account balances | Todo | Blocked on US-01 |
 | US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
@@ -42,6 +42,7 @@
 | 2026-08-05 | US-01 | US-01.V1 | Draft→post balance path re-verified via 6 unit tests; browser residuals documented (no live stack). Next: V2. |
 | 2026-08-05 | US-01 | US-01.V2 | Reverse purchase path re-verified via 8 unit tests; UI Reverse dialog residuals documented. Next: V3. |
 | 2026-08-05 | US-01 | US-01.V3 | Import confirm posted-only + idempotent re-verified (3 tests); UI residuals documented. Next: V4. |
+| 2026-08-05 | US-01 | US-01.V4 | Impeccable polish/harden on ledger UI (a11y labels, errors, reverse dialog, form busy). Next: V5. |
 
 ## Blockers
 

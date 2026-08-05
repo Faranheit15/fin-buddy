@@ -79,7 +79,9 @@ export function TransactionForm({
     } catch (err) {
       setError(
         err instanceof ApiError
-          ? err.message
+          ? err.code === "invalid_posting_type"
+            ? "Use Reverse or Correct Balance for corrections — not the create form."
+            : err.message
           : err instanceof Error
             ? err.message
             : "Could not create transaction",
@@ -112,10 +114,11 @@ export function TransactionForm({
           <Label htmlFor="tx-card">Card</Label>
           <select
             id="tx-card"
-            className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
+            className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
             value={cardId}
             onChange={(e) => setCardId(e.target.value)}
             required
+            disabled={busy}
           >
             {cards.map((c) => (
               <option key={c.id} value={c.id}>
@@ -128,9 +131,10 @@ export function TransactionForm({
           <Label htmlFor="tx-type">Type</Label>
           <select
             id="tx-type"
-            className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
+            className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
             value={type}
             onChange={(e) => setType(e.target.value as TransactionType)}
+            disabled={busy}
           >
             {TRANSACTION_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -148,6 +152,7 @@ export function TransactionForm({
             value={amountRupees}
             onChange={(e) => setAmountRupees(e.target.value)}
             placeholder="2450"
+            disabled={busy}
           />
         </div>
         <div className="space-y-1.5">
@@ -158,6 +163,7 @@ export function TransactionForm({
             required
             value={occurredAt}
             onChange={(e) => setOccurredAt(e.target.value)}
+            disabled={busy}
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
@@ -168,15 +174,18 @@ export function TransactionForm({
             value={merchant}
             onChange={(e) => setMerchant(e.target.value)}
             placeholder="Swiggy"
+            disabled={busy}
+            maxLength={255}
           />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="tx-contact">Attributed to</Label>
           <select
             id="tx-contact"
-            className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
+            className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
             value={contactId}
             onChange={(e) => setContactId(e.target.value)}
+            disabled={busy}
           >
             <option value="">Self (you)</option>
             {contacts.map((c) => (
@@ -193,6 +202,8 @@ export function TransactionForm({
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="Food, Travel…"
+            disabled={busy}
+            maxLength={64}
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
@@ -202,22 +213,27 @@ export function TransactionForm({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Optional"
+            disabled={busy}
+            maxLength={500}
           />
         </div>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+        <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy} aria-busy={loading === "posted"}>
           {loading === "posted" ? "Posting…" : "Add transaction"}
         </Button>
         <Button
           type="button"
           variant="outline"
           disabled={busy}
+          aria-busy={loading === "draft"}
           onClick={() => void submit("draft")}
         >
           {loading === "draft" ? "Saving…" : "Save draft"}

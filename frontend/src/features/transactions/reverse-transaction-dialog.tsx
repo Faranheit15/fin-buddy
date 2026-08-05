@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,15 +34,23 @@ export function ReverseTransactionDialog({
   onOpenChange,
   onReversed,
 }: ReverseTransactionDialogProps) {
+  const reasonId = useId();
+  const errorId = useId();
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function resetLocal() {
+    setReason("");
+    setError(null);
+    setLoading(false);
+  }
 
   async function onConfirm() {
     if (!transaction) return;
     const trimmed = reason.trim();
     if (!trimmed) {
-      setError("Reason is required");
+      setError("Add a short reason so the ledger stays auditable.");
       return;
     }
     setLoading(true);
@@ -51,36 +59,38 @@ export function ReverseTransactionDialog({
       const tx = await reverseTransaction(accessToken, transaction.id, {
         reason: trimmed,
       });
-      setReason("");
+      resetLocal();
       onReversed(tx);
       onOpenChange(false);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "already_reversed") {
-          setError("This entry is already reversed.");
+          setError(
+            "This entry is already reversed. Refresh the list if it still shows Reverse.",
+          );
         } else if (err.code === "cannot_reverse") {
-          setError(err.message);
+          setError(err.message || "This entry can’t be reversed.");
         } else if (err.code === "posted_immutable") {
           setError("Posted entries can’t be edited or deleted. Reverse instead.");
         } else {
           setError(err.message);
         }
       } else {
-        setError("Could not reverse transaction");
+        setError("Could not reverse. Check your connection and try again.");
       }
     } finally {
       setLoading(false);
     }
   }
 
+  const canSubmit = Boolean(transaction) && reason.trim().length > 0 && !loading;
+
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) {
-          setReason("");
-          setError(null);
-        }
+        if (loading) return;
+        if (!next) resetLocal();
         onOpenChange(next);
       }}
     >
@@ -94,26 +104,39 @@ export function ReverseTransactionDialog({
         </DialogHeader>
 
         {transaction ? (
-          <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 font-mono text-xs tabular-nums text-muted-foreground">
-            {transaction.merchant} · {formatInrFromPaise(transaction.amount_paise)}
+          <p className="min-w-0 rounded-lg border border-border bg-muted/40 px-3 py-2 font-mono text-xs tabular-nums text-muted-foreground">
+            <span className="block truncate" title={transaction.merchant}>
+              {transaction.merchant}
+            </span>
+            <span>{formatInrFromPaise(transaction.amount_paise)}</span>
           </p>
         ) : null}
 
         <div className="space-y-1.5">
-          <Label htmlFor="reverse-reason">Reason</Label>
+          <Label htmlFor={reasonId}>Reason</Label>
           <textarea
-            id="reverse-reason"
-            className="flex min-h-20 w-full rounded-lg border border-input bg-background px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            id={reasonId}
+            className="flex min-h-20 w-full rounded-lg border border-input bg-background px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => {
+              setReason(e.target.value);
+              if (error) setError(null);
+            }}
             placeholder="Wrong amount, duplicate, …"
             disabled={loading}
             required
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+            maxLength={500}
           />
         </div>
 
         {error ? (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p
+            id={errorId}
+            role="alert"
+            className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {error}
           </p>
         ) : null}
@@ -127,7 +150,12 @@ export function ReverseTransactionDialog({
           >
             Cancel
           </Button>
-          <Button type="button" disabled={loading || !transaction} onClick={() => void onConfirm()}>
+          <Button
+            type="button"
+            disabled={!canSubmit}
+            aria-busy={loading}
+            onClick={() => void onConfirm()}
+          >
             {loading ? "Reversing…" : "Reverse entry"}
           </Button>
         </DialogFooter>

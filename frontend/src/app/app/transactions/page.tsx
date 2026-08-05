@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ReverseTransactionDialog } from "@/features/transactions/reverse-transaction-dialog";
 import { TransactionForm } from "@/features/transactions/transaction-form";
@@ -200,12 +201,12 @@ function TransactionsInner() {
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Transactions</h2>
           <p className="text-sm text-muted-foreground">
-            Spend ledger with card and contact attribution
+            Posted lines move balances; drafts stay off until you post
             {snapshot.total > 0 ? ` · ${snapshot.total} total` : ""}
           </p>
         </div>
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>
-          <Plus className="size-3.5" />
+          <Plus className="size-3.5" aria-hidden />
           {showForm ? "Hide form" : "Add transaction"}
         </Button>
       </div>
@@ -214,6 +215,9 @@ function TransactionsInner() {
         <Card className="shadow-sm ring-1 ring-foreground/10">
           <CardHeader className="border-b pb-3!">
             <CardTitle>Add transaction</CardTitle>
+            <p className="text-sm font-normal text-muted-foreground">
+              Primary posts immediately. Save draft to stage without changing balances.
+            </p>
           </CardHeader>
           <CardContent>
             <TransactionForm
@@ -235,8 +239,11 @@ function TransactionsInner() {
       <Card className="shadow-sm ring-1 ring-foreground/10">
         <CardContent className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1">
-            <p className="text-[11px] font-medium text-muted-foreground">Card</p>
+            <Label htmlFor="tx-filter-card" className="text-[11px] text-muted-foreground">
+              Card
+            </Label>
             <select
+              id="tx-filter-card"
               className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
               value={cardFilter}
               onChange={(e) => setCardFilter(e.target.value)}
@@ -250,8 +257,11 @@ function TransactionsInner() {
             </select>
           </div>
           <div className="space-y-1">
-            <p className="text-[11px] font-medium text-muted-foreground">Contact</p>
+            <Label htmlFor="tx-filter-contact" className="text-[11px] text-muted-foreground">
+              Contact
+            </Label>
             <select
+              id="tx-filter-contact"
               className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
               value={contactFilter}
               onChange={(e) => setContactFilter(e.target.value)}
@@ -265,8 +275,11 @@ function TransactionsInner() {
             </select>
           </div>
           <div className="space-y-1">
-            <p className="text-[11px] font-medium text-muted-foreground">Type</p>
+            <Label htmlFor="tx-filter-type" className="text-[11px] text-muted-foreground">
+              Type
+            </Label>
             <select
+              id="tx-filter-type"
               className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as TransactionType | "")}
@@ -280,8 +293,11 @@ function TransactionsInner() {
             </select>
           </div>
           <div className="space-y-1">
-            <p className="text-[11px] font-medium text-muted-foreground">Status</p>
+            <Label htmlFor="tx-filter-status" className="text-[11px] text-muted-foreground">
+              Status
+            </Label>
             <select
+              id="tx-filter-status"
               className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as PostingStatus | "")}
@@ -292,8 +308,11 @@ function TransactionsInner() {
             </select>
           </div>
           <div className="space-y-1">
-            <p className="text-[11px] font-medium text-muted-foreground">Search merchant</p>
+            <Label htmlFor="tx-filter-q" className="text-[11px] text-muted-foreground">
+              Search merchant
+            </Label>
             <Input
+              id="tx-filter-q"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Swiggy, Netflix…"
@@ -304,13 +323,42 @@ function TransactionsInner() {
       </Card>
 
       {(error || actionError) && (
-        <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {actionError ?? error}
-        </p>
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          <p>{actionError ?? error}</p>
+          <div className="flex gap-2">
+            {actionError ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setActionError(null)}
+              >
+                Dismiss
+              </Button>
+            ) : null}
+            {error ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setReloadKey((k) => k + 1)}
+              >
+                Retry
+              </Button>
+            ) : null}
+          </div>
+        </div>
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading transactions…</p>
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          Loading transactions…
+        </p>
       ) : txs.length === 0 ? (
         <EmptyState
           icon={ArrowLeftRight}
@@ -319,7 +367,7 @@ function TransactionsInner() {
           action={
             !showForm ? (
               <Button size="sm" onClick={() => setShowForm(true)}>
-                <Plus className="size-3.5" />
+                <Plus className="size-3.5" aria-hidden />
                 Add transaction
               </Button>
             ) : null
@@ -352,15 +400,20 @@ function TransactionsInner() {
                     (tx.type === "adjustment" && (tx.delta_sign ?? 1) < 0);
                   const isDraft = tx.posting_status === "draft";
                   const alreadyReversed = Boolean(tx.reversed_by_id);
+                  const rowBusy = busyId === tx.id;
                   return (
                     <tr key={tx.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
                         {formatDateIst(tx.occurred_at)}
                       </td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium">{tx.merchant}</p>
+                      <td className="max-w-[14rem] px-4 py-3">
+                        <p className="truncate font-medium" title={tx.merchant}>
+                          {tx.merchant}
+                        </p>
                         {tx.category && (
-                          <p className="text-[11px] text-muted-foreground">{tx.category}</p>
+                          <p className="truncate text-[11px] text-muted-foreground" title={tx.category}>
+                            {tx.category}
+                          </p>
                         )}
                         {alreadyReversed ? (
                           <p className="text-[11px] text-muted-foreground">Reversed</p>
@@ -420,19 +473,20 @@ function TransactionsInner() {
                                 variant="outline"
                                 size="sm"
                                 className="h-7 text-xs"
-                                disabled={busyId === tx.id}
+                                disabled={rowBusy}
+                                aria-busy={rowBusy}
                                 onClick={() => void onPost(tx.id)}
                               >
-                                Post
+                                {rowBusy ? "Posting…" : "Post"}
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 text-xs text-muted-foreground"
-                                disabled={busyId === tx.id}
+                                disabled={rowBusy}
                                 onClick={() => void onDelete(tx.id)}
                               >
-                                Delete
+                                {rowBusy ? "…" : "Delete"}
                               </Button>
                             </>
                           ) : tx.type !== "reversal" ? (
@@ -440,7 +494,12 @@ function TransactionsInner() {
                               variant="outline"
                               size="sm"
                               className="h-7 text-xs"
-                              disabled={busyId === tx.id || alreadyReversed}
+                              disabled={alreadyReversed}
+                              title={
+                                alreadyReversed
+                                  ? "This entry already has a reversing line"
+                                  : "Post a linked reversing entry"
+                              }
                               onClick={() => setReverseTarget(tx)}
                             >
                               {alreadyReversed ? "Reversed" : "Reverse"}

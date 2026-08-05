@@ -69,7 +69,7 @@
 - [x] **US-01.V1** Manual: create draft → balances unchanged → post → balances update.
 - [x] **US-01.V2** Manual: reverse a posted purchase; ledger and card outstanding correct.
 - [x] **US-01.V3** Manual: import review confirm still posts without duplicates.
-- [ ] **US-01.V4** **Impeccable** on ledger UI: `polish` + `harden` (and `clarify` if reverse/correct copy is unclear).
+- [x] **US-01.V4** **Impeccable** on ledger UI: `polish` + `harden` (and `clarify` if reverse/correct copy is unclear).
 - [ ] **US-01.V5** Mark story Status = Done; update [`PROGRESS.md`](PROGRESS.md); tick corresponding R2A items in [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md).
 
 ## Story notes
@@ -604,3 +604,16 @@ Re-ran **3 passed** on 2026-08-05. `:8000` still down.
 1. Upload/parse statement → review lines → **Confirm import**.
 2. Ledger shows new rows as **Posted** (no Draft from confirm).
 3. Confirm again (or re-open imported statement) → no duplicate transactions.
+
+### US-01.V4 — Impeccable polish + harden (2026-08-05)
+
+Ran Operate polish/harden on ledger surfaces (`transactions/page`, form, reverse dialog). Ledger Shelf preserved.
+
+**Fixes shipped:**
+- Clearer page/form copy (posted vs draft balances).
+- Filter labels wired with `Label`/`htmlFor`; list error `role=alert` + Retry/Dismiss.
+- Merchant truncation; row Post busy label; Reverse disabled title when already reversed.
+- Reverse dialog: block close while loading; require non-empty reason to submit; aria-invalid/alert; friendlier error recovery copy; truncate long merchant.
+- Form: disable fields while busy; map `invalid_posting_type`; maxLength on text inputs.
+
+**Verify:** `bun run lint` + `bun run typecheck` green.

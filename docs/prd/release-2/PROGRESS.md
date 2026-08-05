@@ -3,9 +3,9 @@
 | Field | Value |
 |--------|--------|
 | **Updated** | 2026-08-05 |
-| **Current story** | US-04 |
-| **Current subtask** | US-04.T4 |
-| **Overall** | 3 / 6 stories done |
+| **Current story** | US-05 |
+| **Current subtask** | US-05.G1 |
+| **Overall** | 4 / 6 stories done |
 
 ## Story status
 
@@ -14,7 +14,7 @@
 | US-01 Auditable ledger | Done | R2A complete; browser residuals for V1–V3 optional |
 | US-02 Multi-account balances | Done | R2B (Part 1) complete; account ledger working |
 | US-03 Categories / transfers / splits | Done | - [x] **US-03.V1-V3** Residuals documented.<br>- [x] **US-03.V4** Marked Done. |
-| US-04 Debts & loans | Todo | Blocked on US-02 |
+| US-04 Debts & loans | Done | Complete; ad-hoc debts & loans settled |
 | US-05 Card EMIs & GST | Todo | Blocked on US-01, US-02 |
 | US-06 Insights / imports / reminders | Todo | Blocked on US-02…US-05 for full scope |
 
@@ -75,6 +75,7 @@
 | 2026-08-06 | US-04 | US-04.I5 | Verified dashboard friend-dues correctly excludes obligations (no code changes needed). Next: T1. |
 | 2026-08-06 | US-04 | US-04.T1,T2 | Added backend unit tests for partial repayment, overpayment, and settlements double-count logic. Next: T3. |
 | 2026-08-06 | US-04 | US-04.T3 | Added unit tests for obligation API authz. Next: T4. |
+| 2026-08-06 | US-04 | US-04.T4 | Passed all DoD checks (pytest, ruff, mypy, lint, tsc). Story US-04 is Done. |
 
 ## Blockers
 

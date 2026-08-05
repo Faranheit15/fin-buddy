@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import io
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import delete, select
@@ -106,10 +106,10 @@ async def create_statement_from_upload(
     card: CreditCard,
     filename: str,
     data: bytes,
-    period_start=None,
-    period_end=None,
-    statement_date=None,
-    due_date=None,
+    period_start: date | None = None,
+    period_end: date | None = None,
+    statement_date: date | None = None,
+    due_date: date | None = None,
     ip: str | None = None,
     ua: str | None = None,
 ) -> Statement:

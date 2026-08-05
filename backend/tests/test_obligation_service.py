@@ -4,20 +4,13 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AppError, NotFoundError
 from app.models.enums import ObligationStatus, ObligationType
 from app.models.obligation import Obligation
-from app.models.obligation_payment import ObligationPayment
 from app.services import obligation_service
 
 
 class _FakeResult:
-    def __init__(self, value: object) -> None:
-        self._value = value
-        self._values = [value] if value is not None else []
-        
     def __init__(self, values: list[object] | object = None) -> None:
         if isinstance(values, list):
             self._values = values

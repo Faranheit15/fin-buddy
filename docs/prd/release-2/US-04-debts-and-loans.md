@@ -2,7 +2,7 @@
 
 | Field | Value |
 |--------|--------|
-| **Status** | Todo |
+| **Status** | Done |
 | **Priority** | P1 |
 | **Maps to** | R2D |
 | **PRD** | FR-OB1–FR-OB5, FR-S1–FR-S4, UC21, G5, §8.6 |
@@ -59,7 +59,7 @@
 - [x] **US-04.T1** Unit: partial repayment; overpayment.
 - [x] **US-04.T2** Unit: no double-count with settlements under chosen strategy.
 - [x] **US-04.T3** API authz + status transitions.
-- [ ] **US-04.T4** Backend + frontend DoD.
+- [x] **US-04.T4** Backend + frontend DoD.
 
 ### Validate
 

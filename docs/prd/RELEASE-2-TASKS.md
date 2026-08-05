@@ -164,33 +164,33 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Backend
 
-- [ ] `obligations` + `obligation_payments` tables (see PRD §7.2).
-- [ ] CRUD + list filters (direction, status, contact, due window).
-- [ ] Remaining balance derived from principal − payments (± interest/penalty if modeled).
-- [ ] Migration/compat plan: document how contact balances from card-attributed spend + `settlements` relate to obligations; either:
+- [x] `obligations` + `obligation_payments` tables (see PRD §7.2).
+- [x] CRUD + list filters (direction, status, contact, due window).
+- [x] Remaining balance derived from principal − payments (± interest/penalty if modeled).
+- [x] Migration/compat plan: document how contact balances from card-attributed spend + `settlements` relate to obligations; either:
   - keep settlements and sync summaries, or
   - migrate settlements into obligation_payments with dual-read period.
-- [ ] Upcoming dues feed includes obligation due dates.
+- [x] Upcoming dues feed includes obligation due dates.
 
 ### Frontend
 
-- [ ] Routes: `/app/debts`, `/app/debts/[id]`.
-- [ ] Create debt/loan wizard (receivable vs payable; contact or free-text institution).
-- [ ] Record repayment UI; payment history; remaining balance.
-- [ ] Contact detail: show related obligations alongside existing settlement ledger.
-- [ ] **Impeccable:** `shape` wizard/list-detail; craft-floor; Validate with `onboard` + `polish` + `harden` + `audit`.
+- [x] Routes: `/app/debts`, `/app/debts/[id]`.
+- [x] Create debt/loan wizard (receivable vs payable; contact or free-text institution).
+- [x] Record repayment UI; payment history; remaining balance.
+- [x] Contact detail: show related obligations alongside existing settlement ledger.
+- [x] **Impeccable:** `shape` wizard/list-detail; craft-floor; Validate with `onboard` + `polish` + `harden` + `audit`.
 
 ### Tests
 
-- [ ] Unit: partial repayment math; overpayment warn-and-allow.
-- [ ] Unit: contact outstanding reconciliation under chosen migration strategy.
-- [ ] API: authz + archive/settle status transitions.
+- [x] Unit: partial repayment math; overpayment warn-and-allow.
+- [x] Unit: contact outstanding reconciliation under chosen migration strategy.
+- [x] API: authz + archive/settle status transitions.
 
 ### Definition of done
 
-- [ ] User can create a receivable and a payable, record partial repayments, and see correct remaining balances.
-- [ ] Existing friend settlement flows still work (no double-counting in dashboard friend dues).
-- [ ] Migration/compat decision documented in `docs/GOTCHAS.md` or PRD open-questions resolution note.
+- [x] User can create a receivable and a payable, record partial repayments, and see correct remaining balances.
+- [x] Existing friend settlement flows still work (no double-counting in dashboard friend dues).
+- [x] Migration/compat decision documented in `docs/GOTCHAS.md` or PRD open-questions resolution note.
 
 ---
 

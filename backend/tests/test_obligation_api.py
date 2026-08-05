@@ -1,6 +1,6 @@
 """Unit tests for obligations API router."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -12,6 +12,7 @@ from app.core.security import AuthUser
 from app.models.enums import ObligationType, PlatformRole
 from app.models.obligation import Obligation
 from app.schemas.domain import ObligationCreate
+
 
 class _FakeResult:
     def __init__(self, value: object) -> None:

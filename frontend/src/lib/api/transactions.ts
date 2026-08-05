@@ -15,7 +15,8 @@ export type PostingStatus = "draft" | "posted";
 export type Transaction = {
   id: string;
   organization_id: string;
-  credit_card_id: string;
+  account_id: string;
+  credit_card_id: string | null;
   contact_id: string | null;
   statement_id: string | null;
   type: TransactionType;
@@ -36,7 +37,8 @@ export type Transaction = {
 };
 
 export type TransactionCreate = {
-  credit_card_id: string;
+  account_id?: string | null;
+  credit_card_id?: string | null;
   type: TransactionType;
   amount_paise: number;
   occurred_at: string;
@@ -68,6 +70,7 @@ export type Paginated<T> = {
 export type ListTransactionsOpts = {
   page?: number;
   pageSize?: number;
+  accountId?: string;
   cardId?: string;
   contactId?: string;
   type?: TransactionType;
@@ -91,6 +94,7 @@ export function listTransactions(accessToken: string, opts: ListTransactionsOpts
     page: String(opts.page ?? 1),
     page_size: String(opts.pageSize ?? 50),
   });
+  if (opts.accountId) q.set("account_id", opts.accountId);
   if (opts.cardId) q.set("card_id", opts.cardId);
   if (opts.contactId) q.set("contact_id", opts.contactId);
   if (opts.type) q.set("type", opts.type);

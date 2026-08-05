@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { rupeesToPaise, type CreditCard } from "@/lib/api/cards";
+import { type AccountResponse } from "@/lib/api/accounts";
+import { rupeesToPaise } from "@/lib/api/cards";
 import { ApiError } from "@/lib/api/client";
 import type { Contact } from "@/lib/api/contacts";
 import {
@@ -18,9 +19,9 @@ import {
 
 type TransactionFormProps = {
   accessToken: string;
-  cards: CreditCard[];
+  accounts: AccountResponse[];
   contacts: Contact[];
-  defaultCardId?: string;
+  defaultAccountId?: string;
   defaultContactId?: string;
   onCreated: (tx: Transaction) => void;
   onCancel?: () => void;
@@ -34,14 +35,14 @@ function todayLocalInput(): string {
 
 export function TransactionForm({
   accessToken,
-  cards,
+  accounts,
   contacts,
-  defaultCardId,
+  defaultAccountId,
   defaultContactId,
   onCreated,
   onCancel,
 }: TransactionFormProps) {
-  const [cardId, setCardId] = useState(defaultCardId ?? cards[0]?.id ?? "");
+  const [accountId, setAccountId] = useState(defaultAccountId ?? accounts[0]?.id ?? "");
   const [contactId, setContactId] = useState(defaultContactId ?? "");
   const [type, setType] = useState<TransactionType>("purchase");
   const [amountRupees, setAmountRupees] = useState("");
@@ -56,7 +57,7 @@ export function TransactionForm({
     setLoading(postingStatus);
     setError(null);
     try {
-      if (!cardId) throw new Error("Select a card");
+      if (!accountId) throw new Error("Select an account");
       const amountPaise = rupeesToPaise(amountRupees);
       if (amountPaise <= 0) throw new Error("Amount must be greater than 0");
       const merch = merchant.trim();
@@ -64,8 +65,12 @@ export function TransactionForm({
       const occurred = new Date(occurredAt);
       if (Number.isNaN(occurred.getTime())) throw new Error("Invalid date/time");
 
+      const acc = accounts.find((a) => a.id === accountId);
+      const isCard = acc?.kind === "credit_card";
+
       const tx = await createTransaction(accessToken, {
-        credit_card_id: cardId,
+        account_id: accountId,
+        credit_card_id: isCard ? acc.credit_card_id : null,
         type,
         amount_paise: amountPaise,
         occurred_at: occurred.toISOString(),
@@ -91,10 +96,10 @@ export function TransactionForm({
     }
   }
 
-  if (cards.length === 0) {
+  if (accounts.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Add a credit card first before recording transactions.
+        Add an account first before recording transactions.
       </p>
     );
   }
@@ -111,18 +116,18 @@ export function TransactionForm({
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="tx-card">Card</Label>
+          <Label htmlFor="tx-account">Account</Label>
           <select
-            id="tx-card"
+            id="tx-account"
             className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
-            value={cardId}
-            onChange={(e) => setCardId(e.target.value)}
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
             required
             disabled={busy}
           >
-            {cards.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nickname} · •••• {c.last_four}
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} {a.institution ? `(${a.institution})` : ""}
               </option>
             ))}
           </select>

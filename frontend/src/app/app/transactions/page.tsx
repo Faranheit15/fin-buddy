@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ReverseTransactionDialog } from "@/features/transactions/reverse-transaction-dialog";
 import { TransactionForm } from "@/features/transactions/transaction-form";
-import { listCards, type CreditCard } from "@/lib/api/cards";
+import { listAccounts, type AccountResponse } from "@/lib/api/accounts";
 import { listContacts, type Contact } from "@/lib/api/contacts";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -49,17 +49,17 @@ function friendlyLedgerError(err: unknown, fallback: string): string {
 function TransactionsInner() {
   const searchParams = useSearchParams();
   const { accessToken, ready } = useAuth();
-  const initialCard = searchParams.get("card") ?? "";
+  const initialAccount = searchParams.get("account") ?? "";
   const initialContact = searchParams.get("contact") ?? "";
 
   const [showForm, setShowForm] = useState(false);
-  const [cardFilter, setCardFilter] = useState(initialCard);
+  const [accountFilter, setAccountFilter] = useState(initialAccount);
   const [contactFilter, setContactFilter] = useState(initialContact);
   const [typeFilter, setTypeFilter] = useState<TransactionType | "">("");
   const [statusFilter, setStatusFilter] = useState<PostingStatus | "">("");
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
-  const [cards, setCards] = useState<CreditCard[]>([]);
+  const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -82,12 +82,12 @@ function TransactionsInner() {
     let cancelled = false;
     void (async () => {
       try {
-        const [cardRes, contactRes] = await Promise.all([
-          listCards(accessToken, 1, 100),
+        const [accountRes, contactRes] = await Promise.all([
+          listAccounts(accessToken, 1, 100),
           listContacts(accessToken, { pageSize: 100 }),
         ]);
         if (cancelled) return;
-        setCards(cardRes.items);
+        setAccounts(accountRes.items);
         setContacts(contactRes.items);
       } catch {
         // meta load is best-effort; list still works
@@ -108,7 +108,7 @@ function TransactionsInner() {
       try {
         const res = await listTransactions(accessToken, {
           pageSize: 50,
-          cardId: cardFilter || undefined,
+          accountId: accountFilter || undefined,
           contactId: contactFilter || undefined,
           type: typeFilter || undefined,
           postingStatus: statusFilter || undefined,
@@ -134,16 +134,16 @@ function TransactionsInner() {
     ready,
     accessToken,
     reloadKey,
-    cardFilter,
+    accountFilter,
     contactFilter,
     typeFilter,
     statusFilter,
     qDebounced,
   ]);
 
-  const cardMap = useMemo(
-    () => Object.fromEntries(cards.map((c) => [c.id, c])),
-    [cards],
+  const accountMap = useMemo(
+    () => Object.fromEntries(accounts.map((a) => [a.id, a])),
+    [accounts],
   );
   const contactMap = useMemo(
     () => Object.fromEntries(contacts.map((c) => [c.id, c])),
@@ -222,9 +222,9 @@ function TransactionsInner() {
           <CardContent>
             <TransactionForm
               accessToken={accessToken}
-              cards={cards}
+              accounts={accounts}
               contacts={contacts}
-              defaultCardId={cardFilter || undefined}
+              defaultAccountId={accountFilter || undefined}
               defaultContactId={contactFilter || undefined}
               onCancel={() => setShowForm(false)}
               onCreated={() => {
@@ -239,19 +239,19 @@ function TransactionsInner() {
       <Card className="shadow-sm ring-1 ring-foreground/10">
         <CardContent className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1">
-            <Label htmlFor="tx-filter-card" className="text-[11px] text-muted-foreground">
-              Card
+            <Label htmlFor="tx-filter-account" className="text-[11px] text-muted-foreground">
+              Account
             </Label>
             <select
-              id="tx-filter-card"
+              id="tx-filter-account"
               className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
-              value={cardFilter}
-              onChange={(e) => setCardFilter(e.target.value)}
+              value={accountFilter}
+              onChange={(e) => setAccountFilter(e.target.value)}
             >
-              <option value="">All cards</option>
-              {cards.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nickname}
+              <option value="">All accounts</option>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
                 </option>
               ))}
             </select>
@@ -381,7 +381,7 @@ function TransactionsInner() {
                 <tr>
                   <th className="px-4 py-2.5 font-medium">When</th>
                   <th className="px-4 py-2.5 font-medium">Merchant</th>
-                  <th className="px-4 py-2.5 font-medium">Card</th>
+                  <th className="px-4 py-2.5 font-medium">Account</th>
                   <th className="px-4 py-2.5 font-medium">Who</th>
                   <th className="px-4 py-2.5 font-medium">Type</th>
                   <th className="px-4 py-2.5 font-medium">Status</th>
@@ -391,7 +391,7 @@ function TransactionsInner() {
               </thead>
               <tbody className="divide-y">
                 {txs.map((tx) => {
-                  const card = cardMap[tx.credit_card_id];
+                  const account = accountMap[tx.account_id];
                   const contact = tx.contact_id ? contactMap[tx.contact_id] : null;
                   const reduce =
                     tx.type === "refund" ||
@@ -420,12 +420,16 @@ function TransactionsInner() {
                         ) : null}
                       </td>
                       <td className="px-4 py-3 text-xs">
-                        {card ? (
+                        {account ? (
                           <Link
-                            href={`/app/cards/${card.id}`}
+                            href={
+                              account.kind === "credit_card" && account.credit_card_id
+                                ? `/app/cards/${account.credit_card_id}`
+                                : `/app/accounts/${account.id}`
+                            }
                             className="hover:underline"
                           >
-                            {card.nickname}
+                            {account.name}
                           </Link>
                         ) : (
                           <span className="text-muted-foreground">—</span>

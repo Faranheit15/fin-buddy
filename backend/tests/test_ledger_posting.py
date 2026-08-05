@@ -121,7 +121,7 @@ def test_adjustment_requires_delta_sign() -> None:
 
 
 def test_posted_only_sum_matches_filter_semantics() -> None:
-    """Draft + posted mix: only posted rows affect outstanding."""
+    """T1: Draft + posted mix — only posted rows affect card outstanding."""
     rows = [
         (TransactionType.PURCHASE, 100_00, PostingStatus.POSTED, None, None),
         (TransactionType.PURCHASE, 50_00, PostingStatus.DRAFT, None, None),
@@ -137,3 +137,87 @@ def test_posted_only_sum_matches_filter_semantics() -> None:
         for t, amt, status, ds, ot in rows
     )
     assert total == 100_00
+
+
+def test_draft_excluded_from_contact_balance_mix() -> None:
+    """T1: Posted purchase w/ contact 80_00 + draft 20_00 → contact balance 80_00."""
+    rows = [
+        (TransactionType.PURCHASE, 80_00, PostingStatus.POSTED),
+        (TransactionType.PURCHASE, 20_00, PostingStatus.DRAFT),
+    ]
+    total = sum(
+        contact_contribution_paise(
+            tx_type=t,
+            amount_paise=amt,
+            posting_status=status,
+            contact_id_present=True,
+        )
+        for t, amt, status in rows
+    )
+    assert total == 80_00
+
+
+def test_draft_only_org_outstanding_is_zero() -> None:
+    """T1: Only draft rows → card and contact outstanding are 0."""
+    drafts = [
+        (TransactionType.PURCHASE, 100_00),
+        (TransactionType.FEE, 25_00),
+    ]
+    card_total = sum(
+        card_contribution_paise(
+            tx_type=t,
+            amount_paise=amt,
+            posting_status=PostingStatus.DRAFT,
+        )
+        for t, amt in drafts
+    )
+    contact_total = sum(
+        contact_contribution_paise(
+            tx_type=t,
+            amount_paise=amt,
+            posting_status=PostingStatus.DRAFT,
+            contact_id_present=True,
+        )
+        for t, amt in drafts
+    )
+    assert card_total == 0
+    assert contact_total == 0
+
+
+def test_post_draft_then_included_in_outstanding() -> None:
+    """T1: Draft contributes 0; after post, amount enters outstanding."""
+    amount = 150_00
+    assert (
+        card_contribution_paise(
+            tx_type=TransactionType.PURCHASE,
+            amount_paise=amount,
+            posting_status=PostingStatus.DRAFT,
+        )
+        == 0
+    )
+    assert (
+        card_contribution_paise(
+            tx_type=TransactionType.PURCHASE,
+            amount_paise=amount,
+            posting_status=PostingStatus.POSTED,
+        )
+        == amount
+    )
+    assert (
+        contact_contribution_paise(
+            tx_type=TransactionType.PURCHASE,
+            amount_paise=amount,
+            posting_status=PostingStatus.DRAFT,
+            contact_id_present=True,
+        )
+        == 0
+    )
+    assert (
+        contact_contribution_paise(
+            tx_type=TransactionType.PURCHASE,
+            amount_paise=amount,
+            posting_status=PostingStatus.POSTED,
+            contact_id_present=True,
+        )
+        == amount
+    )

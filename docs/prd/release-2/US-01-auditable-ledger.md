@@ -58,7 +58,7 @@
 
 ### Test
 
-- [ ] **US-01.T1** Unit: draft excluded from outstanding.
+- [x] **US-01.T1** Unit: draft excluded from outstanding.
 - [ ] **US-01.T2** Unit: reversal negates; double-reverse blocked.
 - [ ] **US-01.T3** Unit: adjustment delta math.
 - [ ] **US-01.T4** API: posted update/delete → 4xx; reverse/adjust succeed with authz.
@@ -532,4 +532,12 @@ Implemented (Impeccable Operate / Ledger Shelf craft-floor):
 - Extracted `_posted_transaction_from_import_line` (always `PostingStatus.POSTED`).
 - Docstring on `import_statement`: never creates drafts.
 - Tests: `test_import_confirm_creates_posted_transactions_only` + helper unit test.
+
+### US-01.T1 — Draft excluded from outstanding (2026-08-05)
+
+Covered P4 matrix:
+- Card mix posted+draft → 100_00 only
+- Contact mix posted+draft → 80_00 only
+- Draft-only → 0 card/contact
+- Post draft → contribution flips 0 → amount (domain + `post_draft` service)
 

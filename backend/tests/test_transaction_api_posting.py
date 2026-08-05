@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError
+from app.domain.ledger import card_contribution_paise
 from app.models.enums import PostingStatus, TransactionType
 from app.services import transaction_service
 
@@ -121,6 +122,37 @@ async def test_post_draft_sets_posted() -> None:
         transaction_id=tx.id,
     )
     assert posted.posting_status == PostingStatus.POSTED
+
+
+@pytest.mark.asyncio
+async def test_post_draft_then_amount_enters_outstanding() -> None:
+    """T1: posting a draft flips contribution from 0 to amount_paise."""
+    amount = 150_00
+    tx = _posted_purchase(posting_status=PostingStatus.DRAFT, amount_paise=amount)
+    assert (
+        card_contribution_paise(
+            tx_type=TransactionType.PURCHASE,
+            amount_paise=amount,
+            posting_status=PostingStatus.DRAFT,
+        )
+        == 0
+    )
+    db = _RecordingSession([tx])
+    posted = await transaction_service.post_draft(
+        db,  # type: ignore[arg-type]
+        organization_id=tx.organization_id,
+        user_id=uuid4(),
+        transaction_id=tx.id,
+    )
+    assert posted.posting_status == PostingStatus.POSTED
+    assert (
+        card_contribution_paise(
+            tx_type=TransactionType.PURCHASE,
+            amount_paise=posted.amount_paise,
+            posting_status=posted.posting_status,
+        )
+        == amount
+    )
 
 
 @pytest.mark.asyncio

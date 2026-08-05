@@ -51,7 +51,7 @@
 ### Implement
 
 - [x] **US-02.I1** Models + enums + Alembic migration + backfill.
-- [ ] **US-02.I2** Account balance service + Correct Balance → adjustment (uses US-01).
+- [x] **US-02.I2** Account balance service + Correct Balance → adjustment (uses US-01).
 - [ ] **US-02.I3** Accounts API + wire transactions to accept `account_id`.
 - [ ] **US-02.I4** Frontend: accounts list/detail, nav, transaction account picker, Correct Balance — **impeccable craft-floor**; Operate density consistent with cards/contacts.
 - [ ] **US-02.I5** Update `.env.example` only if new config needed (usually none).
@@ -549,5 +549,18 @@ Owner scanning liquid money + card liabilities in one place (Zerodha/Kite-like o
 - `TransactionResponse.account_id` + nullable `credit_card_id`
 
 **Next:** I2 account balance service + Correct Balance → adjustment
+
+### US-02.I2 — Account balance + Correct Balance (2026-08-05)
+
+**Shipped:**
+- `ASSET_EFFECT` + `asset_contribution_paise` / `account_contribution_paise` (G2)
+- `ledger_service.account_balance_paise` / `accounts_balances_map` (posted-only, kind-aware SQL)
+- `transaction_service.adjust_account_balance` (G1 card id when credit_card)
+- `account_service.correct_balance` — server `delta = target − current`; `already_at_target` / `account_archived`
+- Unit tests in `tests/test_account_balance.py`
+
+**Deferred to I3:** HTTP `/accounts` + `/correct-balance` routes.
+
+**Next:** I3 Accounts API + transaction `account_id` wiring
 
 

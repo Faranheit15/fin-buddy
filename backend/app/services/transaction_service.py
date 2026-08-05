@@ -10,9 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError
+from app.models.account import Account
 from app.models.contact import Contact
 from app.models.credit_card import CreditCard
-from app.models.enums import ActivityAction, PostingStatus, TransactionType
+from app.models.enums import AccountKind, ActivityAction, PostingStatus, TransactionType
 from app.models.transaction import Transaction
 from app.services.account_service import resolve_account_id_for_card
 from app.services.logging_service import log_activity
@@ -339,6 +340,86 @@ async def adjust_balance(
         ip_address=ip,
         user_agent=ua,
         metadata={"delta_paise": delta_paise, "reason": reason_clean},
+    )
+    await db.flush()
+    return tx
+
+
+async def adjust_account_balance(
+    db: AsyncSession,
+    *,
+    organization_id: UUID,
+    user_id: UUID,
+    account: Account,
+    delta_paise: int,
+    reason: str,
+    occurred_at: datetime | None = None,
+    merchant: str | None = None,
+    ip: str | None = None,
+    ua: str | None = None,
+) -> Transaction:
+    """Post a posted adjustment on an account (G1 card id when credit_card kind)."""
+    if delta_paise == 0:
+        raise AppError("delta_paise must be non-zero", code="invalid_delta")
+    reason_clean = reason.strip()
+    if not reason_clean:
+        raise AppError("Reason is required", code="invalid_reason")
+    if account.organization_id != organization_id:
+        raise NotFoundError("Account not found")
+
+    credit_card_id: UUID | None
+    if account.kind == AccountKind.CREDIT_CARD:
+        if account.credit_card_id is None:
+            raise AppError(
+                "Credit card account missing credit_card_id",
+                code="account_card_mismatch",
+            )
+        await _ensure_card(db, organization_id, account.credit_card_id)
+        credit_card_id = account.credit_card_id
+    else:
+        if account.credit_card_id is not None:
+            raise AppError(
+                "Asset account must not have credit_card_id",
+                code="account_card_mismatch",
+            )
+        credit_card_id = None
+
+    amount = abs(delta_paise)
+    sign = 1 if delta_paise > 0 else -1
+    tx = Transaction(
+        id=uuid4(),
+        organization_id=organization_id,
+        account_id=account.id,
+        credit_card_id=credit_card_id,
+        contact_id=None,
+        type=TransactionType.ADJUSTMENT,
+        posting_status=PostingStatus.POSTED,
+        amount_paise=amount,
+        currency=account.currency,
+        occurred_at=occurred_at or datetime.now(UTC),
+        merchant=(merchant or "Balance adjustment")[:255],
+        category=None,
+        notes=None,
+        correction_reason=reason_clean,
+        delta_sign=sign,
+        created_by=user_id,
+    )
+    db.add(tx)
+    await log_activity(
+        db,
+        action=ActivityAction.TRANSACTION_ADJUST,
+        summary=f"Adjustment {delta_paise} paise on account {account.id}",
+        actor_user_id=user_id,
+        organization_id=organization_id,
+        resource_type="transaction",
+        resource_id=str(tx.id),
+        ip_address=ip,
+        user_agent=ua,
+        metadata={
+            "delta_paise": delta_paise,
+            "reason": reason_clean,
+            "account_id": str(account.id),
+        },
     )
     await db.flush()
     return tx

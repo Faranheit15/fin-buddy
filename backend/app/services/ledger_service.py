@@ -1,4 +1,4 @@
-"""Balance calculations for cards and contacts — posted ledger rows only."""
+"""Balance calculations for cards, contacts, and accounts — posted ledger only."""
 
 from typing import Any
 from uuid import UUID
@@ -7,8 +7,9 @@ from sqlalchemy import Select, and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.domain.ledger import CARD_EFFECT, CONTACT_EFFECT
-from app.models.enums import PostingStatus, TransactionType
+from app.domain.ledger import ASSET_EFFECT, CARD_EFFECT, CONTACT_EFFECT
+from app.models.account import Account
+from app.models.enums import AccountKind, PostingStatus, TransactionType
 from app.models.settlement import Settlement
 from app.models.transaction import Transaction
 
@@ -19,13 +20,13 @@ def _posted_clause() -> Any:
     return Transaction.posting_status == PostingStatus.POSTED
 
 
-def _card_row_contribution_expr() -> Any:
-    """Per-row signed contribution to card outstanding (paise)."""
+def _effect_row_contribution_expr(effect_map: dict[TransactionType, int]) -> Any:
+    """Per-row signed contribution using a type→multiplier map (paise)."""
     adjustment = Transaction.delta_sign * Transaction.amount_paise
     reversal = case(
         *(
             (_OriginalTx.type == t, -mult * Transaction.amount_paise)
-            for t, mult in CARD_EFFECT.items()
+            for t, mult in effect_map.items()
         ),
         else_=0,
     )
@@ -34,35 +35,41 @@ def _card_row_contribution_expr() -> Any:
         (Transaction.type == TransactionType.REVERSAL, reversal),
         *(
             (Transaction.type == t, Transaction.amount_paise * mult)
-            for t, mult in CARD_EFFECT.items()
+            for t, mult in effect_map.items()
         ),
         else_=0,
     )
+
+
+def _card_row_contribution_expr() -> Any:
+    """Per-row signed contribution to card outstanding (paise)."""
+    return _effect_row_contribution_expr(CARD_EFFECT)
+
+
+def _asset_row_contribution_expr() -> Any:
+    """Per-row signed contribution to asset cash held (paise)."""
+    return _effect_row_contribution_expr(ASSET_EFFECT)
 
 
 def _card_outstanding_expr() -> Any:
     return func.coalesce(func.sum(_card_row_contribution_expr()), 0)
 
 
+def _account_row_contribution_expr() -> Any:
+    """Kind-aware contribution: liability for credit_card, asset otherwise."""
+    return case(
+        (Account.kind == AccountKind.CREDIT_CARD, _card_row_contribution_expr()),
+        else_=_asset_row_contribution_expr(),
+    )
+
+
+def _account_balance_sum_expr() -> Any:
+    return func.coalesce(func.sum(_account_row_contribution_expr()), 0)
+
+
 def _contact_row_contribution_expr() -> Any:
     """Per-row signed contribution to contact attributed spend (paise)."""
-    adjustment = Transaction.delta_sign * Transaction.amount_paise
-    reversal = case(
-        *(
-            (_OriginalTx.type == t, -mult * Transaction.amount_paise)
-            for t, mult in CONTACT_EFFECT.items()
-        ),
-        else_=0,
-    )
-    return case(
-        (Transaction.type == TransactionType.ADJUSTMENT, adjustment),
-        (Transaction.type == TransactionType.REVERSAL, reversal),
-        *(
-            (Transaction.type == t, Transaction.amount_paise * mult)
-            for t, mult in CONTACT_EFFECT.items()
-        ),
-        else_=0,
-    )
+    return _effect_row_contribution_expr(CONTACT_EFFECT)
 
 
 def _contact_spend_expr() -> Any:
@@ -99,6 +106,41 @@ async def cards_outstanding_map(
     )
     result = await session.execute(stmt)
     return {row[0]: int(row[1] or 0) for row in result.all()}
+
+
+async def account_balance_paise(session: AsyncSession, account_id: UUID) -> int:
+    """Posted G2 balance for one account (outstanding or cash held by kind)."""
+    stmt = _with_original_join(
+        select(_account_balance_sum_expr())
+        .select_from(Transaction)
+        .join(Account, Account.id == Transaction.account_id)
+        .where(and_(Transaction.account_id == account_id, _posted_clause()))
+    )
+    result = await session.execute(stmt)
+    return int(result.scalar_one() or 0)
+
+
+async def accounts_balances_map(
+    session: AsyncSession, organization_id: UUID
+) -> dict[UUID, int]:
+    """Per-account posted G2 balances for an org (missing keys → treat as 0)."""
+    stmt = (
+        _with_original_join(
+            select(Transaction.account_id, _account_balance_sum_expr())
+            .select_from(Transaction)
+            .join(Account, Account.id == Transaction.account_id)
+            .where(
+                and_(
+                    Transaction.organization_id == organization_id,
+                    Account.organization_id == organization_id,
+                    _posted_clause(),
+                )
+            )
+        )
+        .group_by(Transaction.account_id)
+    )
+    result = await session.execute(stmt)
+    return {row[0]: int(row[1] or 0) for row in result.all() if row[0] is not None}
 
 
 async def contact_balance_paise(session: AsyncSession, contact_id: UUID) -> int:

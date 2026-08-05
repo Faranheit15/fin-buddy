@@ -43,7 +43,9 @@ class ActivityLog(Base):
     resource_type: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
     resource_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     summary: Mapped[str] = mapped_column(String(500), nullable=False)
-    metadata_json: Mapped[dict[str, object] | None] = mapped_column("metadata", JSONB, nullable=True)
+    metadata_json: Mapped[dict[str, object] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
     ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

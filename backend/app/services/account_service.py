@@ -71,7 +71,6 @@ async def get_account(
     return account
 
 
-
 async def create_account(
     db: AsyncSession,
     *,
@@ -146,9 +145,7 @@ async def correct_balance(
     `delta = target − current` using G2 `account_balance_paise`. Rejects archived
     accounts and zero delta (`already_at_target`).
     """
-    account = await get_account(
-        db, organization_id=organization_id, account_id=account_id
-    )
+    account = await get_account(db, organization_id=organization_id, account_id=account_id)
     if account.archived_at is not None:
         raise AppError(
             "Cannot correct balance on an archived account",

@@ -92,8 +92,12 @@ class Transaction(Base):
         server_default="posted",
     )
     amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR", server_default="INR")
-    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="INR", server_default="INR"
+    )
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     merchant: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -118,7 +122,9 @@ class Transaction(Base):
     splits: Mapped[list["TransactionSplit"]] = relationship(
         "TransactionSplit", back_populates="transaction", cascade="all, delete-orphan"
     )
-    category_rel: Mapped[Optional["Category"]] = relationship("Category", back_populates="transactions")
+    category_rel: Mapped[Optional["Category"]] = relationship(
+        "Category", back_populates="transactions"
+    )
     created_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("profiles.id", ondelete="SET NULL"),

@@ -101,9 +101,9 @@ def next_due_date_for_card(
     if last_statement == today:
         next_stmt = next_occurrence_of_day(today + timedelta(days=1), statement_day)
     return compute_due_date(
-        next_stmt if next_stmt > last_statement else next_occurrence_of_day(
-            last_statement + timedelta(days=1), statement_day
-        ),
+        next_stmt
+        if next_stmt > last_statement
+        else next_occurrence_of_day(last_statement + timedelta(days=1), statement_day),
         rule_type=due_rule_type,
         rule_value=due_rule_value,
     )

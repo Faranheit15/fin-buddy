@@ -33,7 +33,9 @@ class Profile(Base):
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Kolkata")
     # In-app notification preference thresholds (FR-Z3)
-    due_soon_days: Mapped[int] = mapped_column(Integer, nullable=False, default=7, server_default="7")
+    due_soon_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=7, server_default="7"
+    )
     high_utilization_percent: Mapped[int] = mapped_column(
         Integer, nullable=False, default=80, server_default="80"
     )
@@ -43,7 +45,9 @@ class Profile(Base):
         default=PlatformRole.USER,
         server_default=PlatformRole.USER.value,
     )
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

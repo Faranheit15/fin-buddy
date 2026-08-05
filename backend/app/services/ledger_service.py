@@ -92,20 +92,15 @@ async def card_outstanding_paise(session: AsyncSession, card_id: UUID) -> int:
     return int(result.scalar_one() or 0)
 
 
-async def cards_outstanding_map(
-    session: AsyncSession, organization_id: UUID
-) -> dict[UUID, int]:
-    stmt = (
-        _with_original_join(
-            select(Transaction.credit_card_id, _card_outstanding_expr()).where(
-                and_(
-                    Transaction.organization_id == organization_id,
-                    _posted_clause(),
-                )
+async def cards_outstanding_map(session: AsyncSession, organization_id: UUID) -> dict[UUID, int]:
+    stmt = _with_original_join(
+        select(Transaction.credit_card_id, _card_outstanding_expr()).where(
+            and_(
+                Transaction.organization_id == organization_id,
+                _posted_clause(),
             )
         )
-        .group_by(Transaction.credit_card_id)
-    )
+    ).group_by(Transaction.credit_card_id)
     result = await session.execute(stmt)
     return {row[0]: int(row[1] or 0) for row in result.all()}
 
@@ -122,25 +117,20 @@ async def account_balance_paise(session: AsyncSession, account_id: UUID) -> int:
     return int(result.scalar_one() or 0)
 
 
-async def accounts_balances_map(
-    session: AsyncSession, organization_id: UUID
-) -> dict[UUID, int]:
+async def accounts_balances_map(session: AsyncSession, organization_id: UUID) -> dict[UUID, int]:
     """Per-account posted G2 balances for an org (missing keys → treat as 0)."""
-    stmt = (
-        _with_original_join(
-            select(Transaction.account_id, _account_balance_sum_expr())
-            .select_from(Transaction)
-            .join(Account, Account.id == Transaction.account_id)
-            .where(
-                and_(
-                    Transaction.organization_id == organization_id,
-                    Account.organization_id == organization_id,
-                    _posted_clause(),
-                )
+    stmt = _with_original_join(
+        select(Transaction.account_id, _account_balance_sum_expr())
+        .select_from(Transaction)
+        .join(Account, Account.id == Transaction.account_id)
+        .where(
+            and_(
+                Transaction.organization_id == organization_id,
+                Account.organization_id == organization_id,
+                _posted_clause(),
             )
         )
-        .group_by(Transaction.account_id)
-    )
+    ).group_by(Transaction.account_id)
     result = await session.execute(stmt)
     return {row[0]: int(row[1] or 0) for row in result.all() if row[0] is not None}
 
@@ -163,22 +153,17 @@ async def contact_balance_paise(session: AsyncSession, contact_id: UUID) -> int:
     return spends - settlements
 
 
-async def contacts_balances_map(
-    session: AsyncSession, organization_id: UUID
-) -> dict[UUID, int]:
+async def contacts_balances_map(session: AsyncSession, organization_id: UUID) -> dict[UUID, int]:
     """Per-contact outstanding (posted spends − settlements) for an org."""
-    spend_stmt = (
-        _with_original_join(
-            select(Transaction.contact_id, _contact_spend_expr()).where(
-                and_(
-                    Transaction.organization_id == organization_id,
-                    Transaction.contact_id.is_not(None),
-                    _posted_clause(),
-                )
+    spend_stmt = _with_original_join(
+        select(Transaction.contact_id, _contact_spend_expr()).where(
+            and_(
+                Transaction.organization_id == organization_id,
+                Transaction.contact_id.is_not(None),
+                _posted_clause(),
             )
         )
-        .group_by(Transaction.contact_id)
-    )
+    ).group_by(Transaction.contact_id)
     spend_result = await session.execute(spend_stmt)
     spends = {row[0]: int(row[1] or 0) for row in spend_result.all() if row[0] is not None}
 
@@ -222,14 +207,12 @@ def base_org_query(model: type[object], organization_id: UUID) -> Select[tuple[o
     return select(model).where(model.organization_id == organization_id)  # type: ignore[attr-defined]
 
 
-async def income_expense_summary(
-    session: AsyncSession, organization_id: UUID
-) -> dict[str, int]:
+async def income_expense_summary(session: AsyncSession, organization_id: UUID) -> dict[str, int]:
     """Returns total income and expense (excluding transfers, adjustments, reversals).
-    
-    If a transaction has splits, they should theoretically be aggregated. 
+
+    If a transaction has splits, they should theoretically be aggregated.
     For a simplified summary, we sum the absolute value of tx amounts based on CategoryKind.
-    Transactions without a category are assumed Expense if amount reduces asset, Income if increases, 
+    Transactions without a category are assumed Expense if amount reduces asset, Income if increases,
     but for now we'll just sum where category is present, or fallback based on type.
     """
     # Exclude non-reporting types
@@ -240,7 +223,7 @@ async def income_expense_summary(
         TransactionType.REVERSAL,
         TransactionType.OPENING_BALANCE,
     }
-    
+
     # 1. Sum whole transactions that have a category
     tx_stmt = _with_original_join(
         select(Category.kind, func.sum(Transaction.amount_paise))
@@ -250,12 +233,12 @@ async def income_expense_summary(
             and_(
                 Transaction.organization_id == organization_id,
                 _posted_clause(),
-                Transaction.type.not_in(excluded_types)
+                Transaction.type.not_in(excluded_types),
             )
         )
         .group_by(Category.kind)
     )
-    
+
     # 2. Sum splits
     split_stmt = (
         select(Category.kind, func.sum(TransactionSplit.amount_paise))
@@ -266,23 +249,23 @@ async def income_expense_summary(
             and_(
                 Transaction.organization_id == organization_id,
                 Transaction.posting_status == PostingStatus.POSTED,
-                Transaction.type.not_in(excluded_types)
+                Transaction.type.not_in(excluded_types),
             )
         )
         .group_by(Category.kind)
     )
-    
+
     tx_res = await session.execute(tx_stmt)
     split_res = await session.execute(split_stmt)
-    
+
     summary = {"income": 0, "expense": 0}
-    
+
     for kind, amount in tx_res.all():
         key = "income" if kind == CategoryKind.income else "expense"
         summary[key] += int(amount or 0)
-        
+
     for kind, amount in split_res.all():
         key = "income" if kind == CategoryKind.income else "expense"
         summary[key] += int(amount or 0)
-        
+
     return summary

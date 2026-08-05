@@ -51,9 +51,7 @@ async def create_settlement(
 ) -> SettlementResponse:
     org, _ = org_ctx
     contact = await db.execute(
-        select(Contact.id).where(
-            Contact.id == body.contact_id, Contact.organization_id == org.id
-        )
+        select(Contact.id).where(Contact.id == body.contact_id, Contact.organization_id == org.id)
     )
     if contact.scalar_one_or_none() is None:
         raise NotFoundError("Contact not found")

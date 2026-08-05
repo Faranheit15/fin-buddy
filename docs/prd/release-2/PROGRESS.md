@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-04 |
-| **Current subtask** | US-04.I1 |
+| **Current subtask** | US-04.I2 |
 | **Overall** | 3 / 6 stories done |
 
 ## Story status
@@ -68,6 +68,7 @@
 | 2026-08-05 | US-03 | US-03.T4 | Backend + frontend DoD. Fixed import sorting, mypy generics, and unused variables. Next: V1. |
 | 2026-08-05 | US-03 | US-03.V1-V4 | Documented manual UI and integration residuals. Marked US-03 Done. Next: US-04.G1. |
 | 2026-08-05 | US-04 | US-04.G1-P4 | Decided to keep settlements separate, friend dues unchanged, warn on overpayment. Planned schema and UI. Next: I1. |
+| 2026-08-05 | US-04 | US-04.I1 | Added Obligation and ObligationPayment models, generated Alembic migration with RLS. Next: I2. |
 
 ## Blockers
 

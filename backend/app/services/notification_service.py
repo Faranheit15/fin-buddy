@@ -21,7 +21,9 @@ from app.services.ledger_service import cards_outstanding_map
 IST = ZoneInfo("Asia/Kolkata")
 
 # Types managed by attention sync (statement_ready is created at parse time).
-SYNC_TYPES = frozenset({"overdue", "due_soon", "high_utilization", "friend_dues", "statement_review"})
+SYNC_TYPES = frozenset(
+    {"overdue", "due_soon", "high_utilization", "friend_dues", "statement_review"}
+)
 
 
 @dataclass(frozen=True, slots=True)

@@ -48,7 +48,7 @@
 
 ### Implement
 
-- [ ] **US-04.I1** Models + migration + RLS.
+- [x] **US-04.I1** Models + migration + RLS.
 - [ ] **US-04.I2** Services: CRUD, payments, remaining balance, filters.
 - [ ] **US-04.I3** API routes under `/api/v1/obligations` (or `/debts`).
 - [ ] **US-04.I4** Frontend debts pages + contact detail section + sidebar — **impeccable craft-floor**; match contacts/cards list-detail patterns.

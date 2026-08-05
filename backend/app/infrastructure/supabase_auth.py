@@ -62,7 +62,9 @@ class SupabaseAuthClient:
             {"email": email, "password": password},
         )
 
-    async def sign_in_magic_link(self, email: str, *, redirect_to: str | None = None) -> dict[str, Any]:
+    async def sign_in_magic_link(
+        self, email: str, *, redirect_to: str | None = None
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {"email": email}
         if redirect_to:
             payload["options"] = {"email_redirect_to": redirect_to}
@@ -134,7 +136,12 @@ class SupabaseAuthClient:
                 data = {"message": response.text}
 
             if response.status_code >= 400:
-                msg = data.get("error_description") or data.get("msg") or data.get("message") or response.text
+                msg = (
+                    data.get("error_description")
+                    or data.get("msg")
+                    or data.get("message")
+                    or response.text
+                )
                 code = data.get("error_code") or data.get("error") or "supabase_auth_error"
                 status = 401 if response.status_code in (401, 403) else 400
                 if response.status_code >= 500:
@@ -147,5 +154,7 @@ def extract_user_id(auth_response: dict[str, Any]) -> UUID:
     user = auth_response.get("user") or auth_response
     user_id = user.get("id")
     if not user_id:
-        raise AppError("Auth response missing user id", code="auth_response_invalid", status_code=502)
+        raise AppError(
+            "Auth response missing user id", code="auth_response_invalid", status_code=502
+        )
     return UUID(str(user_id))

@@ -31,7 +31,9 @@ class CreditCard(Base):
     )
     last_four: Mapped[str] = mapped_column(String(4), nullable=False)
     credit_limit_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR", server_default="INR")
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="INR", server_default="INR"
+    )
     statement_day: Mapped[int] = mapped_column(Integer, nullable=False)
     due_rule_type: Mapped[DueRuleType] = mapped_column(
         SAEnum(DueRuleType, name="due_rule_type", values_callable=lambda x: [e.value for e in x]),

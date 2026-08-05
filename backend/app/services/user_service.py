@@ -53,7 +53,11 @@ async def ensure_profile_and_org(
 
     if profile is None:
         role = PlatformRole.SUPER_ADMIN if is_platform_admin else PlatformRole.USER
-        name = display_name or (user_metadata or {}).get("full_name") or (email.split("@")[0] if email else "User")
+        name = (
+            display_name
+            or (user_metadata or {}).get("full_name")
+            or (email.split("@")[0] if email else "User")
+        )
         profile = Profile(
             id=user_id,
             email=email,
@@ -108,10 +112,10 @@ async def ensure_profile_and_org(
         )
         session.add(membership)
         await session.flush()
-        
+
         await seed_default_categories(session, org.id)
         await session.flush()
-        
+
         await log_activity(
             session,
             action=ActivityAction.ORG_CREATE,

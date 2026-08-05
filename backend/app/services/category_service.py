@@ -41,7 +41,7 @@ DEFAULT_INCOME_CATEGORIES = [
 async def seed_default_categories(session: AsyncSession, org_id: UUID) -> None:
     """Seed the default income and expense categories for a new organization."""
     categories = []
-    
+
     for name in DEFAULT_EXPENSE_CATEGORIES:
         categories.append(
             Category(
@@ -50,7 +50,7 @@ async def seed_default_categories(session: AsyncSession, org_id: UUID) -> None:
                 kind=CategoryKind.expense,
             )
         )
-        
+
     for name in DEFAULT_INCOME_CATEGORIES:
         categories.append(
             Category(
@@ -59,7 +59,7 @@ async def seed_default_categories(session: AsyncSession, org_id: UUID) -> None:
                 kind=CategoryKind.income,
             )
         )
-        
+
     session.add_all(categories)
 
 
@@ -73,9 +73,14 @@ async def get_categories(session: AsyncSession, org_id: UUID) -> list[Category]:
 
 
 async def create_category(
-    session: AsyncSession, org_id: UUID, name: str, kind: CategoryKind, color: str | None = None, icon: str | None = None
+    session: AsyncSession,
+    org_id: UUID,
+    name: str,
+    kind: CategoryKind,
+    color: str | None = None,
+    icon: str | None = None,
 ) -> Category:
-    # Optional: ensure unique name within kind? 
+    # Optional: ensure unique name within kind?
     cat = Category(
         id=uuid4(),
         org_id=org_id,
@@ -112,7 +117,7 @@ async def update_category(
 
     for key, value in patch.items():
         setattr(cat, key, value)
-        
+
     await session.flush()
     return cat
 

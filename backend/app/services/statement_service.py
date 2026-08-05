@@ -77,13 +77,9 @@ def _looks_like_text(data: bytes) -> bool:
     return printable / len(sample) > 0.85
 
 
-async def get_statement_or_404(
-    db: AsyncSession, org_id: UUID, statement_id: UUID
-) -> Statement:
+async def get_statement_or_404(db: AsyncSession, org_id: UUID, statement_id: UUID) -> Statement:
     result = await db.execute(
-        select(Statement).where(
-            Statement.id == statement_id, Statement.organization_id == org_id
-        )
+        select(Statement).where(Statement.id == statement_id, Statement.organization_id == org_id)
     )
     row = result.scalar_one_or_none()
     if row is None:
@@ -93,9 +89,7 @@ async def get_statement_or_404(
 
 async def ensure_card(db: AsyncSession, org_id: UUID, card_id: UUID) -> CreditCard:
     result = await db.execute(
-        select(CreditCard).where(
-            CreditCard.id == card_id, CreditCard.organization_id == org_id
-        )
+        select(CreditCard).where(CreditCard.id == card_id, CreditCard.organization_id == org_id)
     )
     card = result.scalar_one_or_none()
     if card is None:
@@ -429,7 +423,11 @@ async def import_statement(
     """
     if statement.status == StatementStatus.IMPORTED:
         return {"created": 0, "skipped": 0}
-    if statement.status in {StatementStatus.UPLOADED, StatementStatus.PARSING, StatementStatus.FAILED}:
+    if statement.status in {
+        StatementStatus.UPLOADED,
+        StatementStatus.PARSING,
+        StatementStatus.FAILED,
+    }:
         raise AppError(
             "Statement is not ready for import. Parse and review first.",
             code="statement_not_ready",
@@ -456,7 +454,12 @@ async def import_statement(
     skipped = 0
 
     for line in lines:
-        if not line.merchant or not line.amount_paise or not line.occurred_at or not line.proposed_type:
+        if (
+            not line.merchant
+            or not line.amount_paise
+            or not line.occurred_at
+            or not line.proposed_type
+        ):
             skipped += 1
             continue
         tx = _posted_transaction_from_import_line(
@@ -495,20 +498,19 @@ async def import_statement(
         statement.status = StatementStatus.IMPORTED
     elif created > 0 and not still_to_import:
         # Accepted ones done; may still have pending — keep needs_review
-        statement.status = StatementStatus.NEEDS_REVIEW if still_pending else StatementStatus.IMPORTED
+        statement.status = (
+            StatementStatus.NEEDS_REVIEW if still_pending else StatementStatus.IMPORTED
+        )
     elif created > 0:
         statement.status = StatementStatus.NEEDS_REVIEW
 
     # If everything was rejected or accepted+imported
     all_lines_result = await db.execute(
-        select(StatementLineCandidate).where(
-            StatementLineCandidate.statement_id == statement.id
-        )
+        select(StatementLineCandidate).where(StatementLineCandidate.statement_id == statement.id)
     )
     all_lines = list(all_lines_result.scalars().all())
     if all_lines and all(
-        line.committed_transaction_id is not None
-        or line.review_status == LineReviewStatus.REJECTED
+        line.committed_transaction_id is not None or line.review_status == LineReviewStatus.REJECTED
         for line in all_lines
     ):
         statement.status = StatementStatus.IMPORTED

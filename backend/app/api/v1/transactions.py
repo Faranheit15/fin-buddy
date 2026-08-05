@@ -82,7 +82,9 @@ async def adjust_transaction(
     ip, ua = client_meta(request)
     if body.account_id is not None:
         if body.contact_id is not None:
-            raise AppError("Account adjustments cannot include a contact", code="invalid_adjustment")
+            raise AppError(
+                "Account adjustments cannot include a contact", code="invalid_adjustment"
+            )
         account = await account_service.get_account(
             db, organization_id=org.id, account_id=body.account_id
         )

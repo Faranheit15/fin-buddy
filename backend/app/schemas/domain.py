@@ -168,9 +168,11 @@ class TransactionSplitBase(BaseModel):
     notes: str | None = None
     tags: list[str] | None = None
 
+
 class TransactionSplitResponse(TransactionSplitBase, ORMModel):
     id: UUID
     transaction_id: UUID
+
 
 class TransactionResponse(ORMModel):
     id: UUID
@@ -202,6 +204,7 @@ class TransactionResponse(ORMModel):
 
 # ---- Transfers ----
 
+
 class TransferCreate(BaseModel):
     from_account_id: UUID
     to_account_id: UUID
@@ -210,12 +213,15 @@ class TransferCreate(BaseModel):
     notes: str | None = None
     tags: list[str] | None = None
 
+
 class TransferResponse(BaseModel):
     transfer_group_id: UUID
     out_transaction: TransactionResponse
     in_transaction: TransactionResponse
 
+
 # ---- Categories ----
+
 
 class CategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
@@ -223,12 +229,14 @@ class CategoryCreate(BaseModel):
     color: str | None = Field(default=None, max_length=30)
     icon: str | None = Field(default=None, max_length=50)
 
+
 class CategoryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     kind: CategoryKind | None = None
     color: str | None = Field(default=None, max_length=30)
     icon: str | None = Field(default=None, max_length=50)
     archived: bool | None = None
+
 
 class CategoryResponse(ORMModel):
     id: UUID
@@ -240,6 +248,7 @@ class CategoryResponse(ORMModel):
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
 
 # ---- Settlements ----
 

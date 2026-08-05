@@ -39,7 +39,9 @@ class Account(Base):
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     institution: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR", server_default="INR")
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="INR", server_default="INR"
+    )
     credit_card_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("credit_cards.id", ondelete="RESTRICT"),

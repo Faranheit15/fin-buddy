@@ -265,6 +265,4 @@ def google_oauth_url(settings: Settings, *, redirect_to: str) -> str:
     from urllib.parse import quote
 
     base = settings.supabase_url.rstrip("/")
-    return (
-        f"{base}/auth/v1/authorize?provider=google&redirect_to={quote(redirect_to, safe='')}"
-    )
+    return f"{base}/auth/v1/authorize?provider=google&redirect_to={quote(redirect_to, safe='')}"

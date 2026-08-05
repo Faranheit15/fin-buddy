@@ -194,9 +194,7 @@ async def test_reverse_posted_purchase_links_rows() -> None:
     """T4: reverse posted + reason → links set; net outstanding 0."""
     org_id = uuid4()
     card_id = uuid4()
-    original = _posted_purchase(
-        organization_id=org_id, credit_card_id=card_id, amount_paise=250_00
-    )
+    original = _posted_purchase(organization_id=org_id, credit_card_id=card_id, amount_paise=250_00)
     before = card_contribution_paise(
         tx_type=TransactionType.PURCHASE,
         amount_paise=original.amount_paise,
@@ -250,9 +248,7 @@ async def test_double_reverse_blocked_after_successful_reverse() -> None:
             reason="Second reverse",
         )
     assert exc.value.code == "already_reversed"
-    assert not any(
-        getattr(obj, "type", None) == TransactionType.REVERSAL for obj in db2.added
-    )
+    assert not any(getattr(obj, "type", None) == TransactionType.REVERSAL for obj in db2.added)
 
 
 @pytest.mark.asyncio

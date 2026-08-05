@@ -60,6 +60,17 @@ class AccountKind(enum.StrEnum):
     CREDIT_CARD = "credit_card"
 
 
+class ObligationType(enum.StrEnum):
+    RECEIVABLE = "receivable"
+    PAYABLE = "payable"
+
+
+class ObligationStatus(enum.StrEnum):
+    ACTIVE = "active"
+    PAID = "paid"
+    DEFAULTED = "defaulted"
+
+
 class SettlementMethod(enum.StrEnum):
     UPI = "upi"
     CASH = "cash"
@@ -110,6 +121,9 @@ class ActivityAction(enum.StrEnum):
     SETTLEMENT_CREATE = "settlement_create"
     SETTLEMENT_UPDATE = "settlement_update"
     SETTLEMENT_DELETE = "settlement_delete"
+    OBLIGATION_CREATE = "obligation_create"
+    OBLIGATION_UPDATE = "obligation_update"
+    OBLIGATION_PAYMENT = "obligation_payment"
     STATEMENT_UPLOAD = "statement_upload"
     STATEMENT_REVIEW = "statement_review"
     STATEMENT_IMPORT = "statement_import"

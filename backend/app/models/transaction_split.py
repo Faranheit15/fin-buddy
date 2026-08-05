@@ -15,9 +15,13 @@ class TransactionSplit(Base):
     __tablename__ = "transaction_splits"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    transaction_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("transactions.id", ondelete="CASCADE"), index=True)
-    category_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), index=True)
-    
+    transaction_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("transactions.id", ondelete="CASCADE"), index=True
+    )
+    category_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), index=True
+    )
+
     amount_paise: Mapped[int] = mapped_column(Integer)
     notes: Mapped[str | None] = mapped_column(String(500))
     tags: Mapped[list[str] | None] = mapped_column(ARRAY(Text))

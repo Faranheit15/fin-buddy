@@ -25,9 +25,7 @@ from app.services import statement_service
 router = APIRouter(prefix="/statements", tags=["statements"])
 
 
-async def _line_counts(
-    db: DbSession, statement_ids: list[UUID]
-) -> dict[UUID, dict[str, int]]:
+async def _line_counts(db: DbSession, statement_ids: list[UUID]) -> dict[UUID, dict[str, int]]:
     if not statement_ids:
         return {}
     result = await db.execute(
@@ -210,9 +208,7 @@ async def list_lines(
             StatementLineCandidate.created_at.asc(),
         )
     )
-    return [
-        StatementLineResponse.model_validate(row) for row in result.scalars().all()
-    ]
+    return [StatementLineResponse.model_validate(row) for row in result.scalars().all()]
 
 
 @router.patch("/{statement_id}/lines/{line_id}", response_model=StatementLineResponse)
@@ -314,9 +310,7 @@ async def import_statement(
     )
 
 
-async def _detail(
-    db: DbSession, org_id: UUID, statement: Statement
-) -> StatementDetailResponse:
+async def _detail(db: DbSession, org_id: UUID, statement: Statement) -> StatementDetailResponse:
     counts = await _line_counts(db, [statement.id])
     base = _to_response(statement, counts.get(statement.id))
     result = await db.execute(
@@ -330,7 +324,5 @@ async def _detail(
             StatementLineCandidate.created_at.asc(),
         )
     )
-    lines = [
-        StatementLineResponse.model_validate(row) for row in result.scalars().all()
-    ]
+    lines = [StatementLineResponse.model_validate(row) for row in result.scalars().all()]
     return StatementDetailResponse(**base.model_dump(), lines=lines)

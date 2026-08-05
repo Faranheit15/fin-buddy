@@ -15,7 +15,9 @@ logger = get_logger(__name__)
 
 def _already_applied(session: Session, name: str) -> bool:
     return (
-        session.execute(select(SeedHistory.id).where(SeedHistory.seed_name == name)).scalar_one_or_none()
+        session.execute(
+            select(SeedHistory.id).where(SeedHistory.seed_name == name)
+        ).scalar_one_or_none()
         is not None
     )
 

@@ -1,4 +1,4 @@
-"""Friend repayments / settlements."""
+"""Debts and loans."""
 
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -9,11 +9,11 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.models.enums import SettlementMethod
+from app.models.enums import ObligationStatus, ObligationType
 
 
-class Settlement(Base):
-    __tablename__ = "settlements"
+class Obligation(Base):
+    __tablename__ = "obligations"
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     organization_id: Mapped[UUID] = mapped_column(
@@ -22,28 +22,40 @@ class Settlement(Base):
         nullable=False,
         index=True,
     )
-    contact_id: Mapped[UUID] = mapped_column(
+    contact_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("contacts.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-    amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    currency: Mapped[str] = mapped_column(
-        String(3), nullable=False, default="INR", server_default="INR"
-    )
-    settled_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
-    )
-    method: Mapped[SettlementMethod] = mapped_column(
+    counterparty_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    type: Mapped[ObligationType] = mapped_column(
         SAEnum(
-            SettlementMethod,
-            name="settlement_method",
+            ObligationType,
+            name="obligation_type",
             values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
     )
+
+    amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="INR", server_default="INR"
+    )
+
+    status: Mapped[ObligationStatus] = mapped_column(
+        SAEnum(
+            ObligationStatus,
+            name="obligation_status",
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=ObligationStatus.ACTIVE,
+    )
+
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("profiles.id", ondelete="SET NULL"),

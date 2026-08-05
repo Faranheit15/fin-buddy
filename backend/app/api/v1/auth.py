@@ -135,9 +135,7 @@ async def demo_login_endpoint(
         raise ForbiddenError("Demo login is disabled", code="demo_auth_disabled")
     _auth_rate_limit(request)
     ip, ua = client_meta(request)
-    profile, org, tokens = await demo_login(
-        db, settings, ip_address=ip, user_agent=ua
-    )
+    profile, org, tokens = await demo_login(db, settings, ip_address=ip, user_agent=ua)
     role = await _membership_role(db, profile.id, org.id)
     return AuthResponse(
         user=_profile_out(profile),
@@ -161,9 +159,7 @@ async def magic_link(
     settings: AppSettings,
 ) -> MessageResponse:
     _auth_rate_limit(request)
-    await auth_service.request_magic_link(
-        settings, email=body.email, redirect_to=body.redirect_to
-    )
+    await auth_service.request_magic_link(settings, email=body.email, redirect_to=body.redirect_to)
     return MessageResponse(message="Magic link sent if the email is valid")
 
 

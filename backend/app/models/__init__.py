@@ -6,6 +6,8 @@ from app.models.contact import Contact
 from app.models.credit_card import CreditCard
 from app.models.logging import ActivityLog, ApiRequestLog, ErrorLog, SeedHistory
 from app.models.notification import InAppNotification
+from app.models.obligation import Obligation
+from app.models.obligation_payment import ObligationPayment
 from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
 from app.models.settlement import Settlement
@@ -24,6 +26,8 @@ __all__ = [
     "Transaction",
     "TransactionSplit",
     "Settlement",
+    "Obligation",
+    "ObligationPayment",
     "Statement",
     "StatementLineCandidate",
     "InAppNotification",

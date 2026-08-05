@@ -160,8 +160,18 @@ def upgrade() -> None:
         ),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("last_login_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.create_index("ix_profiles_email", "profiles", ["email"])
     op.create_index("ix_profiles_phone", "profiles", ["phone"])
@@ -171,8 +181,18 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("slug", sa.String(length=80), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.UniqueConstraint("slug"),
     )
     op.create_index("ix_organizations_slug", "organizations", ["slug"])
@@ -183,13 +203,25 @@ def upgrade() -> None:
         sa.Column("organization_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("role", org_role, nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["profiles.id"], ondelete="CASCADE"),
         sa.UniqueConstraint("organization_id", "user_id", name="uq_org_member"),
     )
-    op.create_index("ix_organization_members_organization_id", "organization_members", ["organization_id"])
+    op.create_index(
+        "ix_organization_members_organization_id", "organization_members", ["organization_id"]
+    )
     op.create_index("ix_organization_members_user_id", "organization_members", ["user_id"])
 
     op.create_table(
@@ -202,8 +234,18 @@ def upgrade() -> None:
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("tags", postgresql.ARRAY(sa.String(length=64)), nullable=True),
         sa.Column("archived_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="CASCADE"),
     )
     op.create_index("ix_contacts_organization_id", "contacts", ["organization_id"])
@@ -224,8 +266,18 @@ def upgrade() -> None:
         sa.Column("status", card_status, nullable=False, server_default="active"),
         sa.Column("held_by_contact_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["held_by_contact_id"], ["contacts.id"], ondelete="SET NULL"),
     )
@@ -244,8 +296,18 @@ def upgrade() -> None:
         sa.Column("status", statement_status, nullable=False, server_default="uploaded"),
         sa.Column("parse_error", sa.Text(), nullable=True),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["credit_card_id"], ["credit_cards.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["created_by"], ["profiles.id"], ondelete="SET NULL"),
@@ -268,8 +330,18 @@ def upgrade() -> None:
         sa.Column("category", sa.String(length=100), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["credit_card_id"], ["credit_cards.id"], ondelete="RESTRICT"),
         sa.ForeignKeyConstraint(["contact_id"], ["contacts.id"], ondelete="SET NULL"),
@@ -295,12 +367,24 @@ def upgrade() -> None:
         sa.Column("proposed_contact_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("review_status", line_review_status, nullable=False, server_default="pending"),
         sa.Column("committed_transaction_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["statement_id"], ["statements.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["proposed_contact_id"], ["contacts.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["committed_transaction_id"], ["transactions.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(
+            ["committed_transaction_id"], ["transactions.id"], ondelete="SET NULL"
+        ),
     )
     op.create_index(
         "ix_statement_line_candidates_statement_id", "statement_line_candidates", ["statement_id"]
@@ -322,8 +406,18 @@ def upgrade() -> None:
         sa.Column("method", settlement_method, nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["contact_id"], ["contacts.id"], ondelete="RESTRICT"),
         sa.ForeignKeyConstraint(["created_by"], ["profiles.id"], ondelete="SET NULL"),
@@ -342,11 +436,18 @@ def upgrade() -> None:
         sa.Column("body", sa.Text(), nullable=False),
         sa.Column("href", sa.String(length=500), nullable=True),
         sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["profiles.id"], ondelete="CASCADE"),
     )
-    op.create_index("ix_in_app_notifications_organization_id", "in_app_notifications", ["organization_id"])
+    op.create_index(
+        "ix_in_app_notifications_organization_id", "in_app_notifications", ["organization_id"]
+    )
     op.create_index("ix_in_app_notifications_user_id", "in_app_notifications", ["user_id"])
     op.create_index("ix_in_app_notifications_created_at", "in_app_notifications", ["created_at"])
 
@@ -362,7 +463,12 @@ def upgrade() -> None:
         sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("ip_address", sa.String(length=64), nullable=True),
         sa.Column("user_agent", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["actor_user_id"], ["profiles.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="SET NULL"),
     )
@@ -386,7 +492,12 @@ def upgrade() -> None:
         sa.Column("method", sa.String(length=16), nullable=True),
         sa.Column("request_id", sa.String(length=64), nullable=True),
         sa.Column("context", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["actor_user_id"], ["profiles.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="SET NULL"),
     )
@@ -411,7 +522,12 @@ def upgrade() -> None:
         sa.Column("user_agent", sa.Text(), nullable=True),
         sa.Column("request_body", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("error_message", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["actor_user_id"], ["profiles.id"], ondelete="SET NULL"),
     )
     op.create_index("ix_api_request_logs_request_id", "api_request_logs", ["request_id"])
@@ -424,7 +540,12 @@ def upgrade() -> None:
         "seed_history",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False),
         sa.Column("seed_name", sa.String(length=120), nullable=False),
-        sa.Column("applied_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "applied_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("checksum", sa.String(length=64), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.UniqueConstraint("seed_name"),

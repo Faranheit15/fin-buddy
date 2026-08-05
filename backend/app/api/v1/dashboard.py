@@ -40,9 +40,7 @@ async def dashboard(
     today = datetime.now(IST).date()
 
     pref = await db.execute(
-        select(Profile.due_soon_days, Profile.high_utilization_percent).where(
-            Profile.id == user.id
-        )
+        select(Profile.due_soon_days, Profile.high_utilization_percent).where(Profile.id == user.id)
     )
     pref_row = pref.one_or_none()
     due_soon_days = pref_row[0] if pref_row else 7

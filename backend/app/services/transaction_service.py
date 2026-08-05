@@ -458,14 +458,22 @@ async def create_transfer(
         raise AppError("Cannot transfer to the same account", code="invalid_transfer")
 
     from_account, from_card = await _resolve_transaction_account(
-        db, organization_id=organization_id, account_id=from_account_id, credit_card_id=None, currency="INR"
+        db,
+        organization_id=organization_id,
+        account_id=from_account_id,
+        credit_card_id=None,
+        currency="INR",
     )
     to_account, to_card = await _resolve_transaction_account(
-        db, organization_id=organization_id, account_id=to_account_id, credit_card_id=None, currency="INR"
+        db,
+        organization_id=organization_id,
+        account_id=to_account_id,
+        credit_card_id=None,
+        currency="INR",
     )
 
     transfer_group_id = uuid4()
-    
+
     # Create the OUT leg (from)
     tx_out = Transaction(
         id=uuid4(),
@@ -483,7 +491,7 @@ async def create_transfer(
         transfer_group_id=transfer_group_id,
         created_by=user_id,
     )
-    
+
     # Create the IN leg (to)
     tx_in = Transaction(
         id=uuid4(),
@@ -501,10 +509,10 @@ async def create_transfer(
         transfer_group_id=transfer_group_id,
         created_by=user_id,
     )
-    
+
     db.add(tx_out)
     db.add(tx_in)
-    
+
     await log_activity(
         db,
         action=ActivityAction.TRANSACTION_CREATE,
@@ -519,6 +527,7 @@ async def create_transfer(
     )
     await db.flush()
     return tx_out, tx_in
+
 
 async def get_transaction(
     db: AsyncSession, organization_id: UUID, transaction_id: UUID
@@ -546,23 +555,21 @@ async def replace_transaction_splits(
     ua: str | None = None,
 ) -> Transaction:
     from app.models.transaction_split import TransactionSplit
-    
+
     tx = await get_transaction(db, organization_id, transaction_id)
     if tx.posting_status != PostingStatus.DRAFT:
         raise ConflictError(
             "Splits can only be modified on draft transactions.",
             code="posted_immutable",
         )
-        
+
     sum_splits = sum(s["amount_paise"] for s in splits_data)
     if sum_splits != tx.amount_paise:
         raise AppError("Splits amount must equal transaction amount", code="invalid_splits_sum")
-        
+
     # Delete existing splits (cascade is handled by the ORM, but we can also do it explicitly)
-    await db.execute(
-        sa.delete(TransactionSplit).where(TransactionSplit.transaction_id == tx.id)
-    )
-    
+    await db.execute(sa.delete(TransactionSplit).where(TransactionSplit.transaction_id == tx.id))
+
     # Add new splits
     for sd in splits_data:
         split = TransactionSplit(
@@ -574,11 +581,11 @@ async def replace_transaction_splits(
             tags=sd.get("tags", []),
         )
         db.add(split)
-        
+
     # Nullify parent category if splits exist
     if splits_data:
         tx.category_id = None
-        
+
     await log_activity(
         db,
         action=ActivityAction.TRANSACTION_UPDATE,
@@ -593,6 +600,7 @@ async def replace_transaction_splits(
     await db.flush()
     return tx
 
+
 async def _ensure_card(db: AsyncSession, org_id: UUID, card_id: UUID) -> None:
     result = await db.execute(
         select(CreditCard.id).where(CreditCard.id == card_id, CreditCard.organization_id == org_id)
@@ -606,8 +614,8 @@ async def _ensure_contact(db: AsyncSession, org_id: UUID, contact_id: UUID) -> N
         select(Contact.id).where(Contact.id == contact_id, Contact.organization_id == org_id)
     )
     if result.scalar_one_or_none() is None:
-
         raise NotFoundError("Contact not found")
+
 
 async def _resolve_transaction_account(
     db: AsyncSession,
@@ -633,7 +641,9 @@ async def _resolve_transaction_account(
     account = await get_account(db, organization_id=organization_id, account_id=account_id)
     if account.kind == AccountKind.CREDIT_CARD:
         if account.credit_card_id is None:
-            raise AppError("Credit card account missing credit_card_id", code="account_card_mismatch")
+            raise AppError(
+                "Credit card account missing credit_card_id", code="account_card_mismatch"
+            )
         if credit_card_id is not None and credit_card_id != account.credit_card_id:
             raise AppError("Account and card do not match", code="account_card_mismatch")
         await _ensure_card(db, organization_id, account.credit_card_id)

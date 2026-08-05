@@ -89,9 +89,7 @@ async def get_unread_count(
             high_utilization_percent=util_pct,
         )
         await db.commit()
-    count = await notification_service.unread_count(
-        db, user_id=user.id, organization_id=org.id
-    )
+    count = await notification_service.unread_count(db, user_id=user.id, organization_id=org.id)
     return NotificationUnreadCount(unread=count)
 
 
@@ -103,9 +101,7 @@ async def mark_all_notifications_read(
     org_ctx: OrgContext,
 ) -> NotificationMarkReadResult:
     org, _ = org_ctx
-    updated = await notification_service.mark_all_read(
-        db, user_id=user.id, organization_id=org.id
-    )
+    updated = await notification_service.mark_all_read(db, user_id=user.id, organization_id=org.id)
     ip, ua = client_meta(request)
     await log_activity(
         db,

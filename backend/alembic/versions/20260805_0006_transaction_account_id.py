@@ -42,9 +42,7 @@ def upgrade() -> None:
         sa.text("SELECT count(*) FROM transactions WHERE account_id IS NULL")
     ).scalar()
     if remaining and int(remaining) > 0:
-        raise RuntimeError(
-            f"Cannot set account_id NOT NULL: {remaining} transaction(s) still null"
-        )
+        raise RuntimeError(f"Cannot set account_id NOT NULL: {remaining} transaction(s) still null")
 
     op.alter_column("transactions", "account_id", nullable=False)
     op.create_foreign_key(
@@ -55,7 +53,9 @@ def upgrade() -> None:
         ["id"],
         ondelete="RESTRICT",
     )
-    op.alter_column("transactions", "credit_card_id", existing_type=postgresql.UUID(as_uuid=True), nullable=True)
+    op.alter_column(
+        "transactions", "credit_card_id", existing_type=postgresql.UUID(as_uuid=True), nullable=True
+    )
 
     op.create_index("ix_transactions_account_id", "transactions", ["account_id"])
     op.create_index(

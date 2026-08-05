@@ -25,6 +25,7 @@ category_kind = postgresql.ENUM(
     create_type=False,
 )
 
+
 def _ensure_enum(name: str, values_sql: str) -> None:
     op.execute(
         sa.text(
@@ -37,6 +38,7 @@ def _ensure_enum(name: str, values_sql: str) -> None:
             """
         )
     )
+
 
 def upgrade() -> None:
     _ensure_enum("category_kind", "income', 'expense")
@@ -147,6 +149,7 @@ def upgrade() -> None:
         ["category_id"],
         unique=False,
     )
+
 
 def downgrade() -> None:
     op.drop_index("ix_transaction_splits_category_id", table_name="transaction_splits")

@@ -38,7 +38,7 @@
 ### Gather
 
 - [x] **US-02.G1** Decide whether `credit_card_id` stays required on card spends or becomes optional when `account_id` points at a card account — document invariant.
-- [ ] **US-02.G2** List balance effect rules per account kind (asset accounts vs credit liability).
+- [x] **US-02.G2** List balance effect rules per account kind (asset accounts vs credit liability).
 - [ ] **US-02.G3** Confirm Correct Balance UX fields (target balance, reason, effective date).
 
 ### Plan
@@ -102,4 +102,46 @@
 - **Settlements:** keep existing `settlements` table for friend repayments; **do not** fold them into ledger adjustments. Future **obligations** (US-04) are separate; friend dues must **not double-count** settlement rows and obligation repayments (document when US-04 lands).
 - Adjust UI / Correct Balance lives on accounts in this story (US-01 deferred it here).
 
-- Asset vs liability effect rules:
+### US-02.G2 — Balance effect rules by account kind (2026-08-05)
+
+**Code today:** `app/domain/ledger.py` `CARD_EFFECT` / `CONTACT_EFFECT` + `ledger_service` posted-only sums. Card “balance” = **issuer liability outstanding** (purchase/fee/interest/opening_balance **+**; refund/payment_to_issuer **−**; adjustment `delta_sign×amount`; reversal negates original). Matches PRD §8.1. Contact balance unchanged by this story (settlements still subtract separately).
+
+#### Semantics of the reported balance number
+
+| Account kind | Balance meaning | Net-worth role (FR-D6) |
+|--------------|-----------------|------------------------|
+| `bank`, `cash`, `wallet` | **Asset** — money held (higher = richer) | **+** balance |
+| `credit_card` | **Liability** — spend outstanding to issuer (higher = more owed); same math as today’s card outstanding | **−** balance |
+
+One posted row contributes once via `account_id`. Do **not** add the same card txs again as a separate “card KPI” in net worth — card KPI may still group by `credit_card_id` for dashboard, but NW uses account balances (G1).
+
+#### Effect multipliers (posted only; drafts = 0)
+
+**Liability** (`credit_card`) — keep `CARD_EFFECT`:
+
+| Type | Effect on outstanding |
+|------|----------------------|
+| purchase, fee, interest, opening_balance | +amount |
+| refund, payment_to_issuer | −amount |
+| adjustment | `delta_sign × amount` |
+| reversal | `−CARD_EFFECT[original] × amount` |
+
+**Asset** (`bank` / `cash` / `wallet`) — new `ASSET_EFFECT` (opposite for spend/refund; opening stays +):
+
+| Type | Effect on asset balance |
+|------|-------------------------|
+| purchase, fee, payment_to_issuer | −amount (money left the account) |
+| refund, interest, opening_balance | +amount (inflow / starting cash / interest credited) |
+| adjustment | `delta_sign × amount` (Correct Balance / opening via adjust) |
+| reversal | `−ASSET_EFFECT[original] × amount` |
+
+Notes:
+- **`interest` is kind-dependent in meaning:** on cards = finance charge (+liability); on assets = interest earned (+cash). Same type enum; effect table selects by account kind.
+- **`payment_to_issuer` on an asset account** = outflow paying a card (pre–US-03 transfer). On the card account a separate `payment_to_issuer` row still reduces liability — two rows, two accounts (not a single transfer_group yet).
+- **Transfers / income category types** deferred to US-03; until then use purchase/refund/adjustment/`payment_to_issuer` as above.
+- **Contact attribution:** keep `CONTACT_EFFECT` for rows with `contact_id` regardless of account kind (friend dues from attributed spend); settlements remain the only subtractor for friend dues in R2B.
+
+#### Correct Balance (feeds G3)
+
+`target_balance − current_derived_balance = delta_paise` → post posted `adjustment` with `delta_sign` / `amount_paise=abs(delta)` on that `account_id` (and card id if credit_card kind per G1).
+

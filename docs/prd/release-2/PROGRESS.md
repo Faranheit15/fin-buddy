@@ -63,6 +63,7 @@
 | 2026-08-05 | US-03 | US-03.I3 | Implemented API endpoints + schemas for categories/transfers/splits. Next: T1-T4. |
 | 2026-08-05 | US-03 | US-03.T1-T4 | Added unit + API tests for transfers, splits, categories, ledger contributions. Next: I4. |
 | 2026-08-05 | US-03 | US-03.P4 | Shaped UI for categories, transfers, and splits. Next: I4. |
+| 2026-08-05 | US-03 | US-03.I4 | Implemented Categories CRUD, TransactionForm Transfer/Category pickers, SplitEditorDialog, and ledger filters. Next: I5. |
 
 ## Blockers
 

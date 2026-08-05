@@ -13,9 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ReverseTransactionDialog } from "@/features/transactions/reverse-transaction-dialog";
+import { SplitEditorDialog } from "@/features/transactions/split-editor-dialog";
 import { TransactionForm } from "@/features/transactions/transaction-form";
 import { listAccounts, type AccountResponse } from "@/lib/api/accounts";
 import { listContacts, type Contact } from "@/lib/api/contacts";
+import { listCategories, type Category } from "@/lib/api/categories";
 import { ApiError } from "@/lib/api/client";
 import {
   deleteTransaction,
@@ -57,14 +59,17 @@ function TransactionsInner() {
   const [contactFilter, setContactFilter] = useState(initialContact);
   const [typeFilter, setTypeFilter] = useState<TransactionType | "">("");
   const [statusFilter, setStatusFilter] = useState<PostingStatus | "">("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [reverseTarget, setReverseTarget] = useState<Transaction | null>(null);
+  const [splitTarget, setSplitTarget] = useState<Transaction | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot>({
     items: [],
     total: 0,
@@ -82,13 +87,15 @@ function TransactionsInner() {
     let cancelled = false;
     void (async () => {
       try {
-        const [accountRes, contactRes] = await Promise.all([
+        const [accountRes, contactRes, categoryRes] = await Promise.all([
           listAccounts(accessToken, 1, 100),
           listContacts(accessToken, { pageSize: 100 }),
+          listCategories(accessToken),
         ]);
         if (cancelled) return;
         setAccounts(accountRes.items);
         setContacts(contactRes.items);
+        setCategories(categoryRes);
       } catch {
         // meta load is best-effort; list still works
       }
@@ -110,6 +117,7 @@ function TransactionsInner() {
           pageSize: 50,
           accountId: accountFilter || undefined,
           contactId: contactFilter || undefined,
+          categoryId: categoryFilter || undefined,
           type: typeFilter || undefined,
           postingStatus: statusFilter || undefined,
           q: qDebounced || undefined,
@@ -136,6 +144,7 @@ function TransactionsInner() {
     reloadKey,
     accountFilter,
     contactFilter,
+    categoryFilter,
     typeFilter,
     statusFilter,
     qDebounced,
@@ -148,6 +157,10 @@ function TransactionsInner() {
   const contactMap = useMemo(
     () => Object.fromEntries(contacts.map((c) => [c.id, c])),
     [contacts],
+  );
+  const categoryMap = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.id, c])),
+    [categories],
   );
 
   async function onDelete(id: string) {
@@ -224,6 +237,7 @@ function TransactionsInner() {
               accessToken={accessToken}
               accounts={accounts}
               contacts={contacts}
+              categories={categories}
               defaultAccountId={accountFilter || undefined}
               defaultContactId={contactFilter || undefined}
               onCancel={() => setShowForm(false)}
@@ -237,7 +251,7 @@ function TransactionsInner() {
       )}
 
       <Card className="shadow-sm ring-1 ring-foreground/10">
-        <CardContent className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-5">
+        <CardContent className="grid gap-3 py-4 sm:grid-cols-3 lg:grid-cols-6">
           <div className="space-y-1">
             <Label htmlFor="tx-filter-account" className="text-[11px] text-muted-foreground">
               Account
@@ -268,6 +282,24 @@ function TransactionsInner() {
             >
               <option value="">Anyone</option>
               {contacts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="tx-filter-category" className="text-[11px] text-muted-foreground">
+              Category
+            </Label>
+            <select
+              id="tx-filter-category"
+              className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="">All categories</option>
+              {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -393,6 +425,7 @@ function TransactionsInner() {
                 {txs.map((tx) => {
                   const account = accountMap[tx.account_id];
                   const contact = tx.contact_id ? contactMap[tx.contact_id] : null;
+                  const categoryName = tx.category_id ? categoryMap[tx.category_id]?.name : tx.category;
                   const reduce =
                     tx.type === "refund" ||
                     tx.type === "payment_to_issuer" ||
@@ -410,9 +443,9 @@ function TransactionsInner() {
                         <p className="truncate font-medium" title={tx.merchant}>
                           {tx.merchant}
                         </p>
-                        {tx.category && (
-                          <p className="truncate text-[11px] text-muted-foreground" title={tx.category}>
-                            {tx.category}
+                        {categoryName && (
+                          <p className="truncate text-[11px] text-muted-foreground" title={categoryName}>
+                            {categoryName}
                           </p>
                         )}
                         {alreadyReversed ? (
@@ -484,6 +517,15 @@ function TransactionsInner() {
                                 {rowBusy ? "Posting…" : "Post"}
                               </Button>
                               <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={rowBusy}
+                                onClick={() => setSplitTarget(tx)}
+                              >
+                                Split
+                              </Button>
+                              <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 text-xs text-muted-foreground"
@@ -528,6 +570,20 @@ function TransactionsInner() {
           if (!open) setReverseTarget(null);
         }}
         onReversed={() => {
+          setActionError(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
+
+      <SplitEditorDialog
+        accessToken={accessToken}
+        transaction={splitTarget}
+        categories={categories}
+        open={splitTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setSplitTarget(null);
+        }}
+        onSaved={() => {
           setActionError(null);
           setReloadKey((k) => k + 1);
         }}

@@ -7,6 +7,7 @@ import {
   Users,
   ArrowLeftRight,
   Wallet,
+  Tags,
 } from "lucide-react";
 
 export type NavItem = {
@@ -22,5 +23,6 @@ export const appNavItems: NavItem[] = [
   { href: "/app/contacts", label: "Contacts", icon: Users },
   { href: "/app/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/app/statements", label: "Statements", icon: FileText },
+  { href: "/app/categories", label: "Categories", icon: Tags },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];

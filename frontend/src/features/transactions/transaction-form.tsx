@@ -16,11 +16,14 @@ import {
   type Transaction,
   type TransactionType,
 } from "@/lib/api/transactions";
+import { type Category } from "@/lib/api/categories";
+import { createTransfer } from "@/lib/api/transfers";
 
 type TransactionFormProps = {
   accessToken: string;
   accounts: AccountResponse[];
   contacts: Contact[];
+  categories: Category[];
   defaultAccountId?: string;
   defaultContactId?: string;
   onCreated: (tx: Transaction) => void;
@@ -37,17 +40,19 @@ export function TransactionForm({
   accessToken,
   accounts,
   contacts,
+  categories,
   defaultAccountId,
   defaultContactId,
   onCreated,
   onCancel,
 }: TransactionFormProps) {
   const [accountId, setAccountId] = useState(defaultAccountId ?? accounts[0]?.id ?? "");
+  const [toAccountId, setToAccountId] = useState(accounts[1]?.id ?? accounts[0]?.id ?? "");
   const [contactId, setContactId] = useState(defaultContactId ?? "");
-  const [type, setType] = useState<TransactionType>("purchase");
+  const [type, setType] = useState<TransactionType | "transfer">("purchase");
   const [amountRupees, setAmountRupees] = useState("");
   const [merchant, setMerchant] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [notes, setNotes] = useState("");
   const [occurredAt, setOccurredAt] = useState(todayLocalInput);
   const [loading, setLoading] = useState<"posted" | "draft" | null>(null);
@@ -68,6 +73,22 @@ export function TransactionForm({
       const acc = accounts.find((a) => a.id === accountId);
       const isCard = acc?.kind === "credit_card";
 
+      if (type === "transfer") {
+        if (!toAccountId) throw new Error("Select destination account");
+        if (accountId === toAccountId) throw new Error("Source and destination accounts must be different");
+        const [outTx] = await createTransfer(accessToken, {
+          from_account_id: accountId,
+          to_account_id: toAccountId,
+          amount_paise: amountPaise,
+          occurred_at: occurred.toISOString(),
+          merchant: merch,
+          notes: notes.trim() || null,
+          posting_status: postingStatus,
+        });
+        onCreated(outTx);
+        return;
+      }
+
       const tx = await createTransaction(accessToken, {
         account_id: accountId,
         credit_card_id: isCard ? acc.credit_card_id : null,
@@ -76,7 +97,7 @@ export function TransactionForm({
         occurred_at: occurred.toISOString(),
         merchant: merch,
         contact_id: contactId || null,
-        category: category.trim() || null,
+        category_id: categoryId || null,
         notes: notes.trim() || null,
         posting_status: postingStatus,
       });
@@ -138,7 +159,7 @@ export function TransactionForm({
             id="tx-type"
             className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
             value={type}
-            onChange={(e) => setType(e.target.value as TransactionType)}
+            onChange={(e) => setType(e.target.value as TransactionType | "transfer")}
             disabled={busy}
           >
             {TRANSACTION_TYPES.map((t) => (
@@ -146,8 +167,29 @@ export function TransactionForm({
                 {t.label}
               </option>
             ))}
+            <option value="transfer">Transfer (between accounts)</option>
           </select>
         </div>
+        
+        {type === "transfer" && (
+          <div className="space-y-1.5">
+            <Label htmlFor="tx-to-account">To Account</Label>
+            <select
+              id="tx-to-account"
+              className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
+              value={toAccountId}
+              onChange={(e) => setToAccountId(e.target.value)}
+              required
+              disabled={busy}
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} {a.institution ? `(${a.institution})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="tx-amount">Amount (₹)</Label>
           <Input
@@ -200,17 +242,25 @@ export function TransactionForm({
             ))}
           </select>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="tx-category">Category</Label>
-          <Input
-            id="tx-category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="Food, Travel…"
-            disabled={busy}
-            maxLength={64}
-          />
-        </div>
+        {type !== "transfer" && (
+          <div className="space-y-1.5">
+            <Label htmlFor="tx-category">Category</Label>
+            <select
+              id="tx-category"
+              className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              disabled={busy}
+            >
+              <option value="">Uncategorized</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="tx-notes">Notes</Label>
           <Input

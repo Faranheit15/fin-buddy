@@ -50,7 +50,7 @@
 - [x] **US-03.I1** Migrations + models + seed categories on org bootstrap (or first access).
 - [x] **US-03.I2** Transfer + split services with validation; reporting helpers.
 - [x] **US-03.I3** API endpoints + schemas.
-- [ ] **US-03.I4** Frontend: category manager/picker, transfer UI, split editor, filters — **impeccable craft-floor**.
+- [x] **US-03.I4** Frontend: category manager/picker, transfer UI, split editor, filters — **impeccable craft-floor**.
 - [ ] **US-03.I5** Migrate free-text `category` to `category_id` where practical (keep text fallback if needed).
 
 ### Test

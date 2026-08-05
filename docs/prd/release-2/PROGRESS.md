@@ -4,14 +4,14 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-01 |
-| **Current subtask** | US-01.I2 |
+| **Current subtask** | US-01.I3 |
 | **Overall** | 0 / 6 stories done |
 
 ## Story status
 
 | Story | Status | Notes |
 |-------|--------|-------|
-| US-01 Auditable ledger | In progress | I1 done → next I2 posted-only balance filters |
+| US-01 Auditable ledger | In progress | I2 done → next I3 transaction API |
 | US-02 Multi-account balances | Todo | Blocked on US-01 |
 | US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
@@ -30,6 +30,7 @@
 | 2026-08-05 | US-01 | US-01.P3 | Impeccable shape brief for ledger: status badges, draft/post CTAs, Reverse dialog; adjust UI deferred to US-02. Next: P4. |
 | 2026-08-05 | US-01 | US-01.P4 | Wrote unit+API test matrix mapped to T1–T5; FakeSession/helpers approach. Next: I1. |
 | 2026-08-05 | US-01 | US-01.I1 | Added PostingStatus, adjustment/reversal types, Transaction columns, Alembic 20260805_0003 + delta_sign; GOTCHAS enum note. Next: I2. |
+| 2026-08-05 | US-01 | US-01.I2 | Posted-only ledger filters + adjustment/reversal contributions; domain helpers + tests. Next: I3. |
 
 ## Blockers
 

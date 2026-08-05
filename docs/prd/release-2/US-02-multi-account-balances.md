@@ -37,7 +37,7 @@
 
 ### Gather
 
-- [ ] **US-02.G1** Decide whether `credit_card_id` stays required on card spends or becomes optional when `account_id` points at a card account — document invariant.
+- [x] **US-02.G1** Decide whether `credit_card_id` stays required on card spends or becomes optional when `account_id` points at a card account — document invariant.
 - [ ] **US-02.G2** List balance effect rules per account kind (asset accounts vs credit liability).
 - [ ] **US-02.G3** Confirm Correct Balance UX fields (target balance, reason, effective date).
 
@@ -74,5 +74,32 @@
 
 ## Story notes
 
-- Card/account invariant:
+### US-02.G1 — Card vs `account_id` invariant (2026-08-05)
+
+**Code today:** `Transaction.credit_card_id` is **NOT NULL** (FK `credit_cards`, `ON DELETE RESTRICT`). All writers (manual create, adjust, reverse, statement import, opening balance) require a card. `ledger_service` card outstanding groups by `credit_card_id`. Statements are card-scoped. No `accounts` table yet.
+
+**PRD:** `accounts.credit_card_id` set when `kind=credit_card`; transactions gain `account_id` (“card txs also resolve via credit_card account”). FR-AC5: card accounts retain billing specialization (1:1 with `credit_cards`).
+
+#### Decision (invariant)
+
+1. **`account_id` becomes required** on every transaction after US-02 migration (backfill: card → its 1:1 `credit_card` account).
+2. **`credit_card_id` becomes nullable** (not dropped).
+3. **Kind rules (service-enforced + DB check preferred):**
+   - `account.kind == credit_card` → `credit_card_id` **MUST** be set and **MUST equal** `accounts.credit_card_id` for that account (denormalized pointer for existing card/dashboard/statement queries without forcing every reader to join).
+   - `account.kind ∈ {bank, cash, wallet}` → `credit_card_id` **MUST be NULL**.
+4. **API compat during R2B:**
+   - Create with `credit_card_id` only → resolve `account_id` from card’s account.
+   - Create with `account_id` only (card kind) → fill `credit_card_id` from `account.credit_card_id`.
+   - Create with both → reject if mismatched (`account_card_mismatch`).
+   - Bank/cash/wallet creates send `account_id` only.
+5. **Statements / import** stay card-scoped: always set both IDs on the card’s account.
+6. **Card outstanding KPIs** may keep grouping by `credit_card_id` where non-null; account balance service sums by `account_id` (posted-only, US-01). Do not double-count the same row in both “card outstanding” and a separate card-account balance for net worth later — one physical row, one contribution (G2 will define signs).
+
+**Rejected:** Keep `credit_card_id` NOT NULL forever (blocks bank/cash/wallet). Drop `credit_card_id` immediately (breaks statement import + card filters + dashboard without a large rewrite in this story).
+
+#### Related defaults (Gather ambiguity)
+
+- **Settlements:** keep existing `settlements` table for friend repayments; **do not** fold them into ledger adjustments. Future **obligations** (US-04) are separate; friend dues must **not double-count** settlement rows and obligation repayments (document when US-04 lands).
+- Adjust UI / Correct Balance lives on accounts in this story (US-01 deferred it here).
+
 - Asset vs liability effect rules:

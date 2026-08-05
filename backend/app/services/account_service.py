@@ -125,10 +125,11 @@ async def archive_account(
     account = await get_account(db, organization_id=organization_id, account_id=account_id)
     if account.archived_at is None:
         account.archived_at = archived_at
+        await db.flush()
+    return account
+
 
 async def correct_balance(
-    await db.flush()
-    return account
     db: AsyncSession,
     *,
     organization_id: UUID,

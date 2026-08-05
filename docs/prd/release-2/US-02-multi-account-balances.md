@@ -52,7 +52,7 @@
 
 - [x] **US-02.I1** Models + enums + Alembic migration + backfill.
 - [x] **US-02.I2** Account balance service + Correct Balance → adjustment (uses US-01).
-- [ ] **US-02.I3** Accounts API + wire transactions to accept `account_id`.
+- [x] **US-02.I3** Accounts API + wire transactions to accept `account_id`.
 - [ ] **US-02.I4** Frontend: accounts list/detail, nav, transaction account picker, Correct Balance — **impeccable craft-floor**; Operate density consistent with cards/contacts.
 - [ ] **US-02.I5** Update `.env.example` only if new config needed (usually none).
 

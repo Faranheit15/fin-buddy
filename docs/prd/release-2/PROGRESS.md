@@ -4,14 +4,14 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-01 |
-| **Current subtask** | US-01.V1 |
+| **Current subtask** | US-01.V2 |
 | **Overall** | 0 / 6 stories done |
 
 ## Story status
 
 | Story | Status | Notes |
 |-------|--------|-------|
-| US-01 Auditable ledger | In progress | T5 DoD green → next V1 manual validate |
+| US-01 Auditable ledger | In progress | V1 validated via tests + residuals → next V2 reverse |
 | US-02 Multi-account balances | Todo | Blocked on US-01 |
 | US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
@@ -39,7 +39,9 @@
 | 2026-08-05 | US-01 | US-01.T3 | Adjustment ±delta + contact contrib; zero rejected; service +/–/contact outstanding checks. Next: T4. |
 | 2026-08-05 | US-01 | US-01.T4 | Posted 409 immutability; draft delete; create posted/draft; reject reverse type; cross-org card/tx NotFound. Next: T5. |
 | 2026-08-05 | US-01 | US-01.T5 | DoD: pytest 79, ruff green (fixed I001), frontend lint+typecheck OK; mypy pre-existing statement_service noted in GOTCHAS. Next: V1. |
+| 2026-08-05 | US-01 | US-01.V1 | Draft→post balance path re-verified via 6 unit tests; browser residuals documented (no live stack). Next: V2. |
 
 ## Blockers
 
 - Pre-existing: `mypy app` fails on `statement_service.create_statement_from_upload` (`period_start`/`period_end` untyped). Not from US-01 — see `docs/GOTCHAS.md`.
+- US-01 Validate residuals: live UI checks for V1 need `docker compose` / browser when stack is available (see story V1 notes).

@@ -66,7 +66,7 @@
 
 ### Validate
 
-- [ ] **US-01.V1** Manual: create draft → balances unchanged → post → balances update.
+- [x] **US-01.V1** Manual: create draft → balances unchanged → post → balances update.
 - [ ] **US-01.V2** Manual: reverse a posted purchase; ledger and card outstanding correct.
 - [ ] **US-01.V3** Manual: import review confirm still posts without duplicates.
 - [ ] **US-01.V4** **Impeccable** on ledger UI: `polish` + `harden` (and `clarify` if reverse/correct copy is unclear).
@@ -550,4 +550,22 @@ Covered P4 matrix:
 | `uv run mypy app` | 1 pre-existing error: `statement_service.create_statement_from_upload` untyped `period_start`/`period_end` — documented in GOTCHAS; not US-01 |
 | frontend `bun run lint` | pass |
 | frontend `bun run typecheck` | pass |
+
+### US-01.V1 — Draft → post balances (2026-08-05)
+
+**Acceptance path:** create draft → card/contact outstanding unchanged → `post_draft` → outstanding includes amount.
+
+**Exercised (automated, no live stack):**
+| Step | Evidence |
+|------|----------|
+| Create draft → contrib 0 | `test_create_draft_does_not_move_balance` |
+| Draft-only / posted-only filter | `test_draft_only_org_outstanding_is_zero`, `test_posted_only_sum_matches_filter_semantics` |
+| Post draft → status posted + contrib = amount | `test_post_draft_sets_posted`, `test_post_draft_then_amount_enters_outstanding`, `test_post_draft_then_included_in_outstanding` |
+
+Re-ran the above (plus create-default-posted control) **6 passed** on 2026-08-05. Fin Buddy frontend/backend containers and `:3000`/`:8000` were **not** up in this environment (only unrelated pennny docker).
+
+**Residual manual (browser / live stack):**
+1. UI: **Save draft** on `/app/transactions` → confirm Draft badge; dashboard/card outstanding unchanged.
+2. UI: **Post** on that draft → badge Posted; outstanding increases by amount.
+3. Optional: confirm primary **Add transaction** still posts immediately (control).
 

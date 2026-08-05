@@ -45,7 +45,7 @@
 
 - [x] **US-02.P1** Spec `accounts` schema + RLS policies + indexes.
 - [x] **US-02.P2** Spec migration/backfill: card → account; transaction `account_id`.
-- [ ] **US-02.P3** Spec `/api/v1/accounts` endpoints and balance response shape.
+- [x] **US-02.P3** Spec `/api/v1/accounts` endpoints and balance response shape.
 - [ ] **US-02.P4** Spec frontend routes, empty states, Correct Balance dialog — **impeccable `shape`** (+ `onboard` notes for first bank/cash/wallet); keep `/app/cards` working.
 
 ### Implement
@@ -384,5 +384,98 @@ CREATE INDEX ix_transactions_org_account
 #### F. Out of P2
 
 API response shapes, Correct Balance endpoint details → **P3**. Frontend → **P4**.
+
+### US-02.P3 — `/api/v1/accounts` + balance response (2026-08-05)
+
+**Router:** `backend/app/api/v1/accounts.py` · prefix `/accounts` · include in `api/v1/__init__.py`.  
+**Auth:** `CurrentUser` + `OrgContext` (same as cards).  
+**Services:** `account_service` (CRUD/archive) + `ledger_service` extensions (`account_balance_paise` / `accounts_balances_map` using G2 ASSET/LIABILITY effects, posted-only).
+
+#### 1. Response shape
+
+```text
+AccountResponse
+  id, organization_id
+  kind: AccountKind                  # bank | cash | wallet | credit_card
+  name, institution, currency
+  credit_card_id: UUID | null        # set iff kind=credit_card
+  archived_at: datetime | null
+  balance_paise: int                 # derived; G2 meaning by kind
+  balance_label: "balance" | "outstanding"   # optional helper for UI; or derive client-side from kind
+  created_at, updated_at
+```
+
+- **List/detail always include `balance_paise`** (mirror `CreditCardResponse.outstanding_paise`).
+- For `credit_card` kind: `balance_paise` == card spend outstanding (same formula as `card_outstanding_paise` for linked card).
+- For asset kinds: cash held (ASSET_EFFECT sum).
+- Do **not** embed full card billing fields here — link via `credit_card_id` to existing `/cards/{id}`.
+
+**AccountDetailResponse** (GET by id, optional): `AccountResponse` + `recent_transactions: list[TransactionResponse]` (page_size ≤ 20, newest first) — nice-to-have in I3; list can omit recent.
+
+#### 2. Endpoints
+
+| Method | Path | Body / query | Status | Behavior |
+|--------|------|--------------|--------|----------|
+| GET | `/accounts` | `page`, `page_size`, `kind?`, `include_archived=false` | 200 | `PaginatedResponse[AccountResponse]`; default hide `archived_at IS NOT NULL`; order by kind then name |
+| POST | `/accounts` | `AccountCreate` | 201 | Create bank/cash/wallet only (`kind ≠ credit_card`). Optional `opening_balance_paise` → posted adjustment (or `opening_balance`) after insert. Reject `credit_card` kind (`use_cards_api`). |
+| GET | `/accounts/{id}` | — | 200 | Org-scoped; 404 if missing/wrong org |
+| PATCH | `/accounts/{id}` | `AccountUpdate` | 200 | `name`, `institution` only (not kind, not credit_card_id). Archived: allow unarchive (`archived_at=null`) + name edits |
+| POST | `/accounts/{id}/archive` | — | 200 | Set `archived_at=now()`; idempotent if already archived. Block archive of last? — no. Card-linked accounts: allow archive but card CRUD remains on `/cards` |
+| POST | `/accounts/{id}/correct-balance` | `CorrectBalanceRequest` | 201 | See §3; returns created `TransactionResponse` (adjustment) **or** `{ adjustment, account }` — prefer **TransactionResponse** + client refetches account |
+
+**Card accounts:** created only by card create path (I3), not `POST /accounts`. List still returns them.
+
+#### 3. Correct Balance request
+
+```text
+CorrectBalanceRequest
+  target_balance_paise: int          # same unit as balance_paise for that kind
+  reason: str (min 1, max 2000)
+  occurred_at: datetime | null       # default now UTC
+```
+
+Server:
+1. Load account; 404 / `account_archived` if archived.
+2. `current = account_balance_paise(account_id)`.
+3. `delta = target_balance_paise - current`; if `delta == 0` → 400 `already_at_target`.
+4. Call adjust with G1 ids (`account_id`, `credit_card_id` if card kind), `delta_paise=delta`, reason, occurred_at; merchant default `"Balance adjustment"`.
+5. Commit; return adjustment tx.
+
+Keep `POST /transactions/adjust` as low-level delta API (extend with optional `account_id` in I3).
+
+#### 4. Create / update schemas
+
+```text
+AccountCreate
+  kind: bank | cash | wallet     # not credit_card
+  name: str
+  institution: str | null
+  currency: str = "INR"
+  opening_balance_paise: int | null   # ≥0; asset opening only
+
+AccountUpdate
+  name: str | null
+  institution: str | null
+  archived_at: datetime | null        # clear to unarchive; or use archive endpoint only — prefer archive endpoint + PATCH name/institution only
+```
+
+#### 5. Error codes
+
+| Code | When |
+|------|------|
+| `not_found` | Wrong org / missing id |
+| `use_cards_api` | POST kind=credit_card |
+| `account_archived` | Correct Balance / mutating money on archived |
+| `already_at_target` | delta 0 |
+| `invalid_delta` / `invalid_reason` | reuse adjust codes |
+| `account_card_mismatch` | adjust/create path G1 violation |
+
+#### 6. Transaction create wiring (I3 note)
+
+`TransactionCreate` gains optional `account_id`; resolve per G1. Response includes `account_id` + nullable `credit_card_id`.
+
+#### 7. Out of P3
+
+Frontend routes / Correct Balance dialog shape → **P4**. Implement balance helpers → **I2**.
 
 

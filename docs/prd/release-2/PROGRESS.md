@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-04 |
-| **Current subtask** | US-04.T1 |
+| **Current subtask** | US-04.T3 |
 | **Overall** | 3 / 6 stories done |
 
 ## Story status
@@ -73,6 +73,7 @@
 | 2026-08-06 | US-04 | US-04.I3 | Implemented and registered FastAPI endpoints for obligations and payments. Next: I4. |
 | 2026-08-06 | US-04 | US-04.I4 | Created frontend pages for debts, linked in sidebar, added obligations section in contact details. Next: I5. |
 | 2026-08-06 | US-04 | US-04.I5 | Verified dashboard friend-dues correctly excludes obligations (no code changes needed). Next: T1. |
+| 2026-08-06 | US-04 | US-04.T1,T2 | Added backend unit tests for partial repayment, overpayment, and settlements double-count logic. Next: T3. |
 
 ## Blockers
 

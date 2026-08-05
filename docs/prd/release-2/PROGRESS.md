@@ -64,6 +64,7 @@
 | 2026-08-05 | US-03 | US-03.T1-T4 | Added unit + API tests for transfers, splits, categories, ledger contributions. Next: I4. |
 | 2026-08-05 | US-03 | US-03.P4 | Shaped UI for categories, transfers, and splits. Next: I4. |
 | 2026-08-05 | US-03 | US-03.I4 | Implemented Categories CRUD, TransactionForm Transfer/Category pickers, SplitEditorDialog, and ledger filters. Next: I5. |
+| 2026-08-05 | US-03 | US-03.I5 | Wrote alembic script to migrate free-text categories to proper Category rows and populate `category_id`. Next: T4 (DoD). |
 
 ## Blockers
 

@@ -51,7 +51,7 @@
 - [x] **US-03.I2** Transfer + split services with validation; reporting helpers.
 - [x] **US-03.I3** API endpoints + schemas.
 - [x] **US-03.I4** Frontend: category manager/picker, transfer UI, split editor, filters — **impeccable craft-floor**.
-- [ ] **US-03.I5** Migrate free-text `category` to `category_id` where practical (keep text fallback if needed).
+- [x] **US-03.I5** Migrate free-text `category` to `category_id` where practical (keep text fallback if needed).
 
 ### Test
 

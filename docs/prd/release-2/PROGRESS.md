@@ -40,8 +40,9 @@
 | 2026-08-05 | US-01 | US-01.T4 | Posted 409 immutability; draft delete; create posted/draft; reject reverse type; cross-org card/tx NotFound. Next: T5. |
 | 2026-08-05 | US-01 | US-01.T5 | DoD: pytest 79, ruff green (fixed I001), frontend lint+typecheck OK; mypy pre-existing statement_service noted in GOTCHAS. Next: V1. |
 | 2026-08-05 | US-01 | US-01.V1 | Draft→post balance path re-verified via 6 unit tests; browser residuals documented (no live stack). Next: V2. |
+| 2026-08-05 | US-01 | US-01.V2 | Reverse purchase path re-verified via 8 unit tests; UI Reverse dialog residuals documented. Next: V3. |
 
 ## Blockers
 
 - Pre-existing: `mypy app` fails on `statement_service.create_statement_from_upload` (`period_start`/`period_end` untyped). Not from US-01 — see `docs/GOTCHAS.md`.
-- US-01 Validate residuals: live UI checks for V1 need `docker compose` / browser when stack is available (see story V1 notes).
+- US-01 Validate residuals: live UI checks for V1–V2 need `docker compose` / browser when stack is available (see story V1/V2 notes).

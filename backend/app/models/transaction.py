@@ -3,17 +3,32 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    SmallInteger,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.models.enums import TransactionType
+from app.models.enums import PostingStatus, TransactionType
 
 
 class Transaction(Base):
     __tablename__ = "transactions"
+    __table_args__ = (
+        CheckConstraint(
+            "delta_sign IS NULL OR delta_sign IN (-1, 1)",
+            name="ck_transactions_delta_sign",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     organization_id: Mapped[UUID] = mapped_column(
@@ -48,12 +63,34 @@ class Transaction(Base):
         ),
         nullable=False,
     )
+    posting_status: Mapped[PostingStatus] = mapped_column(
+        SAEnum(
+            PostingStatus,
+            name="posting_status",
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=PostingStatus.POSTED,
+        server_default="posted",
+    )
     amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR", server_default="INR")
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     merchant: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    correction_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delta_sign: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    reverses_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    reversed_by_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("profiles.id", ondelete="SET NULL"),

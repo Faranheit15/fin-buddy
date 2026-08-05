@@ -42,6 +42,13 @@ class TransactionType(enum.StrEnum):
     INTEREST = "interest"
     PAYMENT_TO_ISSUER = "payment_to_issuer"
     OPENING_BALANCE = "opening_balance"
+    ADJUSTMENT = "adjustment"
+    REVERSAL = "reversal"
+
+
+class PostingStatus(enum.StrEnum):
+    DRAFT = "draft"
+    POSTED = "posted"
 
 
 class SettlementMethod(enum.StrEnum):

@@ -53,24 +53,24 @@
 - [x] **US-02.I1** Models + enums + Alembic migration + backfill.
 - [x] **US-02.I2** Account balance service + Correct Balance → adjustment (uses US-01).
 - [x] **US-02.I3** Accounts API + wire transactions to accept `account_id`.
-- [ ] **US-02.I4** Frontend: accounts list/detail, nav, transaction account picker, Correct Balance — **impeccable craft-floor**; Operate density consistent with cards/contacts.
+- [x] **US-02.I4** Frontend: accounts list/detail, nav, transaction account picker, Correct Balance — **impeccable craft-floor**; Operate density consistent with cards/contacts.
 - [ ] **US-02.I5** Update `.env.example` only if new config needed (usually none).
 
 ### Test
 
-- [ ] **US-02.T1** Unit: opening balance via adjustment.
-- [ ] **US-02.T2** Unit: correct-balance delta.
-- [ ] **US-02.T3** API: CRUD/archive; cross-org denied.
-- [ ] **US-02.T4** Migration check: every card has an account; sample balances unchanged.
-- [ ] **US-02.T5** Backend + frontend DoD commands for touched code.
+- [x] **US-02.T1** Unit: opening balance via adjustment.
+- [x] **US-02.T2** Unit: correct-balance delta.
+- [x] **US-02.T3** API: CRUD/archive; cross-org denied.
+- [x] **US-02.T4** Migration check: every card has an account; sample balances unchanged.
+- [x] **US-02.T5** Backend + frontend DoD commands for touched code.
 
 ### Validate
 
-- [ ] **US-02.V1** Manual: create bank/cash/wallet; post spend/income; balances match.
-- [ ] **US-02.V2** Manual: Correct Balance on cash; adjustment appears; history intact.
-- [ ] **US-02.V3** Manual: existing cards dashboard KPIs still correct.
-- [ ] **US-02.V4** **Impeccable:** `onboard` empty states; `polish` + `harden` + `audit` on `/app/accounts` surfaces.
-- [ ] **US-02.V5** Mark Done; update PROGRESS + RELEASE-2-TASKS R2B.
+- [x] **US-02.V1** Manual: create bank/cash/wallet; post spend/income; balances match.
+- [x] **US-02.V2** Manual: Correct Balance on cash; adjustment appears; history intact.
+- [x] **US-02.V3** Manual: existing cards dashboard KPIs still correct.
+- [x] **US-02.V4** **Impeccable:** `onboard` empty states; `polish` + `harden` + `audit` on `/app/accounts` surfaces.
+- [x] **US-02.V5** Mark Done; update PROGRESS + RELEASE-2-TASKS R2B.
 
 ## Story notes
 

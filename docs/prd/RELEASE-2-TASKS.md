@@ -88,34 +88,34 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Backend
 
-- [ ] Create `accounts` table: `kind` (`bank` | `cash` | `wallet` | `credit_card`), name, institution, currency, optional `credit_card_id`, archive fields.
-- [ ] Migration: create a `credit_card` account row for each existing `credit_cards` record (1:1).
-- [ ] Add `account_id` on transactions (backfill from card → account mapping where applicable).
-- [ ] Account balance service: sum posted ledger effects by account kind rules.
-- [ ] Correct Balance API: compute delta vs target → post `adjustment` with reason.
-- [ ] CRUD APIs under `/api/v1/accounts` with org membership checks + RLS.
+- [x] Create `accounts` table: `kind` (`bank` | `cash` | `wallet` | `credit_card`), name, institution, currency, optional `credit_card_id`, archive fields.
+- [x] Migration: create a `credit_card` account row for each existing `credit_cards` record (1:1).
+- [x] Add `account_id` on transactions (backfill from card → account mapping where applicable).
+- [x] Account balance service: sum posted ledger effects by account kind rules.
+- [x] Correct Balance API: compute delta vs target → post `adjustment` with reason.
+- [x] CRUD APIs under `/api/v1/accounts` with org membership checks + RLS.
 
 ### Frontend
 
-- [ ] Routes: `/app/accounts`, `/app/accounts/[id]`.
-- [ ] Sidebar nav entry: Accounts.
-- [ ] List/detail UI: balances, recent activity, Correct Balance dialog.
-- [ ] Transaction form: select account (cards still selectable via their account or card picker).
-- [ ] Empty states for first bank/cash/wallet.
-- [ ] **Impeccable:** `shape` + `onboard` empty states; craft-floor; Validate with `polish` + `harden` + `audit`.
+- [x] Routes: `/app/accounts`, `/app/accounts/[id]`.
+- [x] Sidebar nav entry: Accounts.
+- [x] List/detail UI: balances, recent activity, Correct Balance dialog.
+- [x] Transaction form: select account (cards still selectable via their account or card picker).
+- [x] Empty states for first bank/cash/wallet.
+- [x] **Impeccable:** `shape` + `onboard` empty states; craft-floor; Validate with `polish` + `harden` + `audit`.
 
 ### Tests
 
-- [ ] Unit: opening balance via adjustment.
-- [ ] Unit: correct-balance delta posting.
-- [ ] API: CRUD + archive; cross-org denied.
-- [ ] Migration test or script check: every card has an account; balances unchanged after backfill.
+- [x] Unit: opening balance via adjustment.
+- [x] Unit: correct-balance delta posting.
+- [x] API: CRUD + archive; cross-org denied.
+- [x] Migration test or script check: every card has an account; balances unchanged after backfill.
 
 ### Definition of done
 
-- [ ] User can CRUD bank/cash/wallet accounts and see derived balances.
-- [ ] Correct Balance creates an adjustment; no silent stored-balance overwrite.
-- [ ] Existing cards remain usable; dashboard card KPIs still work.
+- [x] User can CRUD bank/cash/wallet accounts and see derived balances.
+- [x] Correct Balance creates an adjustment; no silent stored-balance overwrite.
+- [x] Existing cards remain usable; dashboard card KPIs still work.
 
 ---
 
@@ -362,8 +362,8 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 Mapped to PRD §15.2:
 
-1. Bank/cash/wallet accounts with ledger-derived balances.
-2. Correct Balance → adjustment; no silent posted mutation.
+1. [x] Bank/cash/wallet accounts with ledger-derived balances.
+2. [x] Correct Balance → adjustment; no silent posted mutation.
 3. Transfers excluded from income/expense.
 4. Personal debt/loan + partial repayments.
 5. Card EMI with separate principal-block utilization.

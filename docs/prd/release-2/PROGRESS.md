@@ -3,17 +3,17 @@
 | Field | Value |
 |--------|--------|
 | **Updated** | 2026-08-05 |
-| **Current story** | US-02 |
-| **Current subtask** | US-02.I4 |
-| **Overall** | 1 / 6 stories done |
+| **Current story** | US-03 |
+| **Current subtask** | US-03.G1 |
+| **Overall** | 2 / 6 stories done |
 
 ## Story status
 
 | Story | Status | Notes |
 |-------|--------|-------|
 | US-01 Auditable ledger | Done | R2A complete; browser residuals for V1–V3 optional |
-| US-02 Multi-account balances | In progress | I3 done → next I4 Frontend |
-| US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
+| US-02 Multi-account balances | Done | R2B (Part 1) complete; account ledger working |
+| US-03 Categories / transfers / splits | Todo | - [x] **US-03.I3** API endpoints + schemas for categories/transfers/splits.<br>- [x] **US-03.T1-T4** Unit and API tests.<br>- [ ] **US-03.I4** Frontend: category manager/picker, transfer UI, split editor, filters. |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
 | US-05 Card EMIs & GST | Todo | Blocked on US-01, US-02 |
 | US-06 Insights / imports / reminders | Todo | Blocked on US-02…US-05 for full scope |
@@ -54,6 +54,15 @@
 | 2026-08-05 | US-02 | US-02.I1 | Account model/enum, Alembic 0005+0006 backfill/RLS, writers resolve account_id; pytest 79. Next: I2. |
 | 2026-08-05 | US-02 | US-02.I2 | ASSET_EFFECT + account_balance_paise + correct_balance→adjustment; tests. Next: I3. |
 | 2026-08-05 | US-02 | US-02.I3 | Verified Accounts API and transaction wiring (account_id) from previous pull; all implemented. Next: I4. |
+| 2026-08-05 | US-02 | US-02.I4 | Accounts UI list, detail, Correct Balance dialog, transaction form wiring. Next: V1. |
+| 2026-08-05 | US-02 | US-02.V1 | Manual: create bank/cash/wallet; post spend/income; balances match (Residuals). Next: V2. |
+| 2026-08-05 | US-02 | US-02.V2 | Manual: Correct Balance on cash; adjustment appears; history intact (Residuals). Next: V3. |
+| 2026-08-05 | US-02 | US-02.V3 | Manual: existing cards dashboard KPIs still correct (Residuals). Next: V4. |
+| 2026-08-05 | US-02 | US-02.V4 | Impeccable polish applied on `/app/accounts` surfaces. Next: V5. |
+| 2026-08-05 | US-02 | US-02.V5 | Marked US-02 Done; ticked R2B Accounts in RELEASE-2-TASKS; pointer → US-03.G1. |
+| 2026-08-05 | US-03 | US-03.I3 | Implemented API endpoints + schemas for categories/transfers/splits. Next: T1-T4. |
+| 2026-08-05 | US-03 | US-03.T1-T4 | Added unit + API tests for transfers, splits, categories, ledger contributions. Next: I4. |
+| 2026-08-05 | US-03 | US-03.P4 | Shaped UI for categories, transfers, and splits. Next: I4. |
 
 ## Blockers
 

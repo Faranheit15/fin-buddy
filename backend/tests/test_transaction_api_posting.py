@@ -69,6 +69,7 @@ def _posted_purchase(**overrides: object) -> SimpleNamespace:
 
 @pytest.mark.asyncio
 async def test_update_posted_raises_immutable() -> None:
+    """T4: PATCH posted → 409 posted_immutable."""
     tx = _posted_purchase()
     db = _RecordingSession([tx])
     with pytest.raises(ConflictError) as exc:
@@ -80,10 +81,12 @@ async def test_update_posted_raises_immutable() -> None:
             patch={"merchant": "Nope"},
         )
     assert exc.value.code == "posted_immutable"
+    assert exc.value.status_code == 409
 
 
 @pytest.mark.asyncio
 async def test_delete_posted_raises_immutable() -> None:
+    """T4: DELETE posted → 409 posted_immutable."""
     tx = _posted_purchase()
     db = _RecordingSession([tx])
     with pytest.raises(ConflictError) as exc:
@@ -94,10 +97,12 @@ async def test_delete_posted_raises_immutable() -> None:
             transaction_id=tx.id,
         )
     assert exc.value.code == "posted_immutable"
+    assert exc.value.status_code == 409
 
 
 @pytest.mark.asyncio
 async def test_update_draft_allows_merchant_change() -> None:
+    """T4: PATCH draft merchant OK."""
     tx = _posted_purchase(posting_status=PostingStatus.DRAFT)
     db = _RecordingSession([tx])
     updated = await transaction_service.update_transaction(
@@ -108,6 +113,21 @@ async def test_update_draft_allows_merchant_change() -> None:
         patch={"merchant": "Edited"},
     )
     assert updated.merchant == "Edited"
+    assert db.flush_count >= 1
+
+
+@pytest.mark.asyncio
+async def test_delete_draft_ok() -> None:
+    """T4: DELETE draft succeeds (service deletes row)."""
+    tx = _posted_purchase(posting_status=PostingStatus.DRAFT)
+    db = _RecordingSession([tx])
+    await transaction_service.delete_transaction(
+        db,  # type: ignore[arg-type]
+        organization_id=tx.organization_id,
+        user_id=uuid4(),
+        transaction_id=tx.id,
+    )
+    assert any(obj is tx for obj in db.deleted)
     assert db.flush_count >= 1
 
 
@@ -171,6 +191,7 @@ async def test_post_already_posted_conflicts() -> None:
 
 @pytest.mark.asyncio
 async def test_reverse_posted_purchase_links_rows() -> None:
+    """T4: reverse posted + reason → links set; net outstanding 0."""
     org_id = uuid4()
     card_id = uuid4()
     original = _posted_purchase(
@@ -297,7 +318,7 @@ async def test_adjust_zero_delta_rejected() -> None:
 
 @pytest.mark.asyncio
 async def test_adjust_positive_delta_increases_outstanding() -> None:
-    """T3: adjust(+150_00) → posted; delta_sign=1; amount_paise=150_00; contrib +150_00."""
+    """T4/T3: adjust(+150_00) with card in org → posted adjustment; contrib +150_00."""
     org_id = uuid4()
     card_id = uuid4()
     db = _RecordingSession([card_id])
@@ -395,6 +416,7 @@ async def test_adjust_with_contact_moves_card_and_contact() -> None:
 
 @pytest.mark.asyncio
 async def test_create_rejects_adjustment_type() -> None:
+    """T4: create type=adjustment → invalid_posting_type."""
     db = _RecordingSession()
     with pytest.raises(AppError) as exc:
         await transaction_service.create_transaction(
@@ -408,6 +430,130 @@ async def test_create_rejects_adjustment_type() -> None:
             merchant="X",
         )
     assert exc.value.code == "invalid_posting_type"
+    assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_reversal_type() -> None:
+    """T4: create type=reversal → invalid_posting_type."""
+    db = _RecordingSession()
+    with pytest.raises(AppError) as exc:
+        await transaction_service.create_transaction(
+            db,  # type: ignore[arg-type]
+            organization_id=uuid4(),
+            user_id=uuid4(),
+            credit_card_id=uuid4(),
+            tx_type=TransactionType.REVERSAL,
+            amount_paise=10_00,
+            occurred_at=datetime.now(UTC),
+            merchant="X",
+        )
+    assert exc.value.code == "invalid_posting_type"
+
+
+@pytest.mark.asyncio
+async def test_create_defaults_to_posted_and_moves_balance() -> None:
+    """T4: create without posting_status → posted; outstanding moves."""
+    org_id = uuid4()
+    card_id = uuid4()
+    amount = 120_00
+    db = _RecordingSession([card_id])
+    tx = await transaction_service.create_transaction(
+        db,  # type: ignore[arg-type]
+        organization_id=org_id,
+        user_id=uuid4(),
+        credit_card_id=card_id,
+        tx_type=TransactionType.PURCHASE,
+        amount_paise=amount,
+        occurred_at=datetime.now(UTC),
+        merchant="Default posted",
+    )
+    assert tx.posting_status == PostingStatus.POSTED
+    assert any(obj is tx for obj in db.added)
+    assert (
+        card_contribution_paise(
+            tx_type=tx.type,
+            amount_paise=tx.amount_paise,
+            posting_status=tx.posting_status,
+        )
+        == amount
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_draft_does_not_move_balance() -> None:
+    """T4: create posting_status=draft → balances unchanged (contrib 0)."""
+    org_id = uuid4()
+    card_id = uuid4()
+    amount = 55_00
+    db = _RecordingSession([card_id])
+    tx = await transaction_service.create_transaction(
+        db,  # type: ignore[arg-type]
+        organization_id=org_id,
+        user_id=uuid4(),
+        credit_card_id=card_id,
+        tx_type=TransactionType.PURCHASE,
+        amount_paise=amount,
+        occurred_at=datetime.now(UTC),
+        merchant="Draft only",
+        posting_status=PostingStatus.DRAFT,
+    )
+    assert tx.posting_status == PostingStatus.DRAFT
+    assert (
+        card_contribution_paise(
+            tx_type=tx.type,
+            amount_paise=tx.amount_paise,
+            posting_status=tx.posting_status,
+        )
+        == 0
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_wrong_card_not_found() -> None:
+    """T4: card not in org → NotFoundError (cross-org / wrong card)."""
+    db = _RecordingSession([None])
+    with pytest.raises(NotFoundError):
+        await transaction_service.create_transaction(
+            db,  # type: ignore[arg-type]
+            organization_id=uuid4(),
+            user_id=uuid4(),
+            credit_card_id=uuid4(),
+            tx_type=TransactionType.PURCHASE,
+            amount_paise=10_00,
+            occurred_at=datetime.now(UTC),
+            merchant="Foreign card",
+        )
+
+
+@pytest.mark.asyncio
+async def test_adjust_wrong_card_not_found() -> None:
+    """T4: adjust with card outside org → NotFoundError."""
+    db = _RecordingSession([None])
+    with pytest.raises(NotFoundError):
+        await transaction_service.adjust_balance(
+            db,  # type: ignore[arg-type]
+            organization_id=uuid4(),
+            user_id=uuid4(),
+            credit_card_id=uuid4(),
+            delta_paise=10_00,
+            reason="Foreign adjust",
+        )
+
+
+@pytest.mark.asyncio
+async def test_reverse_foreign_org_not_found() -> None:
+    """T4: reverse tx from another org → NotFoundError."""
+    tx = _posted_purchase()
+    db = _RecordingSession([None])  # get_transaction scoped miss
+    with pytest.raises(NotFoundError):
+        await transaction_service.reverse_transaction(
+            db,  # type: ignore[arg-type]
+            organization_id=uuid4(),
+            user_id=uuid4(),
+            transaction_id=tx.id,
+            reason="Wrong org",
+        )
 
 
 @pytest.mark.asyncio

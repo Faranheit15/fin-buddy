@@ -43,7 +43,7 @@
 
 ### Plan
 
-- [ ] **US-02.P1** Spec `accounts` schema + RLS policies + indexes.
+- [x] **US-02.P1** Spec `accounts` schema + RLS policies + indexes.
 - [ ] **US-02.P2** Spec migration/backfill: card → account; transaction `account_id`.
 - [ ] **US-02.P3** Spec `/api/v1/accounts` endpoints and balance response shape.
 - [ ] **US-02.P4** Spec frontend routes, empty states, Correct Balance dialog — **impeccable `shape`** (+ `onboard` notes for first bank/cash/wallet); keep `/app/cards` working.
@@ -187,5 +187,117 @@ Prefer **account-scoped** Correct Balance that accepts `target_balance_paise` + 
 - Title: “Correct balance”
 - Confirm: “Post adjustment”
 - Success: stay on account detail; balance updates; new adjustment visible in activity/ledger.
+
+### US-02.P1 — Accounts schema + RLS + indexes (2026-08-05)
+
+**File (I1):** `backend/alembic/versions/20260805_0005_accounts.py`  
+**revision:** `20260805_0005` · **down_revision:** `20260805_0004`  
+**Scope this plan:** `accounts` table + enum + constraints/indexes + RLS SQL. Transaction `account_id` + backfill = **P2**. ORM/API = I1–I3.
+
+#### 1. Enum `account_kind`
+
+```sql
+DO $$ BEGIN
+  CREATE TYPE account_kind AS ENUM ('bank', 'cash', 'wallet', 'credit_card');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+```
+
+Python: `AccountKind(StrEnum)` with the same four values. Alembic: `_ensure_enum` / `create_type=False` style like `posting_status`.
+
+#### 2. Table `accounts`
+
+| Column | Type | Null | Notes |
+|--------|------|------|-------|
+| `id` | UUID PK | no | `gen_random_uuid()` / app uuid4 |
+| `organization_id` | UUID FK → `organizations.id` ON DELETE CASCADE | no | |
+| `kind` | `account_kind` | no | |
+| `name` | VARCHAR(120) | no | Display name; for card accounts default = card nickname at backfill |
+| `institution` | VARCHAR(120) | yes | Bank/wallet label; card issuer optional copy |
+| `currency` | CHAR(3) | no | Default `'INR'` |
+| `credit_card_id` | UUID FK → `credit_cards.id` ON DELETE RESTRICT | yes | Set **iff** `kind = credit_card` (G1) |
+| `archived_at` | TIMESTAMPTZ | yes | Soft-archive (FR-AC6); NULL = active |
+| `created_at` / `updated_at` | TIMESTAMPTZ | no | `now()` |
+
+**Check constraints:**
+```sql
+CHECK (
+  (kind = 'credit_card' AND credit_card_id IS NOT NULL)
+  OR (kind <> 'credit_card' AND credit_card_id IS NULL)
+)
+```
+
+**Uniqueness:**
+```sql
+CREATE UNIQUE INDEX uq_accounts_credit_card_id
+  ON accounts (credit_card_id)
+  WHERE credit_card_id IS NOT NULL;
+```
+→ at most one account per card (1:1).
+
+Optional service-level uniqueness: active `(organization_id, kind, lower(name))` — not enforced in DB in R2B (users may rename; avoid blocking archive/restore).
+
+#### 3. Indexes
+
+```sql
+CREATE INDEX ix_accounts_organization_id ON accounts (organization_id);
+CREATE INDEX ix_accounts_org_kind ON accounts (organization_id, kind);
+CREATE INDEX ix_accounts_org_active
+  ON accounts (organization_id)
+  WHERE archived_at IS NULL;
+```
+
+#### 4. RLS (defense in depth)
+
+**Today:** no Postgres RLS policies exist in Alembic; FastAPI `OrgContext` + service-role DB is the real gate (same as cards/contacts).
+
+**Still ship for `accounts` (and document):**
+
+```sql
+ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE accounts FORCE ROW LEVEL SECURITY;  -- optional; skip FORCE if service-role must bypass without SET ROLE
+
+-- Membership-scoped access (Supabase JWT / auth.uid())
+CREATE POLICY accounts_select_member ON accounts
+  FOR SELECT USING (
+    organization_id IN (
+      SELECT organization_id FROM organization_members
+      WHERE user_id = auth.uid()
+    )
+  );
+CREATE POLICY accounts_insert_member ON accounts
+  FOR INSERT WITH CHECK (
+    organization_id IN (
+      SELECT organization_id FROM organization_members
+      WHERE user_id = auth.uid()
+    )
+  );
+CREATE POLICY accounts_update_member ON accounts
+  FOR UPDATE USING (
+    organization_id IN (
+      SELECT organization_id FROM organization_members
+      WHERE user_id = auth.uid()
+    )
+  );
+-- Soft-archive via UPDATE; no DELETE policy for members (or restrict DELETE to none)
+```
+
+**Notes for I1 / GOTCHAS:**
+- If the app pool uses **service_role**, policies do not constrain backend; keep **API org checks** as source of truth.
+- If `auth.uid()` is unavailable in plain Postgres CI, wrap RLS policy creation in a conditional or apply only when Supabase roles exist — prefer shipping SQL that matches contacts/cards when those gain RLS; until then document “policies ready; enable when auth.uid() path exists.”
+- Do **not** grant anon unrestricted access.
+
+#### 5. Out of P1 (explicit)
+
+| Deferred | Story subtask |
+|----------|----------------|
+| `transactions.account_id` + nullable `credit_card_id` + backfill | **P2** |
+| Account balance service / Correct Balance | **P3** / I2 |
+| `/api/v1/accounts` routes | **P3** / I3 |
+| Frontend | **P4** / I4 |
+
+#### 6. Downgrade
+
+Drop policies → drop indexes → drop table `accounts` → drop type `account_kind` only if unused (safe if table gone).
 
 

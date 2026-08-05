@@ -379,6 +379,38 @@ async def bulk_set_review_status(
     return count
 
 
+def _posted_transaction_from_import_line(
+    *,
+    statement: Statement,
+    line: StatementLineCandidate,
+    user_id: UUID,
+) -> Transaction:
+    """Build a posted ledger row from a reviewed statement candidate.
+
+    Always `PostingStatus.POSTED` — import confirm must never create drafts.
+    """
+    assert line.proposed_type is not None
+    assert line.amount_paise is not None
+    assert line.occurred_at is not None
+    assert line.merchant is not None
+    return Transaction(
+        id=uuid4(),
+        organization_id=statement.organization_id,
+        credit_card_id=statement.credit_card_id,
+        contact_id=line.proposed_contact_id,
+        statement_id=statement.id,
+        type=line.proposed_type,
+        posting_status=PostingStatus.POSTED,
+        amount_paise=line.amount_paise,
+        currency="INR",
+        occurred_at=line.occurred_at,
+        merchant=line.merchant,
+        category=None,
+        notes=f"Imported from statement {statement.id}",
+        created_by=user_id,
+    )
+
+
 async def import_statement(
     db: AsyncSession,
     *,
@@ -387,7 +419,11 @@ async def import_statement(
     ip: str | None = None,
     ua: str | None = None,
 ) -> dict[str, int]:
-    """Commit accepted/edited lines as transactions. Idempotent."""
+    """Commit accepted/edited lines as posted transactions. Idempotent.
+
+    Import confirm never creates drafts — candidates stay off the ledger until
+    this path writes `posting_status=posted` rows only (FR-T9 / US-01.I5).
+    """
     if statement.status == StatementStatus.IMPORTED:
         return {"created": 0, "skipped": 0}
     if statement.status in {StatementStatus.UPLOADED, StatementStatus.PARSING, StatementStatus.FAILED}:
@@ -414,21 +450,10 @@ async def import_statement(
         if not line.merchant or not line.amount_paise or not line.occurred_at or not line.proposed_type:
             skipped += 1
             continue
-        tx = Transaction(
-            id=uuid4(),
-            organization_id=statement.organization_id,
-            credit_card_id=statement.credit_card_id,
-            contact_id=line.proposed_contact_id,
-            statement_id=statement.id,
-            type=line.proposed_type,
-            posting_status=PostingStatus.POSTED,
-            amount_paise=line.amount_paise,
-            currency="INR",
-            occurred_at=line.occurred_at,
-            merchant=line.merchant,
-            category=None,
-            notes=f"Imported from statement {statement.id}",
-            created_by=user_id,
+        tx = _posted_transaction_from_import_line(
+            statement=statement,
+            line=line,
+            user_id=user_id,
         )
         db.add(tx)
         await db.flush()

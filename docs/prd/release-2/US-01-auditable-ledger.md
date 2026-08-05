@@ -54,7 +54,7 @@
 - [x] **US-01.I2** Backend: domain/service balance filters for `posted` only.
 - [x] **US-01.I3** Backend: transaction API changes (create draft/post, reverse, adjust; lock posted mutate/delete).
 - [x] **US-01.I4** Frontend: API client types + ledger UI (status badge, draft/post, reverse/correct) — follow **impeccable craft-floor**; preserve existing transactions page patterns.
-- [ ] **US-01.I5** Ensure statement import confirm creates `posted` rows only.
+- [x] **US-01.I5** Ensure statement import confirm creates `posted` rows only.
 
 ### Test
 
@@ -526,4 +526,10 @@ Implemented (Impeccable Operate / Ledger Shelf craft-floor):
 - List: Status filter + Status column badges; draft Post/Delete; posted Reverse dialog (reason required).
 - `components/ui/dialog.tsx` centered modal; `reverse-transaction-dialog.tsx`.
 - Adjust UI deferred to US-02 per P3.
+
+### US-01.I5 — Import confirm posts only (2026-08-05)
+
+- Extracted `_posted_transaction_from_import_line` (always `PostingStatus.POSTED`).
+- Docstring on `import_statement`: never creates drafts.
+- Tests: `test_import_confirm_creates_posted_transactions_only` + helper unit test.
 

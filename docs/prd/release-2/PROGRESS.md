@@ -4,14 +4,14 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-01 |
-| **Current subtask** | US-01.I5 |
+| **Current subtask** | US-01.T1 |
 | **Overall** | 0 / 6 stories done |
 
 ## Story status
 
 | Story | Status | Notes |
 |-------|--------|-------|
-| US-01 Auditable ledger | In progress | I4 done → next I5 import confirm posted |
+| US-01 Auditable ledger | In progress | Implement done → next T1 draft exclusion tests |
 | US-02 Multi-account balances | Todo | Blocked on US-01 |
 | US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
@@ -33,6 +33,7 @@
 | 2026-08-05 | US-01 | US-01.I2 | Posted-only ledger filters + adjustment/reversal contributions; domain helpers + tests. Next: I3. |
 | 2026-08-05 | US-01 | US-01.I3 | transaction_service + API post/reverse/adjust; posted immutable; activity enum migration; service tests. Next: I4. |
 | 2026-08-05 | US-01 | US-01.I4 | Ledger UI: status badges/filter, Save draft, Post draft, Reverse dialog; API client types. Next: I5. |
+| 2026-08-05 | US-01 | US-01.I5 | Import confirm always posts; helper + regression tests. Next: T1. |
 
 ## Blockers
 

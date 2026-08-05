@@ -90,3 +90,90 @@ async def test_update_line_rejects_committed_line() -> None:
             merchant="Changed",
         )
     assert exc.value.code == "line_already_imported"
+
+
+class _ImportSession:
+    """Records adds and returns queued execute results for import_statement."""
+
+    def __init__(self, execute_results: list[object]) -> None:
+        self._results = list(execute_results)
+        self.added: list[object] = []
+        self.flush_count = 0
+
+    async def execute(self, _stmt: object) -> _FakeResult:
+        if not self._results:
+            return _FakeResult([])
+        return _FakeResult(self._results.pop(0))
+
+    def add(self, obj: object) -> None:
+        self.added.append(obj)
+
+    async def flush(self) -> None:
+        self.flush_count += 1
+
+
+@pytest.mark.asyncio
+async def test_import_confirm_creates_posted_transactions_only() -> None:
+    from app.models.enums import PostingStatus
+    from app.models.transaction import Transaction
+
+    org_id = uuid4()
+    statement_id = uuid4()
+    card_id = uuid4()
+    statement = SimpleNamespace(
+        status=StatementStatus.NEEDS_REVIEW,
+        id=statement_id,
+        organization_id=org_id,
+        credit_card_id=card_id,
+    )
+    line = SimpleNamespace(
+        merchant="Swiggy",
+        amount_paise=245_00,
+        occurred_at=datetime.now(UTC),
+        proposed_type=TransactionType.PURCHASE,
+        proposed_contact_id=None,
+        review_status=LineReviewStatus.ACCEPTED,
+        committed_transaction_id=None,
+    )
+    # 1) accepted lines  2) remaining pending  3) all lines (for final status)
+    db = _ImportSession([[line], [], [line]])
+
+    result = await statement_service.import_statement(
+        db,  # type: ignore[arg-type]
+        statement=statement,  # type: ignore[arg-type]
+        user_id=uuid4(),
+    )
+    assert result == {"created": 1, "skipped": 0}
+
+    txs = [obj for obj in db.added if isinstance(obj, Transaction)]
+    assert len(txs) == 1
+    assert txs[0].posting_status == PostingStatus.POSTED
+    assert txs[0].posting_status != PostingStatus.DRAFT
+    assert txs[0].amount_paise == 245_00
+    assert txs[0].merchant == "Swiggy"
+    assert line.committed_transaction_id == txs[0].id
+
+
+@pytest.mark.asyncio
+async def test_posted_transaction_from_import_line_helper() -> None:
+    from app.models.enums import PostingStatus
+
+    statement = SimpleNamespace(
+        id=uuid4(),
+        organization_id=uuid4(),
+        credit_card_id=uuid4(),
+    )
+    line = SimpleNamespace(
+        merchant="Netflix",
+        amount_paise=649_00,
+        occurred_at=datetime.now(UTC),
+        proposed_type=TransactionType.PURCHASE,
+        proposed_contact_id=None,
+    )
+    tx = statement_service._posted_transaction_from_import_line(
+        statement=statement,  # type: ignore[arg-type]
+        line=line,  # type: ignore[arg-type]
+        user_id=uuid4(),
+    )
+    assert tx.posting_status is PostingStatus.POSTED
+    assert tx.type is TransactionType.PURCHASE

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |--------|--------|
-| **Status** | In progress |
+| **Status** | Done |
 | **Priority** | P0 — must ship first |
 | **Maps to** | R2A |
 | **PRD** | FR-T6, FR-T8, FR-T9, FR-AC3, FR-AC4, G2, §8.8 |
@@ -70,7 +70,7 @@
 - [x] **US-01.V2** Manual: reverse a posted purchase; ledger and card outstanding correct.
 - [x] **US-01.V3** Manual: import review confirm still posts without duplicates.
 - [x] **US-01.V4** **Impeccable** on ledger UI: `polish` + `harden` (and `clarify` if reverse/correct copy is unclear).
-- [ ] **US-01.V5** Mark story Status = Done; update [`PROGRESS.md`](PROGRESS.md); tick corresponding R2A items in [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md).
+- [x] **US-01.V5** Mark story Status = Done; update [`PROGRESS.md`](PROGRESS.md); tick corresponding R2A items in [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md).
 
 ## Story notes
 
@@ -617,3 +617,9 @@ Ran Operate polish/harden on ledger surfaces (`transactions/page`, form, reverse
 - Form: disable fields while busy; map `invalid_posting_type`; maxLength on text inputs.
 
 **Verify:** `bun run lint` + `bun run typecheck` green.
+
+### US-01.V5 — Story complete (2026-08-05)
+
+Status set to **Done**. R2A checklist in `docs/prd/RELEASE-2-TASKS.md` ticked. PROGRESS → US-02.G1 (1/6 stories).
+
+Residual: live browser Validate for V1–V3 when stack is up (documented earlier); does not block story Done given automated coverage + V4 UI polish.

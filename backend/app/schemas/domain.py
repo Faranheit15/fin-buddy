@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.enums import (
+    AccountKind,
     CardNetwork,
     CardStatus,
     DueRuleType,
@@ -117,7 +118,8 @@ class CreditCardResponse(ORMModel):
 
 
 class TransactionCreate(BaseModel):
-    credit_card_id: UUID
+    account_id: UUID | None = None
+    credit_card_id: UUID | None = None
     type: TransactionType
     amount_paise: int = Field(gt=0)
     occurred_at: datetime
@@ -145,7 +147,8 @@ class TransactionReverseRequest(BaseModel):
 
 
 class TransactionAdjustRequest(BaseModel):
-    credit_card_id: UUID
+    account_id: UUID | None = None
+    credit_card_id: UUID | None = None
     delta_paise: int  # signed; must be non-zero (enforced in service)
     reason: str = Field(min_length=1, max_length=2000)
     contact_id: UUID | None = None
@@ -344,3 +347,34 @@ class DashboardResponse(BaseModel):
     attention: list[AttentionItem] = Field(default_factory=list)
     cards: list[DashboardCardSummary] = Field(default_factory=list)
     top_contacts: list[DashboardContactSummary] = Field(default_factory=list)
+
+
+# ---- Accounts ----
+
+
+class AccountCreate(BaseModel):
+    kind: AccountKind
+    name: str = Field(min_length=1, max_length=120)
+    institution: str | None = Field(default=None, max_length=120)
+    currency: str = Field(default="INR", min_length=3, max_length=3)
+    opening_balance_paise: int | None = Field(default=None, ge=0)
+
+
+class AccountUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    institution: str | None = Field(default=None, max_length=120)
+
+
+class CorrectBalanceRequest(BaseModel):
+    target_balance_paise: int
+    reason: str = Field(min_length=1, max_length=2000)
+    occurred_at: datetime | None = None
+
+
+class AccountResponse(ORMModel):
+    id: UUID
+    organization_id: UUID
+    kind: AccountKind
+    name: str
+    institution: str | None
+    currency: str

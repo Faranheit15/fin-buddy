@@ -15,7 +15,7 @@ from app.models.contact import Contact
 from app.models.credit_card import CreditCard
 from app.models.enums import AccountKind, ActivityAction, PostingStatus, TransactionType
 from app.models.transaction import Transaction
-from app.services.account_service import resolve_account_id_for_card
+from app.services.account_service import get_account, resolve_account_id_for_card
 from app.services.logging_service import log_activity
 
 _CREATE_BLOCKED_TYPES = {TransactionType.ADJUSTMENT, TransactionType.REVERSAL}
@@ -26,11 +26,12 @@ async def create_transaction(
     *,
     organization_id: UUID,
     user_id: UUID,
-    credit_card_id: UUID,
+    credit_card_id: UUID | None,
     tx_type: TransactionType,
     amount_paise: int,
     occurred_at: datetime,
     merchant: str,
+    account_id: UUID | None = None,
     contact_id: UUID | None = None,
     category: str | None = None,
     notes: str | None = None,
@@ -44,12 +45,12 @@ async def create_transaction(
             "Use reverse or adjust endpoints for correction entries",
             code="invalid_posting_type",
         )
-    await _ensure_card(db, organization_id, credit_card_id)
     if contact_id is not None:
         await _ensure_contact(db, organization_id, contact_id)
-    account_id = await resolve_account_id_for_card(
+    account_id, credit_card_id = await _resolve_transaction_account(
         db,
         organization_id=organization_id,
+        account_id=account_id,
         credit_card_id=credit_card_id,
         currency=currency,
     )
@@ -453,4 +454,39 @@ async def _ensure_contact(db: AsyncSession, org_id: UUID, contact_id: UUID) -> N
         select(Contact.id).where(Contact.id == contact_id, Contact.organization_id == org_id)
     )
     if result.scalar_one_or_none() is None:
+
         raise NotFoundError("Contact not found")
+
+async def _resolve_transaction_account(
+    db: AsyncSession,
+    *,
+    organization_id: UUID,
+    account_id: UUID | None,
+    credit_card_id: UUID | None,
+    currency: str,
+) -> tuple[UUID, UUID | None]:
+    """Apply US-02.G1's account/card compatibility invariant."""
+    if account_id is None:
+        if credit_card_id is None:
+            raise AppError("account_id or credit_card_id is required", code="missing_account")
+        await _ensure_card(db, organization_id, credit_card_id)
+        resolved_account_id = await resolve_account_id_for_card(
+            db,
+            organization_id=organization_id,
+            credit_card_id=credit_card_id,
+            currency=currency,
+        )
+        return resolved_account_id, credit_card_id
+
+    account = await get_account(db, organization_id=organization_id, account_id=account_id)
+    if account.kind == AccountKind.CREDIT_CARD:
+        if account.credit_card_id is None:
+            raise AppError("Credit card account missing credit_card_id", code="account_card_mismatch")
+        if credit_card_id is not None and credit_card_id != account.credit_card_id:
+            raise AppError("Account and card do not match", code="account_card_mismatch")
+        await _ensure_card(db, organization_id, account.credit_card_id)
+        return account.id, account.credit_card_id
+
+    if credit_card_id is not None or account.credit_card_id is not None:
+        raise AppError("Asset accounts cannot use a credit card", code="account_card_mismatch")
+    return account.id, None

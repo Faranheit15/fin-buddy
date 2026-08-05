@@ -71,7 +71,64 @@ async def get_account(
     return account
 
 
+
+async def create_account(
+    db: AsyncSession,
+    *,
+    organization_id: UUID,
+    kind: AccountKind,
+    name: str,
+    institution: str | None,
+    currency: str,
+) -> Account:
+    """Create an asset account. Credit-card accounts are created through cards."""
+    if kind == AccountKind.CREDIT_CARD:
+        raise AppError("Create credit card accounts through cards", code="use_cards_api")
+    account = Account(
+        id=uuid4(),
+        organization_id=organization_id,
+        kind=kind,
+        name=name,
+        institution=institution,
+        currency=currency,
+        credit_card_id=None,
+    )
+    db.add(account)
+    await db.flush()
+    return account
+
+
+async def update_account(
+    db: AsyncSession,
+    *,
+    organization_id: UUID,
+    account_id: UUID,
+    name: str | None = None,
+    institution: str | None = None,
+) -> Account:
+    account = await get_account(db, organization_id=organization_id, account_id=account_id)
+    if name is not None:
+        account.name = name
+    if institution is not None:
+        account.institution = institution
+    await db.flush()
+    return account
+
+
+async def archive_account(
+    db: AsyncSession,
+    *,
+    organization_id: UUID,
+    account_id: UUID,
+    archived_at: datetime,
+) -> Account:
+    account = await get_account(db, organization_id=organization_id, account_id=account_id)
+    if account.archived_at is None:
+        account.archived_at = archived_at
+
 async def correct_balance(
+    await db.flush()
+    return account
     db: AsyncSession,
     *,
     organization_id: UUID,

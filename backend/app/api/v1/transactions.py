@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession, OrgContext, client_meta
+from app.core.exceptions import AppError
 from app.models.enums import PostingStatus, TransactionType
 from app.models.transaction import Transaction
 from app.schemas.common import PaginatedResponse
@@ -17,7 +18,7 @@ from app.schemas.domain import (
     TransactionReverseRequest,
     TransactionUpdate,
 )
-from app.services import transaction_service
+from app.services import account_service, transaction_service
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -30,6 +31,7 @@ async def list_transactions(
     page_size: int = Query(25, ge=1, le=100),
     card_id: UUID | None = None,
     contact_id: UUID | None = None,
+    account_id: UUID | None = None,
     type: TransactionType | None = None,
     posting_status: PostingStatus | None = None,
     q: str | None = None,
@@ -42,6 +44,8 @@ async def list_transactions(
         filters.append(Transaction.credit_card_id == card_id)
     if contact_id:
         filters.append(Transaction.contact_id == contact_id)
+    if account_id:
+        filters.append(Transaction.account_id == account_id)
     if type:
         filters.append(Transaction.type == type)
     if posting_status:
@@ -75,19 +79,40 @@ async def adjust_transaction(
 ) -> TransactionResponse:
     org, _ = org_ctx
     ip, ua = client_meta(request)
-    tx = await transaction_service.adjust_balance(
-        db,
-        organization_id=org.id,
-        user_id=user.id,
-        credit_card_id=body.credit_card_id,
-        delta_paise=body.delta_paise,
-        reason=body.reason,
-        contact_id=body.contact_id,
-        occurred_at=body.occurred_at,
-        merchant=body.merchant,
-        ip=ip,
-        ua=ua,
-    )
+    if body.account_id is not None:
+        if body.contact_id is not None:
+            raise AppError("Account adjustments cannot include a contact", code="invalid_adjustment")
+        account = await account_service.get_account(
+            db, organization_id=org.id, account_id=body.account_id
+        )
+        tx = await transaction_service.adjust_account_balance(
+            db,
+            organization_id=org.id,
+            user_id=user.id,
+            account=account,
+            delta_paise=body.delta_paise,
+            reason=body.reason,
+            occurred_at=body.occurred_at,
+            merchant=body.merchant,
+            ip=ip,
+            ua=ua,
+        )
+    else:
+        if body.credit_card_id is None:
+            raise AppError("account_id or credit_card_id is required", code="missing_account")
+        tx = await transaction_service.adjust_balance(
+            db,
+            organization_id=org.id,
+            user_id=user.id,
+            credit_card_id=body.credit_card_id,
+            delta_paise=body.delta_paise,
+            reason=body.reason,
+            contact_id=body.contact_id,
+            occurred_at=body.occurred_at,
+            merchant=body.merchant,
+            ip=ip,
+            ua=ua,
+        )
     await db.commit()
     await db.refresh(tx)
     return TransactionResponse.model_validate(tx)
@@ -107,6 +132,7 @@ async def create_transaction(
         db,
         organization_id=org.id,
         user_id=user.id,
+        account_id=body.account_id,
         credit_card_id=body.credit_card_id,
         tx_type=body.type,
         amount_paise=body.amount_paise,

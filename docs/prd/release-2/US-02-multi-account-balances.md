@@ -44,7 +44,7 @@
 ### Plan
 
 - [x] **US-02.P1** Spec `accounts` schema + RLS policies + indexes.
-- [ ] **US-02.P2** Spec migration/backfill: card → account; transaction `account_id`.
+- [x] **US-02.P2** Spec migration/backfill: card → account; transaction `account_id`.
 - [ ] **US-02.P3** Spec `/api/v1/accounts` endpoints and balance response shape.
 - [ ] **US-02.P4** Spec frontend routes, empty states, Correct Balance dialog — **impeccable `shape`** (+ `onboard` notes for first bank/cash/wallet); keep `/app/cards` working.
 
@@ -299,5 +299,90 @@ CREATE POLICY accounts_update_member ON accounts
 #### 6. Downgrade
 
 Drop policies → drop indexes → drop table `accounts` → drop type `account_kind` only if unused (safe if table gone).
+
+### US-02.P2 — Migration / backfill: card → account + `transactions.account_id` (2026-08-05)
+
+**Files (I1):**  
+1. `20260805_0005_accounts.py` — P1 DDL **plus** card→account row backfill (must exist before tx update).  
+2. `20260805_0006_transaction_account_id.py` — `account_id` column, backfill, NOT NULL, nullable `credit_card_id`, indexes.  
+**down_revision chain:** `0004` → `0005` → `0006`.
+
+Implements G1: every card gets one `credit_card` account; every existing transaction gets that account’s id; `credit_card_id` becomes nullable for future bank/cash/wallet rows.
+
+#### A. Inside `0005` after `accounts` create (amend P1 implement)
+
+```sql
+INSERT INTO accounts (
+  id, organization_id, kind, name, institution, currency,
+  credit_card_id, archived_at, created_at, updated_at
+)
+SELECT
+  gen_random_uuid(),
+  c.organization_id,
+  'credit_card'::account_kind,
+  c.nickname,
+  c.issuer,
+  c.currency,
+  c.id,
+  CASE WHEN c.status = 'closed' THEN now() ELSE NULL END,  -- optional; or leave NULL and map status only in app
+  now(),
+  now()
+FROM credit_cards c
+WHERE NOT EXISTS (
+  SELECT 1 FROM accounts a WHERE a.credit_card_id = c.id
+);
+```
+
+**Verify:** `SELECT count(*) FROM credit_cards` = `SELECT count(*) FROM accounts WHERE kind = 'credit_card'`.
+
+Idempotent: `NOT EXISTS` guard. Use `gen_random_uuid()` (pgcrypto/`uuid-ossp` — confirm extension; else app-side uuid in Python migration loop). Prefer SQL if extension already used; else `op.get_bind()` + executemany with uuid4.
+
+**Card status note:** MVP `card_status` may be `active`/`closed` — only archive account if product wants closed cards hidden; default **leave `archived_at` NULL** for all backfilled rows (safer; cards UI still filters by card status).
+
+#### B. Revision `0006` — transactions
+
+| Step | DDL / DML |
+|------|-----------|
+| 1 | `ADD COLUMN account_id UUID NULL` |
+| 2 | Backfill: `UPDATE transactions t SET account_id = a.id FROM accounts a WHERE a.credit_card_id = t.credit_card_id AND t.account_id IS NULL` |
+| 3 | Fail migration if any `account_id IS NULL` remain (raise) — every tx had a card |
+| 4 | `ALTER COLUMN account_id SET NOT NULL` |
+| 5 | `ADD CONSTRAINT fk_transactions_account_id FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE RESTRICT` |
+| 6 | `ALTER COLUMN credit_card_id DROP NOT NULL` |
+| 7 | Indexes (below) |
+
+**No DB check** tying `credit_card_id` to `accounts.kind` (needs join/trigger). G1 rules stay **service-enforced** after I3.
+
+```sql
+CREATE INDEX ix_transactions_account_id ON transactions (account_id);
+CREATE INDEX ix_transactions_org_account
+  ON transactions (organization_id, account_id);
+-- keep existing credit_card_id indexes for dashboard/statement filters
+```
+
+#### C. Balance / data integrity expectations
+
+- Posted outstanding per card **unchanged**: same rows, same `credit_card_id`, same amounts; only add `account_id`.
+- Account balance for a card account (G2 liability effects) **equals** card outstanding for that card after backfill.
+- T4 / DoD: sample org — sum by card vs sum by linked account_id match.
+
+#### D. Downgrade `0006`
+
+1. Reject or no-op if any row has `credit_card_id IS NULL` (bank accounts already used).  
+2. Else `ALTER credit_card_id SET NOT NULL` → drop FK/indexes/`account_id`.  
+3. Do **not** delete `accounts` rows here (belongs to `0005` downgrade).
+
+#### E. App follow-ups (not this migration file)
+
+| After migrate | Owner |
+|---------------|--------|
+| ORM: `Account` model; `Transaction.account_id` required; `credit_card_id` optional | I1 |
+| Create card → also insert 1:1 account | I3 / cards service |
+| Create/adjust/reverse/import resolve G1 ids | I3 |
+| Correct Balance / account balance by `account_id` | I2 / P3 |
+
+#### F. Out of P2
+
+API response shapes, Correct Balance endpoint details → **P3**. Frontend → **P4**.
 
 

@@ -68,7 +68,7 @@
 
 - [x] **US-01.V1** Manual: create draft → balances unchanged → post → balances update.
 - [x] **US-01.V2** Manual: reverse a posted purchase; ledger and card outstanding correct.
-- [ ] **US-01.V3** Manual: import review confirm still posts without duplicates.
+- [x] **US-01.V3** Manual: import review confirm still posts without duplicates.
 - [ ] **US-01.V4** **Impeccable** on ledger UI: `polish` + `harden` (and `clarify` if reverse/correct copy is unclear).
 - [ ] **US-01.V5** Mark story Status = Done; update [`PROGRESS.md`](PROGRESS.md); tick corresponding R2A items in [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md).
 
@@ -587,3 +587,20 @@ Re-ran **8 passed** on 2026-08-05. `:3000`/`:8000` still down.
 2. Confirm new `reversal` row + original shows reversed; card outstanding reduced by purchase amount (pair nets to zero vs pre-reverse).
 3. Reverse again on same row → blocked / disabled or error.
 
+### US-01.V3 — Import confirm posts (2026-08-05)
+
+**Acceptance path:** statement import review confirm creates **posted** transactions only; re-confirm does not duplicate.
+
+**Exercised (automated, no live stack):**
+| Step | Evidence |
+|------|----------|
+| Import → posted only | `test_import_confirm_creates_posted_transactions_only` |
+| Helper always POSTED | `test_posted_transaction_from_import_line_helper` |
+| Idempotent re-import | `test_import_statement_is_idempotent_when_already_imported` |
+
+Re-ran **3 passed** on 2026-08-05. `:8000` still down.
+
+**Residual manual (browser / live stack):**
+1. Upload/parse statement → review lines → **Confirm import**.
+2. Ledger shows new rows as **Posted** (no Draft from confirm).
+3. Confirm again (or re-open imported statement) → no duplicate transactions.

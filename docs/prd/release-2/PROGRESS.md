@@ -4,14 +4,14 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-01 |
-| **Current subtask** | US-01.T5 |
+| **Current subtask** | US-01.V1 |
 | **Overall** | 0 / 6 stories done |
 
 ## Story status
 
 | Story | Status | Notes |
 |-------|--------|-------|
-| US-01 Auditable ledger | In progress | T4 done → next T5 DoD suite |
+| US-01 Auditable ledger | In progress | T5 DoD green → next V1 manual validate |
 | US-02 Multi-account balances | Todo | Blocked on US-01 |
 | US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
@@ -38,7 +38,8 @@
 | 2026-08-05 | US-01 | US-01.T2 | Reversal net-zero tests (purchase/refund/contact); double-reverse after success; cannot reverse reversal/draft. Next: T3. |
 | 2026-08-05 | US-01 | US-01.T3 | Adjustment ±delta + contact contrib; zero rejected; service +/–/contact outstanding checks. Next: T4. |
 | 2026-08-05 | US-01 | US-01.T4 | Posted 409 immutability; draft delete; create posted/draft; reject reverse type; cross-org card/tx NotFound. Next: T5. |
+| 2026-08-05 | US-01 | US-01.T5 | DoD: pytest 79, ruff green (fixed I001), frontend lint+typecheck OK; mypy pre-existing statement_service noted in GOTCHAS. Next: V1. |
 
 ## Blockers
 
-_(None yet.)_
+- Pre-existing: `mypy app` fails on `statement_service.create_statement_from_upload` (`period_start`/`period_end` untyped). Not from US-01 — see `docs/GOTCHAS.md`.

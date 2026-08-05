@@ -1,8 +1,9 @@
 """Shared pytest fixtures."""
 
 import pytest
-from app.core.config import get_settings
 from fastapi.testclient import TestClient
+
+from app.core.config import get_settings
 
 
 @pytest.fixture(autouse=True)

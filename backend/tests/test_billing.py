@@ -3,6 +3,7 @@
 from datetime import date
 
 import pytest
+
 from app.domain.billing import (
     DueRuleType,
     clamp_day_of_month,

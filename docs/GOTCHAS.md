@@ -14,5 +14,8 @@ Agents must review this document to avoid common pitfalls in this specific repos
 - Extending `transaction_type` with `ALTER TYPE … ADD VALUE` is one-way: downgrade of `20260805_0003` drops ledger columns and `posting_status`, but **cannot** remove `'adjustment'` / `'reversal'` labels from `transaction_type`. Do not recreate that enum to “clean” labels — it is shared with `statement_line_candidates.proposed_type`.
 - Same for `activity_action` labels added in `20260805_0004` (`transaction_post` / `transaction_reverse` / `transaction_adjust`).
 
+## Typing
+- `mypy app` reports a pre-existing `no-untyped-def` on `create_statement_from_upload` in `statement_service.py` (`period_start` / `period_end` lack annotations). Not introduced by Release 2 US-01; fix separately when touching statement upload.
+
 ## Retired Approaches
 - *(Add any technical approaches that were tried and failed here, so agents do not attempt them again)*

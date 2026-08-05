@@ -62,7 +62,7 @@
 - [x] **US-01.T2** Unit: reversal negates; double-reverse blocked.
 - [x] **US-01.T3** Unit: adjustment delta math.
 - [x] **US-01.T4** API: posted update/delete → 4xx; reverse/adjust succeed with authz.
-- [ ] **US-01.T5** Run backend DoD: `pytest`, `ruff`, `mypy`; frontend `lint` + `typecheck` for touched UI.
+- [x] **US-01.T5** Run backend DoD: `pytest`, `ruff`, `mypy`; frontend `lint` + `typecheck` for touched UI.
 
 ### Validate
 
@@ -540,4 +540,14 @@ Covered P4 matrix:
 - Contact mix posted+draft → 80_00 only
 - Draft-only → 0 card/contact
 - Post draft → contribution flips 0 → amount (domain + `post_draft` service)
+
+### US-01.T5 — DoD (2026-08-05)
+
+| Check | Result |
+|-------|--------|
+| `uv run pytest` | 79 passed |
+| `uv run ruff check .` | green (fixed pre-existing I001 in `tests/conftest.py`, `tests/test_billing.py`) |
+| `uv run mypy app` | 1 pre-existing error: `statement_service.create_statement_from_upload` untyped `period_start`/`period_end` — documented in GOTCHAS; not US-01 |
+| frontend `bun run lint` | pass |
+| frontend `bun run typecheck` | pass |
 

@@ -52,7 +52,7 @@
 - [x] **US-04.I2** Services: CRUD, payments, remaining balance, filters.
 - [x] **US-04.I3** API routes under `/api/v1/obligations` (or `/debts`).
 - [x] **US-04.I4** Frontend debts pages + contact detail section + sidebar — **impeccable craft-floor**; match contacts/cards list-detail patterns.
-- [ ] **US-04.I5** Dashboard friend-dues aggregation respects compat decision.
+- [x] **US-04.I5** Dashboard friend-dues aggregation respects compat decision.
 
 ### Test
 

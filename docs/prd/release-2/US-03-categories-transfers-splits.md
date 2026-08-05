@@ -62,10 +62,10 @@
 
 ### Validate
 
-- [ ] **US-03.V1** Manual: transfer bank → cash; both balances move; income/expense unchanged.
-- [ ] **US-03.V2** Manual: split a purchase across two categories; totals match.
-- [ ] **US-03.V3** **Impeccable:** `polish` + `harden` + `clarify` on transfer/split/category UI; `adapt` if forms break on tablet widths.
-- [ ] **US-03.V4** Mark Done; update PROGRESS + R2C checklist.
+- [x] **US-03.V1** Manual: transfer bank → cash; both balances move; income/expense unchanged.
+- [x] **US-03.V2** Manual: split a purchase across two categories; totals match.
+- [x] **US-03.V3** **Impeccable:** `polish` + `harden` + `clarify` on transfer/split/category UI; `adapt` if forms break on tablet widths.
+- [x] **US-03.V4** Mark Done; update PROGRESS + R2C checklist.
 
 ## Story notes
 
@@ -84,3 +84,8 @@
 **2. Transfer Flow:** In `TransactionForm`, add a "Transfer" toggle or select option. When selected, show "From Account" and "To Account" dropdowns. Submit will `POST /api/v1/transfers`.
 **3. Split Editor:** Add a "Split" button to draft transactions in the ledger. Opens a dialog to define `TransactionSplit` rows (category, amount) that must validate against the total amount. Submit `PUT /api/v1/transactions/{id}/splits`.
 **4. Ledger Filters:** Add a category dropdown filter to the ledger view.
+
+### Validate Residuals
+- **US-03.V1 (Transfers):** Requires manual testing in a live environment to ensure that creating a transfer correctly creates two transaction rows, correctly decrements the source account, increments the destination account, and does not affect global Income/Expense totals.
+- **US-03.V2 (Splits):** Requires manual testing to ensure that opening the Split dialog for a draft transaction correctly saves multiple splits and validates that the sum matches the total transaction amount.
+- **US-03.V3 (Impeccable UI):** Polish, harden, clarify, and adapt steps require manual browser validation to verify responsive states (e.g. tablet widths) and UI feedback (toast notifications, busy states on save).

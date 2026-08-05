@@ -3,9 +3,9 @@
 | Field | Value |
 |--------|--------|
 | **Updated** | 2026-08-05 |
-| **Current story** | US-03 |
-| **Current subtask** | US-03.G1 |
-| **Overall** | 2 / 6 stories done |
+| **Current story** | US-04 |
+| **Current subtask** | US-04.G1 |
+| **Overall** | 3 / 6 stories done |
 
 ## Story status
 
@@ -13,7 +13,7 @@
 |-------|--------|-------|
 | US-01 Auditable ledger | Done | R2A complete; browser residuals for V1–V3 optional |
 | US-02 Multi-account balances | Done | R2B (Part 1) complete; account ledger working |
-| US-03 Categories / transfers / splits | Todo | - [x] **US-03.I3** API endpoints + schemas for categories/transfers/splits.<br>- [x] **US-03.T1-T4** Unit and API tests.<br>- [ ] **US-03.I4** Frontend: category manager/picker, transfer UI, split editor, filters. |
+| US-03 Categories / transfers / splits | Done | - [x] **US-03.V1-V3** Residuals documented.<br>- [x] **US-03.V4** Marked Done. |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
 | US-05 Card EMIs & GST | Todo | Blocked on US-01, US-02 |
 | US-06 Insights / imports / reminders | Todo | Blocked on US-02…US-05 for full scope |
@@ -66,6 +66,7 @@
 | 2026-08-05 | US-03 | US-03.I4 | Implemented Categories CRUD, TransactionForm Transfer/Category pickers, SplitEditorDialog, and ledger filters. Next: I5. |
 | 2026-08-05 | US-03 | US-03.I5 | Wrote alembic script to migrate free-text categories to proper Category rows and populate `category_id`. Next: T4 (DoD). |
 | 2026-08-05 | US-03 | US-03.T4 | Backend + frontend DoD. Fixed import sorting, mypy generics, and unused variables. Next: V1. |
+| 2026-08-05 | US-03 | US-03.V1-V4 | Documented manual UI and integration residuals. Marked US-03 Done. Next: US-04.G1. |
 
 ## Blockers
 

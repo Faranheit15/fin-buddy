@@ -127,26 +127,26 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Backend
 
-- [ ] `categories` table (org-scoped; seed sensible INR personal-finance defaults: income/expense kinds).
-- [ ] Optional tags on transactions (array or join table).
-- [ ] `transfer` support: `transfer_group_id` pairing equal opposite legs across two accounts.
-- [ ] Income/expense reporting helpers that **exclude** transfers and adjustments (document rules).
-- [ ] `transaction_splits` table; validate sum(splits) == parent amount.
-- [ ] APIs: category CRUD; create transfer; create/update split parents (draft/posted aware from R2A).
+- [x] `categories` table (org-scoped; seed sensible INR personal-finance defaults: income/expense kinds).
+- [x] Optional tags on transactions (array or join table).
+- [x] `transfer` support: `transfer_group_id` pairing equal opposite legs across two accounts.
+- [x] Income/expense reporting helpers that **exclude** transfers and adjustments (document rules).
+- [x] `transaction_splits` table; validate sum(splits) == parent amount.
+- [x] APIs: category CRUD; create transfer; create/update split parents (draft/posted aware from R2A).
 
 ### Frontend
 
-- [ ] Category picker on transaction forms; settings or lightweight category manager.
-- [ ] Transfer flow UI (from account → to account, amount, date, notes).
-- [ ] Split editor on transaction create/edit (draft/posted rules apply).
-- [ ] Ledger filters by category/tag.
-- [ ] **Impeccable:** `shape` forms; craft-floor; Validate with `polish` + `harden` + `clarify` (+ `adapt` if needed).
+- [x] Category picker on transaction forms; settings or lightweight category manager.
+- [x] Transfer flow UI (from account → to account, amount, date, notes).
+- [x] Split editor on transaction create/edit (draft/posted rules apply).
+- [x] Ledger filters by category/tag.
+- [x] **Impeccable:** `shape` forms; craft-floor; Validate with `polish` + `harden` + `clarify` (+ `adapt` if needed).
 
 ### Tests
 
-- [ ] Unit: transfer legs equal; excluded from income/expense totals.
-- [ ] Unit: split sum validation.
-- [ ] API: transfer creates both legs atomically (or fails with no partial post).
+- [x] Unit: transfer legs equal; excluded from income/expense totals.
+- [x] Unit: split sum validation.
+- [x] API: transfer creates both legs atomically (or fails with no partial post).
 
 ### Definition of done
 

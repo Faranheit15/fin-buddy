@@ -4,14 +4,14 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-01 |
-| **Current subtask** | US-01.T3 |
+| **Current subtask** | US-01.T4 |
 | **Overall** | 0 / 6 stories done |
 
 ## Story status
 
 | Story | Status | Notes |
 |-------|--------|-------|
-| US-01 Auditable ledger | In progress | T2 done → next T3 adjustment delta math |
+| US-01 Auditable ledger | In progress | T3 done → next T4 API immutability/authz |
 | US-02 Multi-account balances | Todo | Blocked on US-01 |
 | US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
@@ -36,6 +36,7 @@
 | 2026-08-05 | US-01 | US-01.I5 | Import confirm always posts; helper + regression tests. Next: T1. |
 | 2026-08-05 | US-01 | US-01.T1 | Draft exclusion matrix covered (card/contact mix, draft-only, post-then-include). Next: T2. |
 | 2026-08-05 | US-01 | US-01.T2 | Reversal net-zero tests (purchase/refund/contact); double-reverse after success; cannot reverse reversal/draft. Next: T3. |
+| 2026-08-05 | US-01 | US-01.T3 | Adjustment ±delta + contact contrib; zero rejected; service +/–/contact outstanding checks. Next: T4. |
 
 ## Blockers
 

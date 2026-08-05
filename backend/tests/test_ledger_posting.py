@@ -133,7 +133,8 @@ def test_reversal_negates_purchase_on_contact() -> None:
     assert spend + reversal == 0
 
 
-def test_adjustment_positive_and_negative_delta() -> None:
+def test_adjustment_positive_delta_increases_card() -> None:
+    """T3: +delta → outstanding +amount; delta_sign=1 semantics."""
     assert (
         card_contribution_paise(
             tx_type=TransactionType.ADJUSTMENT,
@@ -143,6 +144,10 @@ def test_adjustment_positive_and_negative_delta() -> None:
         )
         == 150_00
     )
+
+
+def test_adjustment_negative_delta_decreases_card() -> None:
+    """T3: −delta → outstanding −amount; delta_sign=-1 semantics."""
     assert (
         card_contribution_paise(
             tx_type=TransactionType.ADJUSTMENT,
@@ -154,16 +159,64 @@ def test_adjustment_positive_and_negative_delta() -> None:
     )
 
 
-def test_adjustment_with_contact_moves_contact_balance() -> None:
+def test_adjustment_with_contact_moves_card_and_contact() -> None:
+    """T3: adjustment + contact_id → both card and contact move by signed delta."""
+    amount = 20_00
+    card = card_contribution_paise(
+        tx_type=TransactionType.ADJUSTMENT,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+        delta_sign=1,
+    )
+    contact = contact_contribution_paise(
+        tx_type=TransactionType.ADJUSTMENT,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+        contact_id_present=True,
+        delta_sign=1,
+    )
+    assert card == amount
+    assert contact == amount
+
+    neg_card = card_contribution_paise(
+        tx_type=TransactionType.ADJUSTMENT,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+        delta_sign=-1,
+    )
+    neg_contact = contact_contribution_paise(
+        tx_type=TransactionType.ADJUSTMENT,
+        amount_paise=amount,
+        posting_status=PostingStatus.POSTED,
+        contact_id_present=True,
+        delta_sign=-1,
+    )
+    assert neg_card == -amount
+    assert neg_contact == -amount
+
+
+def test_adjustment_without_contact_skips_contact_balance() -> None:
     assert (
         contact_contribution_paise(
             tx_type=TransactionType.ADJUSTMENT,
             amount_paise=20_00,
             posting_status=PostingStatus.POSTED,
-            contact_id_present=True,
+            contact_id_present=False,
             delta_sign=1,
         )
-        == 20_00
+        == 0
+    )
+
+
+def test_draft_adjustment_excluded_from_outstanding() -> None:
+    assert (
+        card_contribution_paise(
+            tx_type=TransactionType.ADJUSTMENT,
+            amount_paise=50_00,
+            posting_status=PostingStatus.DRAFT,
+            delta_sign=1,
+        )
+        == 0
     )
 
 

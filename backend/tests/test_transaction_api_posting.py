@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError
-from app.domain.ledger import card_contribution_paise
+from app.domain.ledger import card_contribution_paise, contact_contribution_paise
 from app.models.enums import PostingStatus, TransactionType
 from app.services import transaction_service
 
@@ -281,6 +281,7 @@ async def test_cannot_reverse_draft() -> None:
 
 @pytest.mark.asyncio
 async def test_adjust_zero_delta_rejected() -> None:
+    """T3: delta_paise=0 → invalid_delta."""
     db = _RecordingSession()
     with pytest.raises(AppError) as exc:
         await transaction_service.adjust_balance(
@@ -295,10 +296,40 @@ async def test_adjust_zero_delta_rejected() -> None:
 
 
 @pytest.mark.asyncio
-async def test_adjust_creates_signed_posted_row() -> None:
+async def test_adjust_positive_delta_increases_outstanding() -> None:
+    """T3: adjust(+150_00) → posted; delta_sign=1; amount_paise=150_00; contrib +150_00."""
     org_id = uuid4()
     card_id = uuid4()
-    db = _RecordingSession([card_id])  # ensure_card finds id
+    db = _RecordingSession([card_id])
+    tx = await transaction_service.adjust_balance(
+        db,  # type: ignore[arg-type]
+        organization_id=org_id,
+        user_id=uuid4(),
+        credit_card_id=card_id,
+        delta_paise=150_00,
+        reason="Raise balance",
+    )
+    assert tx.type == TransactionType.ADJUSTMENT
+    assert tx.posting_status == PostingStatus.POSTED
+    assert tx.amount_paise == 150_00
+    assert tx.delta_sign == 1
+    assert (
+        card_contribution_paise(
+            tx_type=tx.type,
+            amount_paise=tx.amount_paise,
+            posting_status=tx.posting_status,
+            delta_sign=tx.delta_sign,
+        )
+        == 150_00
+    )
+
+
+@pytest.mark.asyncio
+async def test_adjust_negative_delta_decreases_outstanding() -> None:
+    """T3: adjust(-75_00) → outstanding −75_00; delta_sign=-1; amount_paise=75_00."""
+    org_id = uuid4()
+    card_id = uuid4()
+    db = _RecordingSession([card_id])
     tx = await transaction_service.adjust_balance(
         db,  # type: ignore[arg-type]
         organization_id=org_id,
@@ -312,6 +343,54 @@ async def test_adjust_creates_signed_posted_row() -> None:
     assert tx.amount_paise == 75_00
     assert tx.delta_sign == -1
     assert tx.correction_reason == "Correct balance"
+    assert (
+        card_contribution_paise(
+            tx_type=tx.type,
+            amount_paise=tx.amount_paise,
+            posting_status=tx.posting_status,
+            delta_sign=tx.delta_sign,
+        )
+        == -75_00
+    )
+
+
+@pytest.mark.asyncio
+async def test_adjust_with_contact_moves_card_and_contact() -> None:
+    """T3: adjust + contact_id → card and contact balances move by signed delta."""
+    org_id = uuid4()
+    card_id = uuid4()
+    contact_id = uuid4()
+    db = _RecordingSession([card_id, contact_id])
+    tx = await transaction_service.adjust_balance(
+        db,  # type: ignore[arg-type]
+        organization_id=org_id,
+        user_id=uuid4(),
+        credit_card_id=card_id,
+        contact_id=contact_id,
+        delta_paise=40_00,
+        reason="Assign contact adjustment",
+    )
+    assert tx.contact_id == contact_id
+    assert tx.delta_sign == 1
+    assert (
+        card_contribution_paise(
+            tx_type=tx.type,
+            amount_paise=tx.amount_paise,
+            posting_status=tx.posting_status,
+            delta_sign=tx.delta_sign,
+        )
+        == 40_00
+    )
+    assert (
+        contact_contribution_paise(
+            tx_type=tx.type,
+            amount_paise=tx.amount_paise,
+            posting_status=tx.posting_status,
+            contact_id_present=True,
+            delta_sign=tx.delta_sign,
+        )
+        == 40_00
+    )
 
 
 @pytest.mark.asyncio

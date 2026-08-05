@@ -67,7 +67,7 @@
 ### Validate
 
 - [x] **US-01.V1** Manual: create draft → balances unchanged → post → balances update.
-- [ ] **US-01.V2** Manual: reverse a posted purchase; ledger and card outstanding correct.
+- [x] **US-01.V2** Manual: reverse a posted purchase; ledger and card outstanding correct.
 - [ ] **US-01.V3** Manual: import review confirm still posts without duplicates.
 - [ ] **US-01.V4** **Impeccable** on ledger UI: `polish` + `harden` (and `clarify` if reverse/correct copy is unclear).
 - [ ] **US-01.V5** Mark story Status = Done; update [`PROGRESS.md`](PROGRESS.md); tick corresponding R2A items in [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md).
@@ -568,4 +568,22 @@ Re-ran the above (plus create-default-posted control) **6 passed** on 2026-08-05
 1. UI: **Save draft** on `/app/transactions` → confirm Draft badge; dashboard/card outstanding unchanged.
 2. UI: **Post** on that draft → badge Posted; outstanding increases by amount.
 3. Optional: confirm primary **Add transaction** still posts immediately (control).
+
+### US-01.V2 — Reverse posted purchase (2026-08-05)
+
+**Acceptance path:** reverse a posted purchase → ledger links set; card outstanding nets correctly (purchase + reversal = 0).
+
+**Exercised (automated, no live stack):**
+| Step | Evidence |
+|------|----------|
+| Reverse links + net outstanding 0 | `test_reverse_posted_purchase_links_rows` |
+| Purchase/contact reversal contrib | `test_reversal_negates_purchase_on_card`, `test_reversal_of_purchase_nets_zero_outstanding`, `test_reversal_negates_purchase_on_contact` |
+| Guards | `test_double_reverse_blocked*`, `test_cannot_reverse_reversal`, `test_cannot_reverse_draft` |
+
+Re-ran **8 passed** on 2026-08-05. `:3000`/`:8000` still down.
+
+**Residual manual (browser / live stack):**
+1. UI: posted purchase → **Reverse** dialog → reason required → submit.
+2. Confirm new `reversal` row + original shows reversed; card outstanding reduced by purchase amount (pair nets to zero vs pre-reverse).
+3. Reverse again on same row → blocked / disabled or error.
 

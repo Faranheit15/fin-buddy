@@ -4,14 +4,14 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-01 |
-| **Current subtask** | US-01.V2 |
+| **Current subtask** | US-01.V3 |
 | **Overall** | 0 / 6 stories done |
 
 ## Story status
 
 | Story | Status | Notes |
 |-------|--------|-------|
-| US-01 Auditable ledger | In progress | V1 validated via tests + residuals → next V2 reverse |
+| US-01 Auditable ledger | In progress | V2 reverse validated via tests + residuals → next V3 import |
 | US-02 Multi-account balances | Todo | Blocked on US-01 |
 | US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
 | US-04 Debts & loans | Todo | Blocked on US-02 |

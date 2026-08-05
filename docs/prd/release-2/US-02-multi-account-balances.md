@@ -2,7 +2,7 @@
 
 | Field | Value |
 |--------|--------|
-| **Status** | Todo |
+| **Status** | In progress |
 | **Priority** | P0 |
 | **Maps to** | R2B |
 | **PRD** | FR-AC1–FR-AC6, UC17, UC18, G3, §5.7, §7.2 |

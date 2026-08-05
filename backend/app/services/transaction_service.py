@@ -14,6 +14,7 @@ from app.models.contact import Contact
 from app.models.credit_card import CreditCard
 from app.models.enums import ActivityAction, PostingStatus, TransactionType
 from app.models.transaction import Transaction
+from app.services.account_service import resolve_account_id_for_card
 from app.services.logging_service import log_activity
 
 _CREATE_BLOCKED_TYPES = {TransactionType.ADJUSTMENT, TransactionType.REVERSAL}
@@ -45,10 +46,17 @@ async def create_transaction(
     await _ensure_card(db, organization_id, credit_card_id)
     if contact_id is not None:
         await _ensure_contact(db, organization_id, contact_id)
+    account_id = await resolve_account_id_for_card(
+        db,
+        organization_id=organization_id,
+        credit_card_id=credit_card_id,
+        currency=currency,
+    )
 
     tx = Transaction(
         id=uuid4(),
         organization_id=organization_id,
+        account_id=account_id,
         credit_card_id=credit_card_id,
         contact_id=contact_id,
         type=tx_type,
@@ -221,9 +229,21 @@ async def reverse_transaction(
     if original.reversed_by_id is not None:
         raise ConflictError("Transaction is already reversed", code="already_reversed")
 
+    account_id = getattr(original, "account_id", None)
+    if account_id is None:
+        if original.credit_card_id is None:
+            raise AppError("Transaction has no account", code="missing_account")
+        account_id = await resolve_account_id_for_card(
+            db,
+            organization_id=organization_id,
+            credit_card_id=original.credit_card_id,
+            currency=original.currency,
+        )
+
     reversal = Transaction(
         id=uuid4(),
         organization_id=organization_id,
+        account_id=account_id,
         credit_card_id=original.credit_card_id,
         contact_id=original.contact_id,
         type=TransactionType.REVERSAL,
@@ -281,12 +301,18 @@ async def adjust_balance(
     await _ensure_card(db, organization_id, credit_card_id)
     if contact_id is not None:
         await _ensure_contact(db, organization_id, contact_id)
+    account_id = await resolve_account_id_for_card(
+        db,
+        organization_id=organization_id,
+        credit_card_id=credit_card_id,
+    )
 
     amount = abs(delta_paise)
     sign = 1 if delta_paise > 0 else -1
     tx = Transaction(
         id=uuid4(),
         organization_id=organization_id,
+        account_id=account_id,
         credit_card_id=credit_card_id,
         contact_id=contact_id,
         type=TransactionType.ADJUSTMENT,

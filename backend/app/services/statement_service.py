@@ -23,6 +23,7 @@ from app.models.notification import InAppNotification
 from app.models.statement import Statement, StatementLineCandidate
 from app.models.transaction import Transaction
 from app.services import storage
+from app.services.account_service import resolve_account_id_for_card
 from app.services.logging_service import log_activity
 from app.services.parsers import parse_statement_text
 
@@ -384,6 +385,7 @@ def _posted_transaction_from_import_line(
     statement: Statement,
     line: StatementLineCandidate,
     user_id: UUID,
+    account_id: UUID,
 ) -> Transaction:
     """Build a posted ledger row from a reviewed statement candidate.
 
@@ -396,6 +398,7 @@ def _posted_transaction_from_import_line(
     return Transaction(
         id=uuid4(),
         organization_id=statement.organization_id,
+        account_id=account_id,
         credit_card_id=statement.credit_card_id,
         contact_id=line.proposed_contact_id,
         statement_id=statement.id,
@@ -432,6 +435,12 @@ async def import_statement(
             code="statement_not_ready",
         )
 
+    account_id = await resolve_account_id_for_card(
+        db,
+        organization_id=statement.organization_id,
+        credit_card_id=statement.credit_card_id,
+    )
+
     result = await db.execute(
         select(StatementLineCandidate).where(
             StatementLineCandidate.statement_id == statement.id,
@@ -454,6 +463,7 @@ async def import_statement(
             statement=statement,
             line=line,
             user_id=user_id,
+            account_id=account_id,
         )
         db.add(tx)
         await db.flush()

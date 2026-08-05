@@ -156,7 +156,8 @@ class TransactionAdjustRequest(BaseModel):
 class TransactionResponse(ORMModel):
     id: UUID
     organization_id: UUID
-    credit_card_id: UUID
+    account_id: UUID
+    credit_card_id: UUID | None
     contact_id: UUID | None
     statement_id: UUID | None
     type: TransactionType

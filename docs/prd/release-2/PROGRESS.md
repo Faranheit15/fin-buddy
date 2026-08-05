@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-02 |
-| **Current subtask** | US-02.I1 |
+| **Current subtask** | US-02.I2 |
 | **Overall** | 1 / 6 stories done |
 
 ## Story status
@@ -12,7 +12,7 @@
 | Story | Status | Notes |
 |-------|--------|-------|
 | US-01 Auditable ledger | Done | R2A complete; browser residuals for V1–V3 optional |
-| US-02 Multi-account balances | In progress | Plan done → next I1 models/migration |
+| US-02 Multi-account balances | In progress | I1 done → next I2 balance + Correct Balance |
 | US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
 | US-05 Card EMIs & GST | Todo | Blocked on US-01, US-02 |
@@ -51,6 +51,7 @@
 | 2026-08-05 | US-02 | US-02.P2 | Specced 0005 card→account insert + 0006 account_id backfill / nullable credit_card_id. Next: P3. |
 | 2026-08-05 | US-02 | US-02.P3 | Specced /accounts CRUD, correct-balance, AccountResponse.balance_paise; card creates via /cards. Next: P4. |
 | 2026-08-05 | US-02 | US-02.P4 | Impeccable shape: Accounts nav/list/detail, Correct Balance dialog, onboard empty; Cards preserved. Next: I1. |
+| 2026-08-05 | US-02 | US-02.I1 | Account model/enum, Alembic 0005+0006 backfill/RLS, writers resolve account_id; pytest 79. Next: I2. |
 
 ## Blockers
 

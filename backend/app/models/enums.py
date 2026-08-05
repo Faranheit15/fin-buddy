@@ -51,6 +51,13 @@ class PostingStatus(enum.StrEnum):
     POSTED = "posted"
 
 
+class AccountKind(enum.StrEnum):
+    BANK = "bank"
+    CASH = "cash"
+    WALLET = "wallet"
+    CREDIT_CARD = "credit_card"
+
+
 class SettlementMethod(enum.StrEnum):
     UPI = "upi"
     CASH = "cash"

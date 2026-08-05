@@ -50,7 +50,7 @@
 
 ### Implement
 
-- [ ] **US-02.I1** Models + enums + Alembic migration + backfill.
+- [x] **US-02.I1** Models + enums + Alembic migration + backfill.
 - [ ] **US-02.I2** Account balance service + Correct Balance → adjustment (uses US-01).
 - [ ] **US-02.I3** Accounts API + wire transactions to accept `account_id`.
 - [ ] **US-02.I4** Frontend: accounts list/detail, nav, transaction account picker, Correct Balance — **impeccable craft-floor**; Operate density consistent with cards/contacts.
@@ -537,5 +537,17 @@ Owner scanning liquid money + card liabilities in one place (Zerodha/Kite-like o
 #### Open for builder
 - List as table vs card-rows: prefer **table** on desktop to match transactions density
 - Whether detail shows recent txs: yes if cheap (P3 optional detail payload)
+
+### US-02.I1 — Models + migrations + backfill (2026-08-05)
+
+**Shipped:**
+- `AccountKind` enum; `Account` ORM; `Transaction.account_id` required + `credit_card_id` nullable
+- Alembic `20260805_0005_accounts` (table, indexes, card→account uuid4 backfill, RLS ENABLE + conditional policies)
+- Alembic `20260805_0006_transaction_account_id` (backfill, NOT NULL, nullable card FK, indexes)
+- `account_service.resolve_account_id_for_card` for create/adjust/reverse/import writers
+- Card create inserts 1:1 `Account` before opening-balance tx
+- `TransactionResponse.account_id` + nullable `credit_card_id`
+
+**Next:** I2 account balance service + Correct Balance → adjustment
 
 

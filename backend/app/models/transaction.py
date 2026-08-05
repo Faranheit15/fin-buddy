@@ -37,10 +37,16 @@ class Transaction(Base):
         nullable=False,
         index=True,
     )
-    credit_card_id: Mapped[UUID] = mapped_column(
+    account_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    credit_card_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("credit_cards.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     contact_id: Mapped[UUID | None] = mapped_column(

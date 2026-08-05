@@ -1,5 +1,6 @@
 """ORM models — import all so Alembic metadata is complete."""
 
+from app.models.account import Account
 from app.models.contact import Contact
 from app.models.credit_card import CreditCard
 from app.models.logging import ActivityLog, ApiRequestLog, ErrorLog, SeedHistory
@@ -16,6 +17,7 @@ __all__ = [
     "OrganizationMember",
     "Contact",
     "CreditCard",
+    "Account",
     "Transaction",
     "Settlement",
     "Statement",

@@ -16,8 +16,9 @@ from app.domain.billing import (
     next_due_date_for_card,
     next_statement_date,
 )
+from app.models.account import Account
 from app.models.credit_card import CreditCard
-from app.models.enums import ActivityAction, CardStatus, PostingStatus, TransactionType
+from app.models.enums import AccountKind, ActivityAction, CardStatus, PostingStatus, TransactionType
 from app.models.transaction import Transaction
 from app.schemas.common import PaginatedResponse
 from app.schemas.domain import CreditCardCreate, CreditCardResponse, CreditCardUpdate
@@ -128,11 +129,24 @@ async def create_card(
     db.add(card)
     await db.flush()
 
+    account = Account(
+        id=uuid4(),
+        organization_id=org.id,
+        kind=AccountKind.CREDIT_CARD,
+        name=card.nickname,
+        institution=card.issuer,
+        currency=card.currency,
+        credit_card_id=card.id,
+    )
+    db.add(account)
+    await db.flush()
+
     if body.opening_balance_paise:
         db.add(
             Transaction(
                 id=uuid4(),
                 organization_id=org.id,
+                account_id=account.id,
                 credit_card_id=card.id,
                 type=TransactionType.OPENING_BALANCE,
                 posting_status=PostingStatus.POSTED,

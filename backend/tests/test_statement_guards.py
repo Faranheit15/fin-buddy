@@ -135,8 +135,9 @@ async def test_import_confirm_creates_posted_transactions_only() -> None:
         review_status=LineReviewStatus.ACCEPTED,
         committed_transaction_id=None,
     )
-    # 1) accepted lines  2) remaining pending  3) all lines (for final status)
-    db = _ImportSession([[line], [], [line]])
+    # 1) account resolve  2) accepted lines  3) remaining pending  4) all lines
+    account_id = uuid4()
+    db = _ImportSession([account_id, [line], [], [line]])
 
     result = await statement_service.import_statement(
         db,  # type: ignore[arg-type]
@@ -151,6 +152,7 @@ async def test_import_confirm_creates_posted_transactions_only() -> None:
     assert txs[0].posting_status != PostingStatus.DRAFT
     assert txs[0].amount_paise == 245_00
     assert txs[0].merchant == "Swiggy"
+    assert txs[0].account_id == account_id
     assert line.committed_transaction_id == txs[0].id
 
 
@@ -174,6 +176,7 @@ async def test_posted_transaction_from_import_line_helper() -> None:
         statement=statement,  # type: ignore[arg-type]
         line=line,  # type: ignore[arg-type]
         user_id=uuid4(),
+        account_id=uuid4(),
     )
     assert tx.posting_status is PostingStatus.POSTED
     assert tx.type is TransactionType.PURCHASE

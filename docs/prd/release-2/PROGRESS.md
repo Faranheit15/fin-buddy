@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-02 |
-| **Current subtask** | US-02.G3 |
+| **Current subtask** | US-02.P1 |
 | **Overall** | 1 / 6 stories done |
 
 ## Story status
@@ -12,7 +12,7 @@
 | Story | Status | Notes |
 |-------|--------|-------|
 | US-01 Auditable ledger | Done | R2A complete; browser residuals for V1–V3 optional |
-| US-02 Multi-account balances | In progress | G2 effect rules done → next G3 Correct Balance UX |
+| US-02 Multi-account balances | In progress | Gather done → next P1 accounts schema |
 | US-03 Categories / transfers / splits | Todo | Blocked on US-01, US-02 |
 | US-04 Debts & loans | Todo | Blocked on US-02 |
 | US-05 Card EMIs & GST | Todo | Blocked on US-01, US-02 |
@@ -46,6 +46,7 @@
 | 2026-08-05 | US-01 | US-01.V5 | Marked US-01 Done; ticked R2A in RELEASE-2-TASKS; pointer → US-02.G1. |
 | 2026-08-05 | US-02 | US-02.G1 | account_id required; credit_card_id nullable + required+consistent only for credit_card accounts. Next: G2. |
 | 2026-08-05 | US-02 | US-02.G2 | Asset vs liability effect tables; card=outstanding, bank/cash/wallet=cash held; NW signs. Next: G3. |
+| 2026-08-05 | US-02 | US-02.G3 | Correct Balance: target + reason + optional effective at; server-side delta; no contact in dialog. Next: P1. |
 
 ## Blockers
 

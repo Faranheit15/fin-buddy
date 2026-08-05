@@ -39,7 +39,7 @@
 
 - [x] **US-02.G1** Decide whether `credit_card_id` stays required on card spends or becomes optional when `account_id` points at a card account — document invariant.
 - [x] **US-02.G2** List balance effect rules per account kind (asset accounts vs credit liability).
-- [ ] **US-02.G3** Confirm Correct Balance UX fields (target balance, reason, effective date).
+- [x] **US-02.G3** Confirm Correct Balance UX fields (target balance, reason, effective date).
 
 ### Plan
 
@@ -144,4 +144,48 @@ Notes:
 #### Correct Balance (feeds G3)
 
 `target_balance − current_derived_balance = delta_paise` → post posted `adjustment` with `delta_sign` / `amount_paise=abs(delta)` on that `account_id` (and card id if credit_card kind per G1).
+
+### US-02.G3 — Correct Balance UX fields (2026-08-05)
+
+**PRD §5.7 / FR-AC4 / UC18:** Account detail → Correct balance → target + reason → system posts `adjustment`; history intact.
+
+**Code today:** `POST /transactions/adjust` takes `credit_card_id`, signed `delta_paise`, required `reason`, optional `occurred_at` / `contact_id` / `merchant`. No UI yet (US-01 deferred). No `account_id` on adjust. Card create already has optional opening outstanding → separate path.
+
+#### Surface
+
+- Primary: dialog on **`/app/accounts/[id]`** (and card account reachable from cards if linked).
+- Not on the global ledger form (copy already points to Correct Balance).
+
+#### Dialog fields
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| **Current balance** | read-only | Derived posted balance (G2 semantics); show INR; kind-aware caption (“Outstanding” for `credit_card`, “Balance” for bank/cash/wallet). |
+| **Target balance** | yes | ₹ input → paise. Same unit as current (outstanding vs cash held). |
+| **Delta preview** | read-only | `target − current` shown before submit (sign + INR). |
+| **Reason** | yes | Free text, trim, min 1 / max ~2000 → `correction_reason`. Placeholder e.g. “Reconcile with bank statement”. |
+| **Effective at** | no | datetime-local; default **now (IST display)** → `occurred_at`. |
+
+**Out of dialog (defaults):**
+- `merchant` = `"Balance adjustment"` (or `"Correct balance"`) — not editable in R2B.
+- `contact_id` = **null** — Correct Balance is account reconciliation, not friend attribution (raw adjust API may still allow contact later if needed).
+- Always **posted** adjustment (never draft).
+
+#### API shape (Plan/Implement)
+
+Prefer **account-scoped** Correct Balance that accepts `target_balance_paise` + `reason` + optional `occurred_at`; **server recomputes** `delta = target − current` and rejects `delta == 0` (`already_at_target` / `invalid_delta`). Do not trust client-only delta for posting. Wire through G1 ids (`account_id` + card id when kind=credit_card). Existing `/transactions/adjust` can remain as low-level delta API or be wrapped.
+
+#### Edge cases
+
+- Archived account → block Correct Balance.
+- Target = current → inline error, no row.
+- Concurrent posts → accept eventual balance; user can correct again (no optimistic lock in R2B).
+- Opening balance on **new** bank/cash/wallet: optional create field → first posted adjustment (or `opening_balance` type); distinct from Correct Balance but same audit idea (FR-AC4).
+
+#### Copy cues
+
+- Title: “Correct balance”
+- Confirm: “Post adjustment”
+- Success: stay on account detail; balance updates; new adjustment visible in activity/ledger.
+
 

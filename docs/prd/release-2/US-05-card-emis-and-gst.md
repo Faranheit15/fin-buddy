@@ -40,10 +40,10 @@
 
 ### Plan
 
-- [ ] **US-05.P1** Spec `emi_plans` / `emi_installments` + transaction type extensions.
-- [ ] **US-05.P2** Spec utilization service fields on card + dashboard APIs.
-- [ ] **US-05.P3** Spec explanation payload shape for UI.
-- [ ] **US-05.P4** Spec card detail EMI UI + optional `/app/emis` — **impeccable `shape`** (utilization split + explainer must stay scannable).
+- [x] **US-05.P1** Spec `emi_plans` / `emi_installments` + transaction type extensions.
+- [x] **US-05.P2** Spec utilization service fields on card + dashboard APIs.
+- [x] **US-05.P3** Spec explanation payload shape for UI.
+- [x] **US-05.P4** Spec card detail EMI UI + optional `/app/emis` — **impeccable `shape`** (utilization split + explainer must stay scannable).
 
 ### Implement
 
@@ -74,3 +74,32 @@
 - Rounding: Total principal is divided by tenure, rounded down to nearest paise. The final installment absorbs the remainder to ensure sum equals exact principal.
 - Interest posting policy: Adopting default — Scheduled posted typed lines with clear `emi_*` types (`emi_interest`, `emi_gst`), which are reversible under US-01.
 - Scope: Contact-paid EMI installments are deferred until core Must features of US-05 are implemented and stable.
+
+### Implementation Specs (P1-P4)
+
+**P1: Schema & Transaction Types**
+- `emi_plans`: `id`, `organization_id`, `credit_card_id`, `reference_transaction_id` (optional), `principal_paise`, `interest_rate_bps`, `tenure_months`, `status` (ACTIVE, COMPLETED).
+- `emi_installments`: `id`, `plan_id`, `sequence_number`, `due_date`, `principal_paise`, `interest_paise`, `fees_paise`, `gst_paise`, `total_paise`, `status` (PENDING, PAID).
+- Enum additions: `EmiPlanStatus`, `EmiInstallmentStatus`.
+- `TransactionType` additions: `emi_interest`, `emi_gst`, `emi_fees`. (Principal repayments will just be regular card payments that resolve the installment).
+
+**P2 & P3: Utilization Service & Explanation Payload**
+- The original purchase transaction remains on the ledger, contributing to `total_outstanding`.
+- `emi_principal_blocked` = sum of `principal_paise` for all `PENDING` installments across active plans on the card.
+- `spend_outstanding` = `total_outstanding` - `emi_principal_blocked`.
+- `available_credit` = `limit` - `total_outstanding`.
+- Explanation Payload:
+  ```json
+  {
+    "limit": 100000_00,
+    "total_outstanding": 15000_00,
+    "spend_outstanding": 5000_00,
+    "emi_principal_blocked": 10000_00,
+    "available_credit": 85000_00
+  }
+  ```
+
+**P4: UI Shape (Card Detail)**
+- The card detail header will feature a segmented progress bar (Available / Spend / EMI Block).
+- A new section "Active EMI Plans" below the transaction list will show each plan, its tenure progress (e.g. "Month 2 of 6"), and remaining principal.
+- "Create EMI" button opens a dialog to specify principal, tenure, and interest rate.

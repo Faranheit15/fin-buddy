@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-05 |
-| **Current subtask** | US-05.P1 |
+| **Current subtask** | US-05.I1 |
 | **Overall** | 4 / 6 stories done |
 
 ## Story status
@@ -15,7 +15,7 @@
 | US-02 Multi-account balances | Done | R2B (Part 1) complete; account ledger working |
 | US-03 Categories / transfers / splits | Done | - [x] **US-03.V1-V3** Residuals documented.<br>- [x] **US-03.V4** Marked Done. |
 | US-04 Debts & loans | Done | Complete; ad-hoc debts & loans settled |
-| US-05 Card EMIs & GST | In Progress | Gather complete |
+| US-05 Card EMIs & GST | In Progress | Plan complete |
 | US-06 Insights / imports / reminders | Todo | Blocked on US-02…US-05 for full scope |
 
 ## Iteration log
@@ -77,6 +77,7 @@
 | 2026-08-06 | US-04 | US-04.T3 | Added unit tests for obligation API authz. Next: T4. |
 | 2026-08-06 | US-04 | US-04.T4 | Passed all DoD checks (pytest, ruff, mypy, lint, tsc). Story US-04 is Done. |
 | 2026-08-06 | US-05 | US-05.G1-G3 | Defined rounding rules (last absorbs remainder), adopted auto-post default for EMI interest/GST, deferred contact-allocation. Next: P1. |
+| 2026-08-06 | US-05 | US-05.P1-P4 | Specified DB models, math for utilization (total_outstanding - emi_block), payload, and UI shape. Next: I1. |
 
 ## Blockers
 

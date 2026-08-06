@@ -109,6 +109,8 @@ class CreditCardResponse(ORMModel):
     held_by_contact_id: UUID | None
     notes: str | None
     outstanding_paise: int | None = None
+    spend_outstanding_paise: int | None = None
+    emi_principal_blocked_paise: int | None = None
     available_credit_paise: int | None = None
     utilization_percent: float | None = None
     next_statement_date: date | None = None
@@ -394,6 +396,8 @@ class DashboardCardSummary(BaseModel):
     network: CardNetwork
     credit_limit_paise: int
     outstanding_paise: int
+    spend_outstanding_paise: int
+    emi_principal_blocked_paise: int
     available_credit_paise: int
     utilization_percent: float
     next_due_date: date | None

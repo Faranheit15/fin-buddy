@@ -23,6 +23,7 @@ from app.schemas.domain import (
     DashboardContactSummary,
     DashboardResponse,
 )
+from app.services.emi_service import cards_emi_blocked_map
 from app.services.ledger_service import cards_outstanding_map, contacts_balances_map
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -80,6 +81,7 @@ async def dashboard(
     total_limit = int(total_limit or 0)
 
     outstanding_map = await cards_outstanding_map(db, org.id)
+    emi_blocked_map = await cards_emi_blocked_map(db, org.id)
     balances = await contacts_balances_map(db, org.id)
     total_outstanding = sum(outstanding_map.values())
     friend_dues = sum(bal for bal in balances.values() if bal > 0)
@@ -98,6 +100,8 @@ async def dashboard(
 
     for card in cards:
         outstanding = outstanding_map.get(card.id, 0)
+        emi_blocked = emi_blocked_map.get(card.id, 0)
+        spend_outstanding = outstanding - emi_blocked
         available = max(card.credit_limit_paise - outstanding, 0)
         util = (
             round((outstanding / card.credit_limit_paise) * 100, 1)
@@ -121,6 +125,8 @@ async def dashboard(
                 network=card.network,
                 credit_limit_paise=card.credit_limit_paise,
                 outstanding_paise=outstanding,
+                spend_outstanding_paise=spend_outstanding,
+                emi_principal_blocked_paise=emi_blocked,
                 available_credit_paise=available,
                 utilization_percent=util,
                 next_due_date=next_due,

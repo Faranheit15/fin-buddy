@@ -22,6 +22,7 @@ from app.models.enums import AccountKind, ActivityAction, CardStatus, PostingSta
 from app.models.transaction import Transaction
 from app.schemas.common import PaginatedResponse
 from app.schemas.domain import CreditCardCreate, CreditCardResponse, CreditCardUpdate
+from app.services.emi_service import card_emi_blocked_paise, cards_emi_blocked_map
 from app.services.ledger_service import card_outstanding_paise, cards_outstanding_map
 from app.services.logging_service import log_activity
 
@@ -42,7 +43,8 @@ def _cycle_dates(card: CreditCard) -> tuple[object, object]:
     return stmt, due
 
 
-def _to_response(card: CreditCard, outstanding: int) -> CreditCardResponse:
+def _to_response(card: CreditCard, outstanding: int, emi_blocked: int = 0) -> CreditCardResponse:
+    spend_outstanding = outstanding - emi_blocked
     available = max(card.credit_limit_paise - outstanding, 0)
     util = (
         round((outstanding / card.credit_limit_paise) * 100, 1)
@@ -66,6 +68,8 @@ def _to_response(card: CreditCard, outstanding: int) -> CreditCardResponse:
         held_by_contact_id=card.held_by_contact_id,
         notes=card.notes,
         outstanding_paise=outstanding,
+        spend_outstanding_paise=spend_outstanding,
+        emi_principal_blocked_paise=emi_blocked,
         available_credit_paise=available,
         utilization_percent=util,
         next_statement_date=next_stmt,  # type: ignore[arg-type]
@@ -98,7 +102,11 @@ async def list_cards(
     )
     cards = list(result.scalars().all())
     outstanding = await cards_outstanding_map(db, org.id)
-    items = [_to_response(c, outstanding.get(c.id, 0)) for c in cards]
+    emi_blocked_map = await cards_emi_blocked_map(db, org.id)
+    items = [
+        _to_response(c, outstanding.get(c.id, 0), emi_blocked_map.get(c.id, 0)) 
+        for c in cards
+    ]
     return PaginatedResponse(items=items, total=int(total), page=page, page_size=page_size)
 
 
@@ -173,7 +181,8 @@ async def create_card(
     await db.commit()
     await db.refresh(card)
     outstanding = await card_outstanding_paise(db, card.id)
-    return _to_response(card, outstanding)
+    emi_blocked = await card_emi_blocked_paise(db, card.id)
+    return _to_response(card, outstanding, emi_blocked)
 
 
 @router.get("/{card_id}", response_model=CreditCardResponse)
@@ -181,7 +190,8 @@ async def get_card(card_id: UUID, db: DbSession, org_ctx: OrgContext) -> CreditC
     org, _ = org_ctx
     card = await _get(db, org.id, card_id)
     outstanding = await card_outstanding_paise(db, card.id)
-    return _to_response(card, outstanding)
+    emi_blocked = await card_emi_blocked_paise(db, card.id)
+    return _to_response(card, outstanding, emi_blocked)
 
 
 @router.patch("/{card_id}", response_model=CreditCardResponse)
@@ -217,7 +227,8 @@ async def update_card(
     await db.commit()
     await db.refresh(card)
     outstanding = await card_outstanding_paise(db, card.id)
-    return _to_response(card, outstanding)
+    emi_blocked = await card_emi_blocked_paise(db, card.id)
+    return _to_response(card, outstanding, emi_blocked)
 
 
 async def _get(db: DbSession, org_id: UUID, card_id: UUID) -> CreditCard:

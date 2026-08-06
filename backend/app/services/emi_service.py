@@ -2,11 +2,14 @@
 
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
+from uuid import UUID
 
 from dateutil.relativedelta import relativedelta  # type: ignore
+from sqlalchemy import func, select
 
-from app.models.emi import EmiInstallment
-from app.models.enums import EmiInstallmentStatus
+from app.api.deps import DbSession
+from app.models.emi import EmiInstallment, EmiPlan
+from app.models.enums import EmiInstallmentStatus, EmiPlanStatus
 
 
 def generate_emi_schedule(
@@ -82,3 +85,35 @@ def generate_emi_schedule(
         installments.append(installment)
         
     return installments
+
+
+async def card_emi_blocked_paise(db: DbSession, credit_card_id: UUID) -> int:
+    """Get the sum of pending principal for all active EMIs on a card."""
+    
+    
+    result = await db.scalar(
+        select(func.sum(EmiInstallment.principal_paise))
+        .join(EmiPlan, EmiInstallment.plan_id == EmiPlan.id)
+        .where(
+            EmiPlan.credit_card_id == credit_card_id,
+            EmiPlan.status == EmiPlanStatus.ACTIVE,
+            EmiInstallment.status == EmiInstallmentStatus.PENDING,
+        )
+    )
+    return int(result or 0)
+
+
+async def cards_emi_blocked_map(db: DbSession, organization_id: UUID) -> dict[UUID, int]:
+    """Get a map of card_id -> pending emi principal for an organization."""
+    result = await db.execute(
+        select(EmiPlan.credit_card_id, func.sum(EmiInstallment.principal_paise))
+        .join(EmiInstallment, EmiInstallment.plan_id == EmiPlan.id)
+        .where(
+            EmiPlan.organization_id == organization_id,
+            EmiPlan.status == EmiPlanStatus.ACTIVE,
+            EmiInstallment.status == EmiInstallmentStatus.PENDING,
+        )
+        .group_by(EmiPlan.credit_card_id)
+    )
+    return {row[0]: int(row[1] or 0) for row in result.all()}
+

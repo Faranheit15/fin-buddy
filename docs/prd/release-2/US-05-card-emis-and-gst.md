@@ -34,9 +34,9 @@
 
 ### Gather
 
-- [ ] **US-05.G1** Define rounding rules for installment principal (last installment absorbs remainder).
-- [ ] **US-05.G2** Decide whether EMI interest/GST auto-posts on due date or creates review drafts — **default: scheduled posted typed lines with clear `emi_*` types, reversible via US-01**.
-- [ ] **US-05.G3** Confirm Should-scope: contact-paid installment / advance allocation — include if time allows after Must.
+- [x] **US-05.G1** Define rounding rules for installment principal (last installment absorbs remainder).
+- [x] **US-05.G2** Decide whether EMI interest/GST auto-posts on due date or creates review drafts — **default: scheduled posted typed lines with clear `emi_*` types, reversible via US-01**.
+- [x] **US-05.G3** Confirm Should-scope: contact-paid installment / advance allocation — include if time allows after Must.
 
 ### Plan
 
@@ -71,5 +71,6 @@
 
 ## Story notes
 
-- Rounding:
-- Interest posting policy:
+- Rounding: Total principal is divided by tenure, rounded down to nearest paise. The final installment absorbs the remainder to ensure sum equals exact principal.
+- Interest posting policy: Adopting default — Scheduled posted typed lines with clear `emi_*` types (`emi_interest`, `emi_gst`), which are reversible under US-01.
+- Scope: Contact-paid EMI installments are deferred until core Must features of US-05 are implemented and stable.

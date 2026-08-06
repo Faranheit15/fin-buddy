@@ -31,7 +31,7 @@ type ErrorBody = {
  *   so CORS never blocks auth.
  * - On the server: call the real backend URL.
  */
-function apiBase(): string {
+export function apiBase(): string {
   if (typeof window !== "undefined") {
     return "/backend";
   }

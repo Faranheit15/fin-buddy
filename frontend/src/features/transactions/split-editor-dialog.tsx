@@ -57,7 +57,6 @@ export function SplitEditorDialog({
           }))
         );
       } else {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSplits([
           {
             id: "init-0",
@@ -66,7 +65,6 @@ export function SplitEditorDialog({
           },
         ]);
       }
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(null);
     }
   }, [open, transaction]);

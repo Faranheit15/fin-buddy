@@ -15,6 +15,7 @@ import {
   type OrganizationSummary,
   type ProfileResponse,
 } from "@/lib/api/auth";
+import { exportData } from "@/lib/api/export";
 import { ApiError, apiFetch } from "@/lib/api/client";
 import {
   Dialog,
@@ -226,16 +227,7 @@ function ExportSettingsCard({ accessToken }: { accessToken: string }) {
     setDownloading(true);
     setErr(null);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/export`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to download export");
-      }
-      
-      const blob = await res.blob();
+      const blob = await exportData(accessToken);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -328,7 +320,7 @@ function PrivacyTermsDialog() {
             <strong>1. Data Ownership:</strong> All financial data you enter belongs to you. Since this is a self-hosted instance, data is stored on the server where it is deployed.
           </p>
           <p>
-            <strong>2. Data Deletion:</strong> You have the right to permanently delete your account at any time. Using the "Delete Account" button will erase all your profile, organization, transactions, and settings data from the database.
+            <strong>2. Data Deletion:</strong> You have the right to permanently delete your account at any time. Using the &quot;Delete Account&quot; button will erase all your profile, organization, transactions, and settings data from the database.
           </p>
           <p>
             <strong>3. Security:</strong> Data is secured using Row Level Security (RLS) on Supabase.

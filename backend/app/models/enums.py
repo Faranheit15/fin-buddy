@@ -46,6 +46,9 @@ class TransactionType(enum.StrEnum):
     REVERSAL = "reversal"
     TRANSFER_OUT = "transfer_out"
     TRANSFER_IN = "transfer_in"
+    EMI_INTEREST = "emi_interest"
+    EMI_GST = "emi_gst"
+    EMI_FEE = "emi_fee"
 
 
 class PostingStatus(enum.StrEnum):
@@ -69,6 +72,17 @@ class ObligationStatus(enum.StrEnum):
     ACTIVE = "active"
     PAID = "paid"
     DEFAULTED = "defaulted"
+
+
+class EmiPlanStatus(enum.StrEnum):
+    ACTIVE = "active"
+    COMPLETED = "completed"
+
+
+class EmiInstallmentStatus(enum.StrEnum):
+    PENDING = "pending"
+    PAID = "paid"
+    OVERDUE = "overdue"
 
 
 class SettlementMethod(enum.StrEnum):

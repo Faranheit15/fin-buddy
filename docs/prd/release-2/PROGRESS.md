@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-05 |
-| **Current subtask** | US-05.I1 |
+| **Current subtask** | US-05.I2 |
 | **Overall** | 4 / 6 stories done |
 
 ## Story status
@@ -78,6 +78,7 @@
 | 2026-08-06 | US-04 | US-04.T4 | Passed all DoD checks (pytest, ruff, mypy, lint, tsc). Story US-04 is Done. |
 | 2026-08-06 | US-05 | US-05.G1-G3 | Defined rounding rules (last absorbs remainder), adopted auto-post default for EMI interest/GST, deferred contact-allocation. Next: P1. |
 | 2026-08-06 | US-05 | US-05.P1-P4 | Specified DB models, math for utilization (total_outstanding - emi_block), payload, and UI shape. Next: I1. |
+| 2026-08-06 | US-05 | US-05.I1 | Added EMI models, manual migration, and schedule generator logic. Next: I2. |
 
 ## Blockers
 

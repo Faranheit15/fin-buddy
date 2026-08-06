@@ -46,11 +46,11 @@ Work this story in **three slices** (still one story for Ralph sequencing): Impo
 
 ### Plan
 
-- [ ] **US-06.P1** Spec CSV/xlsx parsers into existing statement/import review models.
-- [ ] **US-06.P2** Spec export workbook sheets.
-- [ ] **US-06.P3** Spec dashboard API extensions + sidebar IA — **impeccable `shape`** for net-worth / upcoming dashboard composition (Operate; one job per section).
-- [ ] **US-06.P4** Spec reminder job, preference fields, deletion API, `record_shares` table.
-- [ ] **US-06.P5** Optional: PWA manifest plan — ship or explicitly defer to R3 in CONTEXT. Spec Settings deletion/reminder UI with **impeccable `shape`**.
+- [x] **US-06.P1** Spec CSV/xlsx parsers into existing statement/import review models.
+- [x] **US-06.P2** Spec export workbook sheets.
+- [x] **US-06.P3** Spec dashboard API extensions + sidebar IA — **impeccable `shape`** for net-worth / upcoming dashboard composition (Operate; one job per section).
+- [x] **US-06.P4** Spec reminder job, preference fields, deletion API, `record_shares` table.
+- [x] **US-06.P5** Optional: PWA manifest plan — ship or explicitly defer to R3 in CONTEXT. Spec Settings deletion/reminder UI with **impeccable `shape`**.
 
 ### Implement — Slice A (Import/Export)
 
@@ -94,3 +94,35 @@ Work this story in **three slices** (still one story for Ralph sequencing): Impo
 - Email provider: **Resend**. It integrates well with Next.js/FastAPI. Required env var: `RESEND_API_KEY`.
 - Deletion policy: **Hard delete** via DB cascades for all Organization data (accounts, transactions, obligations, EMIs). Supabase `auth.users` deletion triggered via service role client.
 - PWA: ship / defer: Defer to R3 per absolute rules defaults (not trivial).
+
+### Implementation Specs (P1-P5)
+
+**P1: CSV/Excel Parsers**
+- Add `pandas` dependency. Extend `backend/app/services/statement_service.py`.
+- Handle `text/csv` and `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
+- Map typical columns (Date, Description, Amount, Type) to generate `StatementLineCandidate` objects exactly as PDF does, keeping the review flow unaltered.
+
+**P2: Export Workbook**
+- Provide `GET /api/v1/export` returning an `.xlsx` file.
+- Sheets: Accounts (kind, balance), Transactions (date, amount, category), Contacts (net balance), Obligations (status, remaining), Cards (limit, outstanding, blocked).
+
+**P3: Dashboard API & UI Shape**
+- **API**: Add `assets_paise`, `liabilities_paise`, `net_worth_paise`, `period_income_paise`, `period_expense_paise` (excluding transfers) to `DashboardData`. Add `upcoming_items` (merged sorted list of card dues, EMI pending, and obligation dues).
+- **UI Shape (Operate)**:
+  - Top row: Net Worth strip displaying Assets, Liabilities, and Net Worth cleanly.
+  - Second row: Income vs Expense for the current month.
+  - Sidebar addition: Links to Accounts, Debts, EMIs.
+  - Unified Upcoming column: Replace scattered reminders with a single dense list of action items.
+  - Continue keeping `CardsTable` and `ContactsList` compact (The Ledger Shelf rule).
+
+**P4: Reminders & Deletion Schema**
+- **Preferences**: Add `email_reminders_enabled` to Profile.
+- **Reminder Job**: Endpoint `POST /api/v1/jobs/send-reminders` (scans active users, checks dues within `due_soon_days`, uses Resend API via `RESEND_API_KEY`).
+- **Deletion API**: `DELETE /api/v1/users/me` hard-cascades all Org data, then removes Supabase auth user via admin client.
+- **Shares**: Alembic script for `record_shares` (id, org_id, record_type, record_id, shared_with_user_id) + basic authz stub.
+
+**P5: Settings UI Shape**
+- **UI Shape (Operate)**:
+  - Reminders Card: Toggle for "Enable email reminders".
+  - Export Card: "Download Excel Export" button.
+  - Danger Zone Card: "Delete Account" button opening a double-confirmation modal requiring the user to type "DELETE".

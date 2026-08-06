@@ -39,10 +39,10 @@ Work this story in **three slices** (still one story for Ralph sequencing): Impo
 
 ### Gather
 
-- [ ] **US-06.G1** Define Fin Buddy CSV/Excel template columns; document in story notes.
-- [ ] **US-06.G2** Confirm net-worth formula (receivables as assets — PRD default).
-- [ ] **US-06.G3** Choose email provider approach (Supabase email vs Resend/SES) and required env vars.
-- [ ] **US-06.G4** Define account deletion policy (hard delete vs anonymize; org cascade).
+- [x] **US-06.G1** Define Fin Buddy CSV/Excel template columns; document in story notes.
+- [x] **US-06.G2** Confirm net-worth formula (receivables as assets — PRD default).
+- [x] **US-06.G3** Choose email provider approach (Supabase email vs Resend/SES) and required env vars.
+- [x] **US-06.G4** Define account deletion policy (hard delete vs anonymize; org cascade).
 
 ### Plan
 
@@ -89,7 +89,8 @@ Work this story in **three slices** (still one story for Ralph sequencing): Impo
 
 ## Story notes
 
-- CSV template:
-- Email provider:
-- Deletion policy:
-- PWA: ship / defer:
+- CSV template: `Date` (YYYY-MM-DD), `Description`, `Amount` (INR), `Type` (Debit/Credit), `Category` (Optional), `Notes` (Optional), `Reference` (Optional). Context (Account) is derived from the upload target.
+- Net-worth formula: `Assets = sum(bank, cash, wallet) + sum(receivables)`. `Liabilities = sum(card_outstanding) + sum(payables)`. (Card outstanding inherently includes EMI principal).
+- Email provider: **Resend**. It integrates well with Next.js/FastAPI. Required env var: `RESEND_API_KEY`.
+- Deletion policy: **Hard delete** via DB cascades for all Organization data (accounts, transactions, obligations, EMIs). Supabase `auth.users` deletion triggered via service role client.
+- PWA: ship / defer: Defer to R3 per absolute rules defaults (not trivial).

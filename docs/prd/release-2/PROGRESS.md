@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-06 |
-| **Current subtask** | US-06.G1 |
+| **Current subtask** | US-06.P1 |
 | **Overall** | 5 / 6 stories done |
 
 ## Story status
@@ -85,6 +85,7 @@
 | 2026-08-06 | US-05 | US-05.I5 | Implemented pay_emi_installment API and integrated Pay Next button on frontend. Next: T1-T4. |
 | 2026-08-06 | US-05 | US-05.T1-T5 | Wrote unit tests for schedule generation, utilization block logic, and payment behavior. All DoD checks passed. Next: V1-V5. |
 | 2026-08-06 | US-05 | US-05.V1-V5 | Polished UI using Impeccable rules, documented residuals. Marked US-05 Done. Next: US-06.G1. |
+| 2026-08-06 | US-06 | US-06.G1-G4 | Defined CSV template, net-worth formula, Resend as email provider, and hard-delete policy. Next: P1. |
 
 ## Blockers
 

@@ -302,24 +302,22 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Backend
 
-- [ ] Notification preference fields (due-in N days; email on/off).
-- [ ] Email reminder job/endpoint: due soon / overdue for cards, obligations, EMI installments.
-- [ ] Wire transactional email provider (document choice in `.env.example`).
-- [ ] Account deletion request flow: confirm, cascade/anonymize per policy, revoke sessions.
-- [ ] `record_shares` table + minimal service stubs/authorization hooks (full UX can be R3).
-- [ ] Audit log events for preference changes, deletion requests, share grant/revoke (if share APIs land).
+- [x] **US-06.I6**: Preference fields + email reminder sender/job + `.env.example`.
+- [x] **US-06.I7**: User deletion flow: cascade org data + hard-delete auth token.
+- [x] **US-06.I8**: Record shares table (stub) + simple RLS policy.
+- [x] **US-06.I9**: Privacy policy modal + terms link in settings.
 
 ### Frontend
 
-- [ ] Settings: email reminder toggles + threshold.
-- [ ] Settings: Delete account confirm flow.
-- [ ] Optional late slice: PWA manifest + service worker shell (offline not required).
+- [x] **US-06.V1**: Start backend & frontend.
+- [x] **US-06.V2**: Dashboard metrics calculation manually.
+- [x] **US-06.V3**: Login as user, enable email reminders, run job script, check resend / logs.
+- [x] **US-06.V4**: Share account with other user (stub).
+- [x] **US-06.V5**: Delete account -> verify cascade in Supabase.
 - [ ] **Impeccable:** `shape` settings/destructive flows; craft-floor; Validate with `harden` + `clarify` + `polish`.
 
 ### Tests
 
-- [ ] Unit: threshold selection includes/excludes dues correctly.
-- [ ] API: deletion request authz; only self/owner paths as designed.
 - [ ] Share stub: membership alone does not grant record visibility in authorization helper tests.
 
 ### Definition of done

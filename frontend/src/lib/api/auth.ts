@@ -11,6 +11,7 @@ export type ProfileResponse = {
   timezone: string;
   due_soon_days: number;
   high_utilization_percent: number;
+  email_reminders_enabled: boolean;
   platform_role: "user" | "admin" | "super_admin";
   is_active: boolean;
   last_login_at: string | null;
@@ -22,6 +23,7 @@ export type ProfileUpdate = {
   timezone?: string;
   due_soon_days?: number;
   high_utilization_percent?: number;
+  email_reminders_enabled?: boolean;
 };
 
 export type OrganizationSummary = {

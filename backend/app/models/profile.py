@@ -39,6 +39,9 @@ class Profile(Base):
     high_utilization_percent: Mapped[int] = mapped_column(
         Integer, nullable=False, default=80, server_default="80"
     )
+    email_reminders_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     platform_role: Mapped[PlatformRole] = mapped_column(
         SAEnum(PlatformRole, name="platform_role", values_callable=lambda x: [e.value for e in x]),
         nullable=False,

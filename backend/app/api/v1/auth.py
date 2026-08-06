@@ -395,3 +395,26 @@ async def google_oauth(
         sep = "&" if "?" in url else "?"
         url = f"{url}{sep}apikey={settings.supabase_anon_key}"
     return GoogleOAuthResponse(url=url)
+
+
+@router.delete("/me", response_model=MessageResponse)
+async def delete_me(
+    request: Request,
+    db: DbSession,
+    settings: AppSettings,
+    user: CurrentUser,
+) -> MessageResponse:
+    ip, ua = client_meta(request)
+    await log_activity(
+        db,
+        action=ActivityAction.OTHER,
+        summary="User deleted account",
+        actor_user_id=user.id,
+        resource_type="profile",
+        resource_id=str(user.id),
+        ip_address=ip,
+        user_agent=ua,
+        commit=True,
+    )
+    await auth_service.delete_account(db, settings, user.id)
+    return MessageResponse(message="Account deleted successfully")

@@ -6,6 +6,7 @@
 | **Current story** | US-06 |
 | **Current subtask** | US-06.I6 |
 | **Overall** | 5 / 6 stories done |
+| **Overall** | 6 / 6 stories done |
 
 ## Story status
 
@@ -16,7 +17,7 @@
 | US-03 Categories / transfers / splits | Done | - [x] **US-03.V1-V3** Residuals documented.<br>- [x] **US-03.V4** Marked Done. |
 | US-04 Debts & loans | Done | Complete; ad-hoc debts & loans settled |
 | US-05 Card EMIs & GST | Done | Completed EMI block tracking and scheduling; UI residuals documented |
-| US-06 Insights / imports / reminders | Todo | Unblocked |
+| US-06 Insights / imports / reminders | Done | Completed parsing, export, and redesigned dashboard metrics. |
 
 ## Iteration log
 

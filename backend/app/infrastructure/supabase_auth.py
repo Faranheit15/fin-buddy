@@ -122,6 +122,21 @@ class SupabaseAuthClient:
             data: dict[str, Any] = response.json()
             return data
 
+    async def admin_delete_user(self, user_id: UUID) -> None:
+        if not self._service_key:
+            raise AppError("Service role key not configured", code="auth_config_error", status_code=500)
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.delete(
+                f"{self._base}/admin/users/{user_id}",
+                headers=self._headers(service=True),
+            )
+            if response.status_code >= 400 and response.status_code != 404:
+                raise AppError(
+                    f"Supabase delete_user failed: {response.text}",
+                    code="supabase_error",
+                    status_code=502,
+                )
+
     async def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(

@@ -15,7 +15,16 @@ import {
   type OrganizationSummary,
   type ProfileResponse,
 } from "@/lib/api/auth";
-import { ApiError } from "@/lib/api/client";
+import { ApiError, apiFetch } from "@/lib/api/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useRouter } from "next/navigation";
 
 function ProfileSettingsForm({
   profile,
@@ -30,6 +39,7 @@ function ProfileSettingsForm({
   const [timezone, setTimezone] = useState(profile.timezone || "Asia/Kolkata");
   const [dueSoonDays, setDueSoonDays] = useState(profile.due_soon_days ?? 7);
   const [highUtil, setHighUtil] = useState(profile.high_utilization_percent ?? 80);
+  const [emailReminders, setEmailReminders] = useState(profile.email_reminders_enabled ?? false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -45,6 +55,7 @@ function ProfileSettingsForm({
         timezone: timezone.trim() || "Asia/Kolkata",
         due_soon_days: dueSoonDays,
         high_utilization_percent: highUtil,
+        email_reminders_enabled: emailReminders,
       });
       await onSaved();
       setMsg("Saved profile and notification thresholds.");
@@ -114,6 +125,18 @@ function ProfileSettingsForm({
               Alert when a card is at or above this % (50–100).
             </p>
           </div>
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="email_reminders"
+            className="size-4 rounded border-input"
+            checked={emailReminders}
+            onChange={(e) => setEmailReminders(e.target.checked)}
+          />
+          <Label htmlFor="email_reminders" className="font-normal cursor-pointer">
+            Send email reminders for upcoming dues
+          </Label>
         </div>
       </div>
 
@@ -250,8 +273,75 @@ function ExportSettingsCard({ accessToken }: { accessToken: string }) {
   );
 }
 
+function DeleteAccountCard({ accessToken, onDeleted }: { accessToken: string; onDeleted: () => void }) {
+  const [deleting, setDeleting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleDelete() {
+    if (!window.confirm("Are you absolutely sure you want to delete your account? All your data will be permanently removed. This cannot be undone.")) {
+      return;
+    }
+    setDeleting(true);
+    setErr(null);
+    try {
+      await apiFetch("/api/v1/auth/me", { method: "DELETE" }, { accessToken });
+      onDeleted();
+    } catch (error) {
+      setErr(error instanceof ApiError ? error.message : "Failed to delete account");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <Card className="shadow-sm border-destructive/20 mt-8">
+      <CardHeader className="border-b border-destructive/10 pb-3!">
+        <CardTitle className="text-destructive">Danger Zone</CardTitle>
+        <CardDescription>
+          Permanently delete your account and all associated data.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-4">
+        {err ? <p className="mb-4 text-sm text-destructive">{err}</p> : null}
+        <Button onClick={handleDelete} size="sm" variant="destructive" disabled={deleting}>
+          {deleting ? "Deleting…" : "Delete Account"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PrivacyTermsDialog() {
+  return (
+    <Dialog>
+      <DialogTrigger className="text-xs text-muted-foreground hover:underline">
+        Privacy Policy & Terms of Service
+      </DialogTrigger>
+      <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Privacy & Terms</DialogTitle>
+          <DialogDescription>
+            Fin Buddy is a self-hosted personal finance tracker.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="text-sm space-y-4 pt-4">
+          <p>
+            <strong>1. Data Ownership:</strong> All financial data you enter belongs to you. Since this is a self-hosted instance, data is stored on the server where it is deployed.
+          </p>
+          <p>
+            <strong>2. Data Deletion:</strong> You have the right to permanently delete your account at any time. Using the "Delete Account" button will erase all your profile, organization, transactions, and settings data from the database.
+          </p>
+          <p>
+            <strong>3. Security:</strong> Data is secured using Row Level Security (RLS) on Supabase.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function SettingsPage() {
-  const { accessToken, ready, profile, organizations, refreshProfile } = useAuth();
+  const { accessToken, ready, profile, organizations, refreshProfile, signOut } = useAuth();
+  const router = useRouter();
   const primaryOrg = organizations[0] ?? null;
 
   if (!ready) {
@@ -272,6 +362,7 @@ export default function SettingsPage() {
     profile.timezone,
     profile.due_soon_days,
     profile.high_utilization_percent,
+    profile.email_reminders_enabled,
   ].join("|");
 
   const orgFormKey = primaryOrg ? `${primaryOrg.id}|${primaryOrg.name}` : "none";
@@ -334,6 +425,18 @@ export default function SettingsPage() {
       </Card>
 
       <ExportSettingsCard accessToken={accessToken} />
+
+      <DeleteAccountCard 
+        accessToken={accessToken} 
+        onDeleted={() => {
+          signOut();
+          router.replace("/login");
+        }} 
+      />
+
+      <div className="mt-8 flex justify-center pb-8">
+        <PrivacyTermsDialog />
+      </div>
     </div>
   );
 }

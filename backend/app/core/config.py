@@ -107,6 +107,9 @@ class Settings(BaseSettings):
     statement_storage_bucket: str = "statements"
     statement_max_upload_bytes: int = 15 * 1024 * 1024  # 15 MB
 
+    # Email provider (Resend)
+    resend_api_key: str | None = None
+
     # Request / activity logging
     log_api_requests: bool = True
     log_request_body: bool = False  # avoid PII in prod unless needed

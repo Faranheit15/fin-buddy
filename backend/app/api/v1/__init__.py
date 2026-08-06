@@ -13,6 +13,7 @@ from app.api.v1 import (
     emis,
     export,
     health,
+    jobs,
     notifications,
     obligations,
     settlements,
@@ -38,3 +39,4 @@ api_router.include_router(categories.router)
 api_router.include_router(transfers.router)
 api_router.include_router(emis.router)
 api_router.include_router(export.router)
+api_router.include_router(jobs.router)

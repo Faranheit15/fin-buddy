@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.core.exceptions import AppError
 from app.infrastructure.supabase_auth import SupabaseAuthClient, extract_user_id
-from app.models.enums import ActivityAction
-from app.models.organization import Organization
+from app.models.enums import ActivityAction, OrgRole
+from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
 from app.services.logging_service import log_activity
 from app.services.user_service import ensure_profile_and_org
@@ -266,3 +266,33 @@ def google_oauth_url(settings: Settings, *, redirect_to: str) -> str:
 
     base = settings.supabase_url.rstrip("/")
     return f"{base}/auth/v1/authorize?provider=google&redirect_to={quote(redirect_to, safe='')}"
+
+
+async def delete_account(
+    session: AsyncSession,
+    settings: Settings,
+    user_id: UUID,
+) -> None:
+    from sqlalchemy import select
+
+    # 1. Delete all organizations where user is owner
+    result = await session.execute(
+        select(Organization).join(OrganizationMember).where(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.role == OrgRole.OWNER,
+        )
+    )
+    for org in result.scalars().all():
+        await session.delete(org)
+
+    # 2. Delete the profile itself
+    prof_result = await session.execute(select(Profile).where(Profile.id == user_id))
+    profile = prof_result.scalar_one_or_none()
+    if profile:
+        await session.delete(profile)
+    
+    await session.commit()
+
+    # 3. Delete from Supabase Auth
+    client = SupabaseAuthClient(settings)
+    await client.admin_delete_user(user_id)

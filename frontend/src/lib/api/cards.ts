@@ -20,6 +20,8 @@ export type CreditCard = {
   held_by_contact_id: string | null;
   notes: string | null;
   outstanding_paise: number | null;
+  spend_outstanding_paise: number | null;
+  emi_principal_blocked_paise: number | null;
   available_credit_paise: number | null;
   utilization_percent: number | null;
   next_statement_date: string | null;

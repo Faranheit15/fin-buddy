@@ -10,7 +10,10 @@ export type TransactionType =
   | "adjustment"
   | "reversal"
   | "transfer_out"
-  | "transfer_in";
+  | "transfer_in"
+  | "emi_interest"
+  | "emi_gst"
+  | "emi_fees";
 
 export type PostingStatus = "draft" | "posted";
 
@@ -33,6 +36,7 @@ export type Transaction = {
   type: TransactionType;
   posting_status: PostingStatus;
   amount_paise: number;
+  gst_paise: number | null;
   currency: string;
   occurred_at: string;
   merchant: string;
@@ -56,6 +60,7 @@ export type TransactionCreate = {
   credit_card_id?: string | null;
   type: TransactionType;
   amount_paise: number;
+  gst_paise?: number | null;
   occurred_at: string;
   merchant: string;
   contact_id?: string | null;
@@ -71,6 +76,7 @@ export type TransactionCreate = {
 export type TransactionUpdate = Partial<{
   type: TransactionType;
   amount_paise: number;
+  gst_paise: number | null;
   occurred_at: string;
   merchant: string;
   contact_id: string | null;

@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-05 |
-| **Current subtask** | US-05.I4 |
+| **Current subtask** | US-05.I5 |
 | **Overall** | 4 / 6 stories done |
 
 ## Story status
@@ -81,6 +81,7 @@
 | 2026-08-06 | US-05 | US-05.I1 | Added EMI models, manual migration, and schedule generator logic. Next: I2. |
 | 2026-08-06 | US-05 | US-05.I2 | Updated utilization service to compute spend vs EMI block. Added python-dateutil. Next: I3. |
 | 2026-08-06 | US-05 | US-05.I3 | Added gst_paise to transactions and implemented EMI APIs. Next: I4. |
+| 2026-08-06 | US-05 | US-05.I4 | Built frontend UI: segmented utilization bar, active EMI plans, create EMI dialog, and GST field. Next: I5. |
 
 ## Blockers
 

@@ -51,6 +51,7 @@ export function TransactionForm({
   const [contactId, setContactId] = useState(defaultContactId ?? "");
   const [type, setType] = useState<TransactionType | "transfer">("purchase");
   const [amountRupees, setAmountRupees] = useState("");
+  const [gstRupees, setGstRupees] = useState("");
   const [merchant, setMerchant] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [notes, setNotes] = useState("");
@@ -64,6 +65,7 @@ export function TransactionForm({
     try {
       if (!accountId) throw new Error("Select an account");
       const amountPaise = rupeesToPaise(amountRupees);
+      const gstPaise = gstRupees ? rupeesToPaise(gstRupees) : null;
       if (amountPaise <= 0) throw new Error("Amount must be greater than 0");
       const merch = merchant.trim();
       if (!merch) throw new Error("Merchant / description is required");
@@ -98,6 +100,7 @@ export function TransactionForm({
         merchant: merch,
         contact_id: contactId || null,
         category_id: categoryId || null,
+        gst_paise: gstPaise,
         notes: notes.trim() || null,
         posting_status: postingStatus,
       });
@@ -202,6 +205,19 @@ export function TransactionForm({
             disabled={busy}
           />
         </div>
+        {type !== "transfer" && (
+          <div className="space-y-1.5">
+            <Label htmlFor="tx-gst">GST Included (₹) (Optional)</Label>
+            <Input
+              id="tx-gst"
+              inputMode="decimal"
+              value={gstRupees}
+              onChange={(e) => setGstRupees(e.target.value)}
+              placeholder="0"
+              disabled={busy}
+            />
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="tx-when">When</Label>
           <Input

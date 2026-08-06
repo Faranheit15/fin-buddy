@@ -9,7 +9,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getCard, updateCard, type CreditCard } from "@/lib/api/cards";
+import { listCardEmiPlans, type EmiPlan } from "@/lib/api/emis";
 import { ApiError } from "@/lib/api/client";
+import { CreateEmiDialog } from "@/features/cards/create-emi-dialog";
 import {
   formatDateIst,
   formatInrFromPaise,
@@ -20,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 type CardSnapshot = {
   card: CreditCard | null;
+  emis: EmiPlan[];
   error: string | null;
   gen: number;
 };
@@ -33,6 +36,7 @@ export default function CardDetailPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [snapshot, setSnapshot] = useState<CardSnapshot>({
     card: null,
+    emis: [],
     error: null,
     gen: -1,
   });
@@ -45,13 +49,17 @@ export default function CardDetailPage() {
 
     void (async () => {
       try {
-        const card = await getCard(accessToken, params.id);
+        const [card, emis] = await Promise.all([
+          getCard(accessToken, params.id as string),
+          listCardEmiPlans(accessToken, params.id as string)
+        ]);
         if (cancelled) return;
-        setSnapshot({ card, error: null, gen });
+        setSnapshot({ card, emis, error: null, gen });
       } catch (err) {
         if (cancelled) return;
         setSnapshot({
           card: null,
+          emis: [],
           error: err instanceof ApiError ? err.message : "Failed to load card",
           gen,
         });
@@ -175,15 +183,63 @@ export default function CardDetailPage() {
             <span className="text-muted-foreground">Used</span>
             <span className="font-mono tabular-nums">{formatPercent(util, 1)}</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
+          <div className="flex h-2 overflow-hidden rounded-full bg-muted">
             <div
               className={cn(
-                "h-full rounded-full",
-                util >= 90 ? "bg-destructive" : util >= 80 ? "bg-amber-500" : "bg-primary",
+                "h-full",
+                util >= 90 ? "bg-destructive" : util >= 80 ? "bg-amber-500" : "bg-primary"
               )}
-              style={{ width: `${Math.min(util, 100)}%` }}
+              style={{ width: `${Math.min((card.spend_outstanding_paise ?? 0) / card.credit_limit_paise * 100, 100)}%` }}
+            />
+            <div
+              className="h-full bg-indigo-400"
+              style={{ width: `${Math.min((card.emi_principal_blocked_paise ?? 0) / card.credit_limit_paise * 100, 100)}%` }}
             />
           </div>
+          <div className="flex flex-wrap gap-4 pt-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <div className="size-2 rounded-full bg-primary" /> Spend ({formatInrFromPaise(card.spend_outstanding_paise ?? 0)})
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="size-2 rounded-full bg-indigo-400" /> EMI Block ({formatInrFromPaise(card.emi_principal_blocked_paise ?? 0)})
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="size-2 rounded-full bg-muted" /> Available ({formatInrFromPaise(card.available_credit_paise ?? 0)})
+            </div>
+          </div>
+          <p className="pt-2 text-xs text-muted-foreground">
+            Available credit is your limit minus spend outstanding and EMI principal blocked.
+          </p>
+        </CardContent>
+      </Card>
+      
+      <Card className="shadow-sm ring-1 ring-foreground/10">
+        <CardHeader className="flex flex-row items-center justify-between border-b pb-3!">
+          <CardTitle>Active EMI Plans</CardTitle>
+          <CreateEmiDialog cardId={card.id} onCreated={() => setReloadKey(k => k + 1)} />
+        </CardHeader>
+        <CardContent className="p-0">
+          {snapshot.emis.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">No active EMI plans on this card.</p>
+          ) : (
+            <div className="divide-y">
+              {snapshot.emis.map(plan => {
+                const paid = plan.installments.filter(i => i.status === "paid").length;
+                const total = plan.installments.length;
+                return (
+                  <div key={plan.id} className="p-4 text-sm">
+                    <div className="flex justify-between font-medium">
+                      <span>EMI Plan • {formatInrFromPaise(plan.principal_paise)}</span>
+                      <span className="font-mono tabular-nums">{paid} / {total} Months</span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Started {formatDateIst(plan.created_at)} • {(plan.interest_rate_bps / 100).toFixed(2)}% p.a.
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

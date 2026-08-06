@@ -43,7 +43,7 @@ def upgrade() -> None:
         # Check if category exists (case-insensitive)
         row = conn.execute(
             sa.text(
-                "SELECT id FROM categories WHERE organization_id = :org_id AND lower(name) = lower(:name)"
+                "SELECT id FROM categories WHERE org_id = :org_id AND lower(name) = lower(:name)"
             ),
             {"org_id": org_id, "name": c_text},
         ).fetchone()
@@ -55,7 +55,7 @@ def upgrade() -> None:
             now = datetime.now(UTC)
             conn.execute(
                 sa.text("""
-                    INSERT INTO categories (id, organization_id, name, kind, created_at, updated_at)
+                    INSERT INTO categories (id, org_id, name, kind, created_at, updated_at)
                     VALUES (:id, :org_id, :name, 'expense', :now, :now)
                 """),
                 {"id": cat_id, "org_id": org_id, "name": c_text, "now": now},

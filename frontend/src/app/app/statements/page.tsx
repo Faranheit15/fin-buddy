@@ -194,15 +194,15 @@ export default function StatementsPage() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="stmt-file">PDF or .txt (optional)</Label>
+                  <Label htmlFor="stmt-file">PDF, CSV, Excel, or .txt (optional)</Label>
                   <Input
                     id="stmt-file"
                     type="file"
-                    accept=".pdf,.txt,.csv,application/pdf,text/plain"
+                    accept=".pdf,.txt,.csv,.xlsx,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Leave empty to upload a FinBuddy sample statement for demo review.
+                    For CSV/Excel, required columns: Date, Description, Amount. Leave empty for a FinBuddy sample.
                   </p>
                 </div>
               </div>

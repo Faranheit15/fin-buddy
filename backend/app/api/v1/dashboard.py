@@ -11,9 +11,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, DbSession, OrgContext
 from app.domain.billing import DueRuleType as DomainDueRuleType
 from app.domain.billing import next_due_date_for_card, next_statement_date
+from app.models.account import Account
 from app.models.contact import Contact
 from app.models.credit_card import CreditCard
-from app.models.enums import CardStatus, StatementStatus
+from app.models.emi import EmiInstallment, EmiPlan
+from app.models.enums import (
+    AccountKind,
+    CardStatus,
+    EmiInstallmentStatus,
+    EmiPlanStatus,
+    ObligationStatus,
+    ObligationType,
+    StatementStatus,
+)
 from app.models.profile import Profile
 from app.models.statement import Statement
 from app.models.transaction import Transaction
@@ -23,8 +33,14 @@ from app.schemas.domain import (
     DashboardContactSummary,
     DashboardResponse,
 )
+from app.services import obligation_service
 from app.services.emi_service import cards_emi_blocked_map
-from app.services.ledger_service import cards_outstanding_map, contacts_balances_map
+from app.services.ledger_service import (
+    accounts_balances_map,
+    cards_outstanding_map,
+    contacts_balances_map,
+    income_expense_summary,
+)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 IST = ZoneInfo("Asia/Kolkata")
@@ -46,6 +62,10 @@ async def dashboard(
     pref_row = pref.one_or_none()
     due_soon_days = pref_row[0] if pref_row else 7
     high_util_pct = pref_row[1] if pref_row else 80
+
+    start_of_month_date = today.replace(day=1)
+    from datetime import time
+    start_of_month_dt = datetime.combine(start_of_month_date, time.min, tzinfo=IST)
 
     # One round-trip for the independent counters / sums.
     stats = await db.execute(
@@ -85,6 +105,31 @@ async def dashboard(
     balances = await contacts_balances_map(db, org.id)
     total_outstanding = sum(outstanding_map.values())
     friend_dues = sum(bal for bal in balances.values() if bal > 0)
+    
+    acc_bal_map = await accounts_balances_map(db, org.id)
+    acc_result = await db.execute(select(Account).where(Account.organization_id == org.id))
+    accounts = acc_result.scalars().all()
+    
+    bank_cash_wallet_sum = sum(
+        acc_bal_map.get(acc.id, 0) for acc in accounts
+        if acc.kind in (AccountKind.BANK, AccountKind.CASH, AccountKind.WALLET)
+    )
+    
+    obligations = await obligation_service.list_obligations_with_balance(
+        db, organization_id=org.id, status=ObligationStatus.ACTIVE
+    )
+    receivables_sum = sum(remaining for obl, remaining in obligations if obl.type == ObligationType.RECEIVABLE)
+    payables_sum = sum(remaining for obl, remaining in obligations if obl.type == ObligationType.PAYABLE)
+    
+    assets_paise = bank_cash_wallet_sum + receivables_sum
+    liabilities_paise = total_outstanding + payables_sum
+    net_worth_paise = assets_paise - liabilities_paise
+    
+    period_summary = await income_expense_summary(
+        db, organization_id=org.id, start_date=start_of_month_dt
+    )
+    period_income_paise = period_summary["income"]
+    period_expense_paise = period_summary["expense"]
 
     result = await db.execute(
         select(CreditCard)
@@ -97,6 +142,10 @@ async def dashboard(
     cards = list(result.scalars().all())
     card_summaries: list[DashboardCardSummary] = []
     attention: list[AttentionItem] = []
+    
+    # We will build upcoming_items dynamically, starting with Cards and EMIs.
+    from app.schemas.domain import UpcomingItem
+    upcoming_items: list[UpcomingItem] = []
 
     for card in cards:
         outstanding = outstanding_map.get(card.id, 0)
@@ -156,6 +205,17 @@ async def dashboard(
                     href=f"/app/cards/{card.id}",
                 )
             )
+            
+        if days_to_due >= 0 and days_to_due <= due_soon_days:
+            upcoming_items.append(UpcomingItem(
+                id=f"card-due-{card.id}",
+                type="card_due",
+                title=f"{card.nickname} Card Due",
+                amount_paise=outstanding, # showing full outstanding
+                due_date=next_due,
+                href=f"/app/cards/{card.id}"
+            ))
+
         if util >= high_util_pct:
             attention.append(
                 AttentionItem(
@@ -191,15 +251,46 @@ async def dashboard(
 
     top_contacts = await _top_contacts(db, org.id, balances)
 
+    emi_result = await db.execute(
+        select(EmiInstallment, EmiPlan)
+        .join(EmiPlan, EmiInstallment.plan_id == EmiPlan.id)
+        .where(
+            EmiPlan.organization_id == org.id,
+            EmiPlan.status == EmiPlanStatus.ACTIVE,
+            EmiInstallment.status == EmiInstallmentStatus.PENDING
+        )
+    )
+    for inst, plan in emi_result.all():
+        days_to_due = (inst.due_date - today).days
+        if days_to_due <= due_soon_days:
+            card_name = next((c.nickname for c in cards if c.id == plan.credit_card_id), "Card")
+            upcoming_items.append(UpcomingItem(
+                id=f"emi-due-{inst.id}",
+                type="emi_due",
+                title=f"{card_name} EMI {inst.sequence_number}/{plan.tenure_months}",
+                amount_paise=inst.total_paise,
+                due_date=inst.due_date,
+                href=f"/app/cards/{plan.credit_card_id}"
+            ))
+            
+    # Sort upcoming items by due date
+    upcoming_items.sort(key=lambda x: x.due_date)
+
     return DashboardResponse(
         total_credit_limit_paise=total_limit,
         total_outstanding_paise=total_outstanding,
         total_available_credit_paise=max(total_limit - total_outstanding, 0),
         total_friend_dues_paise=friend_dues,
+        net_worth_paise=net_worth_paise,
+        assets_paise=assets_paise,
+        liabilities_paise=liabilities_paise,
+        period_income_paise=period_income_paise,
+        period_expense_paise=period_expense_paise,
         cards_count=int(cards_count or 0),
         contacts_count=int(contacts_count or 0),
         transactions_count=int(tx_count or 0),
         attention=attention,
+        upcoming_items=upcoming_items,
         cards=card_summaries,
         top_contacts=top_contacts,
     )

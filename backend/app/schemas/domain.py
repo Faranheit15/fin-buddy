@@ -417,15 +417,32 @@ class DashboardContactSummary(BaseModel):
     updated_at: datetime
 
 
+class UpcomingItem(BaseModel):
+    id: str
+    type: str  # 'card_due', 'emi_due'
+    title: str
+    amount_paise: int
+    due_date: date
+    href: str | None = None
+
+
 class DashboardResponse(BaseModel):
     total_credit_limit_paise: int
     total_outstanding_paise: int
     total_available_credit_paise: int
     total_friend_dues_paise: int
+    
+    net_worth_paise: int = 0
+    assets_paise: int = 0
+    liabilities_paise: int = 0
+    period_income_paise: int = 0
+    period_expense_paise: int = 0
+    
     cards_count: int
     contacts_count: int
     transactions_count: int
     attention: list[AttentionItem] = Field(default_factory=list)
+    upcoming_items: list[UpcomingItem] = Field(default_factory=list)
     cards: list[DashboardCardSummary] = Field(default_factory=list)
     top_contacts: list[DashboardContactSummary] = Field(default_factory=list)
 

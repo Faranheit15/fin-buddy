@@ -60,8 +60,8 @@ Work this story in **three slices** (still one story for Ralph sequencing): Impo
 
 ### Implement — Slice B (Dashboard / IA)
 
-- [ ] **US-06.I4** Dashboard service: assets, liabilities, net worth, income/expense, unified upcoming.
-- [ ] **US-06.I5** Frontend dashboard sections + sidebar links for all R2 modules — **impeccable craft-floor**; no hero clutter; KPI strip remains operable.
+- [x] **US-06.I4** Dashboard service: assets, liabilities, net worth, income/expense, unified upcoming.
+- [x] **US-06.I5** Frontend dashboard sections + sidebar links for all R2 modules — **impeccable craft-floor**; no hero clutter; KPI strip remains operable.
 
 ### Implement — Slice C (Reminders / Privacy / Deletion)
 

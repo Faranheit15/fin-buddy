@@ -1,5 +1,6 @@
 """Balance calculations for cards, contacts, and accounts — posted ledger only."""
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -207,7 +208,12 @@ def base_org_query(model: type[object], organization_id: UUID) -> Select[tuple[o
     return select(model).where(model.organization_id == organization_id)  # type: ignore[attr-defined]
 
 
-async def income_expense_summary(session: AsyncSession, organization_id: UUID) -> dict[str, int]:
+async def income_expense_summary(
+    session: AsyncSession,
+    organization_id: UUID,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> dict[str, int]:
     """Returns total income and expense (excluding transfers, adjustments, reversals).
 
     If a transaction has splits, they should theoretically be aggregated.
@@ -224,20 +230,34 @@ async def income_expense_summary(session: AsyncSession, organization_id: UUID) -
         TransactionType.OPENING_BALANCE,
     }
 
+    tx_conditions = [
+        Transaction.organization_id == organization_id,
+        _posted_clause(),
+        Transaction.type.not_in(excluded_types),
+    ]
+    if start_date:
+        tx_conditions.append(Transaction.occurred_at >= start_date)
+    if end_date:
+        tx_conditions.append(Transaction.occurred_at <= end_date)
+
     # 1. Sum whole transactions that have a category
     tx_stmt = _with_original_join(
         select(Category.kind, func.sum(Transaction.amount_paise))
         .select_from(Transaction)
         .join(Category, Category.id == Transaction.category_id)
-        .where(
-            and_(
-                Transaction.organization_id == organization_id,
-                _posted_clause(),
-                Transaction.type.not_in(excluded_types),
-            )
-        )
+        .where(and_(*tx_conditions))
         .group_by(Category.kind)
     )
+
+    split_conditions = [
+        Transaction.organization_id == organization_id,
+        Transaction.posting_status == PostingStatus.POSTED,
+        Transaction.type.not_in(excluded_types),
+    ]
+    if start_date:
+        split_conditions.append(Transaction.occurred_at >= start_date)
+    if end_date:
+        split_conditions.append(Transaction.occurred_at <= end_date)
 
     # 2. Sum splits
     split_stmt = (
@@ -245,13 +265,7 @@ async def income_expense_summary(session: AsyncSession, organization_id: UUID) -
         .select_from(TransactionSplit)
         .join(Transaction, Transaction.id == TransactionSplit.transaction_id)
         .join(Category, Category.id == TransactionSplit.category_id)
-        .where(
-            and_(
-                Transaction.organization_id == organization_id,
-                Transaction.posting_status == PostingStatus.POSTED,
-                Transaction.type.not_in(excluded_types),
-            )
-        )
+        .where(and_(*split_conditions))
         .group_by(Category.kind)
     )
 

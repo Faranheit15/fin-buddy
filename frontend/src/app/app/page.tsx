@@ -8,7 +8,9 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { AttentionStrip } from "@/components/dashboard/attention-strip";
 import { CardsTable } from "@/components/dashboard/cards-table";
 import { ContactsList } from "@/components/dashboard/contacts-list";
-import { KpiRow } from "@/components/dashboard/kpi-row";
+import { NetWorthStrip } from "@/components/dashboard/net-worth-strip";
+import { IncomeExpenseStrip } from "@/components/dashboard/income-expense-strip";
+import { UpcomingList } from "@/components/dashboard/upcoming-list";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -28,6 +30,7 @@ import {
   demoActivity,
   demoCards,
   demoContacts,
+  demoUpcomingItems,
 } from "@/lib/demo-data";
 import type { DemoAttentionItem, DemoCard, DemoContact } from "@/lib/demo-data";
 import { cn } from "@/lib/utils";
@@ -152,6 +155,11 @@ export default function DashboardPage() {
         totalOutstandingPaise: live!.total_outstanding_paise,
         totalAvailablePaise: live!.total_available_credit_paise,
         friendDuesPaise: live!.total_friend_dues_paise,
+        netWorthPaise: live!.net_worth_paise,
+        assetsPaise: live!.assets_paise,
+        liabilitiesPaise: live!.liabilities_paise,
+        periodIncomePaise: live!.period_income_paise,
+        periodExpensePaise: live!.period_expense_paise,
       }
     : dashboardKpis();
 
@@ -269,14 +277,20 @@ export default function DashboardPage() {
       ) : useLive || showSynthetic ? (
         <>
           <AttentionStrip items={attention} />
-          <KpiRow
-            totalLimitPaise={kpis.totalLimitPaise}
-            totalOutstandingPaise={kpis.totalOutstandingPaise}
-            totalAvailablePaise={kpis.totalAvailablePaise}
-            friendDuesPaise={kpis.friendDuesPaise}
+          
+          <NetWorthStrip
+            netWorthPaise={kpis.netWorthPaise}
+            assetsPaise={kpis.assetsPaise}
+            liabilitiesPaise={kpis.liabilitiesPaise}
           />
+          <IncomeExpenseStrip
+            incomePaise={kpis.periodIncomePaise}
+            expensePaise={kpis.periodExpensePaise}
+          />
+          
           <div className="grid gap-4 xl:grid-cols-3">
-            <div className="xl:col-span-2">
+            <div className="flex flex-col gap-4 xl:col-span-2">
+              <UpcomingList items={useLive ? live!.upcoming_items : demoUpcomingItems()} />
               <CardsTable cards={cards} />
             </div>
             <div className="flex flex-col gap-4">

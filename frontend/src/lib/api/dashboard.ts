@@ -9,6 +9,15 @@ export type AttentionItem = {
   href: string | null;
 };
 
+export type UpcomingItem = {
+  id: string;
+  type: "card_due" | "emi_due" | string;
+  title: string;
+  amount_paise: number;
+  due_date: string;
+  href: string | null;
+};
+
 export type DashboardCardSummary = {
   id: string;
   nickname: string;
@@ -36,10 +45,16 @@ export type DashboardData = {
   total_outstanding_paise: number;
   total_available_credit_paise: number;
   total_friend_dues_paise: number;
+  net_worth_paise: number;
+  assets_paise: number;
+  liabilities_paise: number;
+  period_income_paise: number;
+  period_expense_paise: number;
   cards_count: number;
   contacts_count: number;
   transactions_count: number;
   attention: AttentionItem[];
+  upcoming_items: UpcomingItem[];
   cards: DashboardCardSummary[];
   top_contacts: DashboardContactSummary[];
 };

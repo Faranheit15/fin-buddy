@@ -15,6 +15,8 @@ export type DemoCard = {
   statementDay: number;
 };
 
+import { type UpcomingItem } from "./api/dashboard";
+
 export type DemoContact = {
   id: string;
   name: string;
@@ -176,6 +178,11 @@ export function dashboardKpis() {
     totalOutstandingPaise: totalOutstanding,
     totalAvailablePaise: Math.max(totalLimit - totalOutstanding, 0),
     friendDuesPaise: friendDues,
+    netWorthPaise: 42000000,
+    assetsPaise: 65000000,
+    liabilitiesPaise: 23000000,
+    periodIncomePaise: 15000000,
+    periodExpensePaise: 8000000,
     cardsCount: demoCards.length,
     contactsWithBalance: demoContacts.filter((c) => c.outstandingPaise > 0).length,
   };
@@ -235,6 +242,27 @@ export function attentionItems(asOf = DEMO_AS_OF): DemoAttentionItem[] {
   }
 
   return items;
+}
+
+export function demoUpcomingItems(): UpcomingItem[] {
+  return [
+    {
+      id: "u1",
+      type: "card_due",
+      title: "HDFC Regalia Card Due",
+      amount_paise: 312_450_00,
+      due_date: "2026-08-02",
+      href: "/app/cards/c1",
+    },
+    {
+      id: "u2",
+      type: "emi_due",
+      title: "Axis Ace EMI 2/6",
+      amount_paise: 54_000_00,
+      due_date: "2026-07-28",
+      href: "/app/cards/c2",
+    },
+  ];
 }
 
 function formatMoney(paise: number): string {

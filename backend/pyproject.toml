@@ -22,6 +22,8 @@ dependencies = [
   "greenlet>=3.1.0",
   "pypdf>=6.14.2",
   "python-dateutil>=2.9.0.post0",
+  "pandas>=3.0.5",
+  "openpyxl>=3.1.5",
 ]
 
 [project.optional-dependencies]
@@ -78,4 +80,5 @@ dev = [
   "mypy>=1.13.0",
   "types-PyJWT",
   "types-passlib>=1.7.7.20260211",
+  "pandas-stubs>=3.0.5.260730",
 ]

@@ -24,10 +24,22 @@ def parse_statement_text(text: str, *, issuer: str | None = None) -> ParseResult
     return parser.parse(text, issuer=issuer)
 
 
+def parse_statement_bytes(data: bytes, filename: str, *, issuer: str | None = None) -> ParseResult:
+    lower = filename.lower()
+    if lower.endswith(".csv") or lower.endswith(".xlsx"):
+        from app.services.parsers.csv_excel import CsvExcelParser
+        return CsvExcelParser().parse_bytes(data, filename, issuer=issuer)
+    
+    from app.services.statement_service import extract_text_from_bytes
+    text = extract_text_from_bytes(data, filename)
+    return parse_statement_text(text, issuer=issuer)
+
+
 __all__ = [
     "ParseResult",
     "ParsedLine",
     "StatementParser",
     "parse_statement_text",
+    "parse_statement_bytes",
     "select_parser",
 ]

@@ -25,7 +25,6 @@ from app.models.transaction import Transaction
 from app.services import storage
 from app.services.account_service import resolve_account_id_for_card
 from app.services.logging_service import log_activity
-from app.services.parsers import parse_statement_text
 
 
 def extract_text_from_bytes(data: bytes, filename: str) -> str:
@@ -127,6 +126,8 @@ async def create_statement_from_upload(
         ext = "txt"
     elif lower.endswith(".csv"):
         ext = "csv"
+    elif lower.endswith(".xlsx"):
+        ext = "xlsx"
     elif lower.endswith(".tsv"):
         ext = "tsv"
     elif lower.endswith(".pdf") or data.startswith(b"%PDF"):
@@ -188,8 +189,9 @@ async def run_parse(
             raise AppError("No file stored for statement", code="missing_file")
         data = await storage.read_bytes(statement.pdf_storage_path, settings)
         filename = statement.pdf_storage_path.rsplit("/", 1)[-1]
-        text = extract_text_from_bytes(data, filename)
-        result = parse_statement_text(text, issuer=card.issuer)
+        
+        from app.services.parsers import parse_statement_bytes
+        result = parse_statement_bytes(data, filename, issuer=card.issuer)
 
         # Fill metadata if missing
         if statement.period_start is None and result.period_start:

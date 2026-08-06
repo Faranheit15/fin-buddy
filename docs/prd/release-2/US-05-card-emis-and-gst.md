@@ -49,7 +49,7 @@
 
 - [x] **US-05.I1** Models + migration + schedule generator in `domain`/`services`.
 - [x] **US-05.I2** Utilization service update (spend vs EMI block).
-- [ ] **US-05.I3** EMI APIs + `gst_paise` on transactions.
+- [x] **US-05.I3** EMI APIs + `gst_paise` on transactions.
 - [ ] **US-05.I4** Frontend: EMI section, utilization split, GST field, explainer — **impeccable craft-floor**; prefer `clarify` for calc copy.
 - [ ] **US-05.I5** Installment payment posting path.
 

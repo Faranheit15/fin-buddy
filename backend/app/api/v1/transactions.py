@@ -144,6 +144,7 @@ async def create_transaction(
         contact_id=body.contact_id,
         category_id=body.category_id,
         category=body.category,
+        gst_paise=body.gst_paise,
         notes=body.notes,
         tags=body.tags,
         transfer_group_id=body.transfer_group_id,

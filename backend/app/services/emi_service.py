@@ -117,3 +117,48 @@ async def cards_emi_blocked_map(db: DbSession, organization_id: UUID) -> dict[UU
     )
     return {row[0]: int(row[1] or 0) for row in result.all()}
 
+
+async def create_emi_plan(
+    db: DbSession,
+    *,
+    organization_id: UUID,
+    credit_card_id: UUID,
+    reference_transaction_id: UUID | None = None,
+    principal_paise: int,
+    interest_rate_bps: int,
+    tenure_months: int,
+    start_date: date,
+) -> EmiPlan:
+    from uuid import uuid4
+    
+    installments = generate_emi_schedule(
+        principal_paise=principal_paise,
+        interest_rate_bps=interest_rate_bps,
+        tenure_months=tenure_months,
+        start_date=start_date,
+    )
+    
+    plan = EmiPlan(
+        id=uuid4(),
+        organization_id=organization_id,
+        credit_card_id=credit_card_id,
+        reference_transaction_id=reference_transaction_id,
+        principal_paise=principal_paise,
+        interest_rate_bps=interest_rate_bps,
+        tenure_months=tenure_months,
+        status=EmiPlanStatus.ACTIVE,
+    )
+    db.add(plan)
+    await db.flush()
+    
+    for inst in installments:
+        inst.id = uuid4()
+        inst.plan_id = plan.id
+        db.add(inst)
+        
+    await db.flush()
+    # Eagerly load installments to return
+    await db.refresh(plan, ["installments"])
+    return plan
+
+

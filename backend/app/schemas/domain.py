@@ -11,6 +11,8 @@ from app.models.enums import (
     CardNetwork,
     CardStatus,
     DueRuleType,
+    EmiInstallmentStatus,
+    EmiPlanStatus,
     LineReviewStatus,
     ObligationStatus,
     ObligationType,
@@ -132,6 +134,7 @@ class TransactionCreate(BaseModel):
     contact_id: UUID | None = None
     category_id: UUID | None = None
     category: str | None = None
+    gst_paise: int | None = Field(default=None, ge=0)
     notes: str | None = None
     tags: list[str] | None = None
     currency: str = "INR"
@@ -147,6 +150,7 @@ class TransactionUpdate(BaseModel):
     contact_id: UUID | None = None
     category_id: UUID | None = None
     category: str | None = None
+    gst_paise: int | None = Field(default=None, ge=0)
     notes: str | None = None
     tags: list[str] | None = None
 
@@ -188,6 +192,7 @@ class TransactionResponse(ORMModel):
     type: TransactionType
     posting_status: PostingStatus
     amount_paise: int
+    gst_paise: int | None = None
     currency: str
     occurred_at: datetime
     merchant: str
@@ -507,3 +512,42 @@ class ObligationPaymentResponse(ORMModel):
     created_by: UUID | None
     created_at: datetime
     updated_at: datetime
+
+
+# ---- EMIs ----
+
+
+class EmiPlanCreate(BaseModel):
+    credit_card_id: UUID
+    reference_transaction_id: UUID | None = None
+    principal_paise: int = Field(gt=0)
+    interest_rate_bps: int = Field(ge=0)
+    tenure_months: int = Field(gt=0)
+    start_date: date
+
+
+class EmiInstallmentResponse(ORMModel):
+    id: UUID
+    plan_id: UUID
+    sequence_number: int
+    due_date: date
+    principal_paise: int
+    interest_paise: int
+    fees_paise: int
+    gst_paise: int
+    total_paise: int
+    status: EmiInstallmentStatus
+
+
+class EmiPlanResponse(ORMModel):
+    id: UUID
+    organization_id: UUID
+    credit_card_id: UUID
+    reference_transaction_id: UUID | None
+    principal_paise: int
+    interest_rate_bps: int
+    tenure_months: int
+    status: EmiPlanStatus
+    created_at: datetime
+    installments: list[EmiInstallmentResponse] = Field(default_factory=list)
+

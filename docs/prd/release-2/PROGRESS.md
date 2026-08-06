@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-05 |
-| **Current subtask** | US-05.I3 |
+| **Current subtask** | US-05.I4 |
 | **Overall** | 4 / 6 stories done |
 
 ## Story status
@@ -80,6 +80,7 @@
 | 2026-08-06 | US-05 | US-05.P1-P4 | Specified DB models, math for utilization (total_outstanding - emi_block), payload, and UI shape. Next: I1. |
 | 2026-08-06 | US-05 | US-05.I1 | Added EMI models, manual migration, and schedule generator logic. Next: I2. |
 | 2026-08-06 | US-05 | US-05.I2 | Updated utilization service to compute spend vs EMI block. Added python-dateutil. Next: I3. |
+| 2026-08-06 | US-05 | US-05.I3 | Added gst_paise to transactions and implemented EMI APIs. Next: I4. |
 
 ## Blockers
 

@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import EmiInstallmentStatus, EmiPlanStatus
@@ -54,6 +54,10 @@ class EmiPlan(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+    
+    installments: Mapped[list["EmiInstallment"]] = relationship(
+        "EmiInstallment", back_populates="plan", cascade="all, delete-orphan"
+    )
 
 
 class EmiInstallment(Base):
@@ -92,3 +96,5 @@ class EmiInstallment(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+    
+    plan: Mapped["EmiPlan"] = relationship("EmiPlan", back_populates="installments")

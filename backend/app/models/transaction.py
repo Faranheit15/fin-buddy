@@ -92,6 +92,7 @@ class Transaction(Base):
         server_default="posted",
     )
     amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    gst_paise: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="INR", server_default="INR"
     )

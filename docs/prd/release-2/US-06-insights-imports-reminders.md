@@ -54,7 +54,7 @@ Work this story in **three slices** (still one story for Ralph sequencing): Impo
 
 ### Implement — Slice A (Import/Export)
 
-- [ ] **US-06.I1** CSV + Excel parsers + upload content types + review path unchanged semantics.
+- [x] **US-06.I1** CSV + Excel parsers + upload content types + review path unchanged semantics.
 - [ ] **US-06.I2** Export API + Settings download button.
 - [ ] **US-06.I3** Frontend import UI accepts CSV/xlsx with format hints — **impeccable craft-floor**; keep review flow calm and dense.
 

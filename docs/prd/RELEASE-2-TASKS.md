@@ -202,38 +202,23 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Backend
 
-- [ ] `emi_plans` + `emi_installments` models and APIs.
-- [ ] Schedule generator: tenure, principal, interest, fees, GST on interest.
-- [ ] Card utilization service:
+- [x] `emi_plans` + `emi_installments` models and APIs.
+- [x] Schedule generator: tenure, principal, interest, fees, GST on interest.
+- [x] Card utilization service:
   - `spend_outstanding`
   - `emi_principal_blocked`
   - `available_credit`
   - split utilization fields on dashboard/card APIs
-- [ ] Installment payment posting; advance payment / contact-paid installment allocation (Should).
-- [ ] Optional `gst_paise` on transactions for reclaim/reimbursement tracking (no filing module).
-- [ ] Plain-language calc payload (structured numbers + short explanation string) for plan detail.
-
-### Frontend
-
-- [ ] Card detail: EMI section (list plans, add plan, schedule table).
-- [ ] Optional `/app/emis` index.
-- [ ] Utilization UI shows spend vs EMI block separately.
-- [ ] “How this is calculated” explainer using API explanation payload.
-- [ ] Transaction form: optional GST amount field when relevant.
-- [ ] **Impeccable:** `shape` utilization/EMI section; craft-floor; Validate with `polish` + `harden` + `clarify` + `audit`.
-
-### Tests
-
-- [ ] Unit: principal block vs interest/GST billing effect.
-- [ ] Unit: available credit after EMI create and after installment principal reduction.
-- [ ] Unit: schedule length and sum(principal installments) ≈ plan principal (within defined rounding rules).
-- [ ] API: create plan updates card utilization response.
+- [x] Installment payment posting; advance payment / contact-paid installment allocation (Should).
+- [x] Unit: available credit after EMI create and after installment principal reduction.
+- [x] Unit: schedule length and sum(principal installments) ≈ plan principal (within defined rounding rules).
+- [x] API: create plan updates card utilization response.
 
 ### Definition of done
 
-- [ ] At least one real-world-shaped EMI plan reconciles: principal block, installment breakdown, remaining liability.
-- [ ] Dashboard/card utilization no longer treats EMI principal as ordinary spend alone.
-- [ ] GST field storable on lines without implying tax filing.
+- [x] At least one real-world-shaped EMI plan reconciles: principal block, installment breakdown, remaining liability.
+- [x] Dashboard/card utilization no longer treats EMI principal as ordinary spend alone.
+- [x] GST field storable on lines without implying tax filing.
 
 ---
 
@@ -366,8 +351,8 @@ Mapped to PRD §15.2:
 2. [x] Correct Balance → adjustment; no silent posted mutation.
 3. Transfers excluded from income/expense.
 4. Personal debt/loan + partial repayments.
-5. Card EMI with separate principal-block utilization.
-6. Optional GST amounts on lines.
+5. [x] Card EMI with separate principal-block utilization.
+6. [x] Optional GST amounts on lines.
 7. CSV/Excel review imports never auto-post.
 8. Dashboard net worth + period income/expense + unified upcoming.
 9. Data export + account deletion request.

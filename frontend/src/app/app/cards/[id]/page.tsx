@@ -198,13 +198,13 @@ export default function CardDetailPage() {
           </div>
           <div className="flex flex-wrap gap-4 pt-1 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <div className="size-2 rounded-full bg-primary" /> Spend ({formatInrFromPaise(card.spend_outstanding_paise ?? 0)})
+              <div className="size-2 rounded-full bg-primary" /> Spend (<span className="font-mono">{formatInrFromPaise(card.spend_outstanding_paise ?? 0)}</span>)
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="size-2 rounded-full bg-indigo-400" /> EMI Block ({formatInrFromPaise(card.emi_principal_blocked_paise ?? 0)})
+              <div className="size-2 rounded-full bg-indigo-400" /> EMI Block (<span className="font-mono">{formatInrFromPaise(card.emi_principal_blocked_paise ?? 0)}</span>)
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="size-2 rounded-full bg-muted" /> Available ({formatInrFromPaise(card.available_credit_paise ?? 0)})
+              <div className="size-2 rounded-full bg-muted" /> Available (<span className="font-mono">{formatInrFromPaise(card.available_credit_paise ?? 0)}</span>)
             </div>
           </div>
           <p className="pt-2 text-xs text-muted-foreground">
@@ -231,10 +231,10 @@ export default function CardDetailPage() {
                   <div key={plan.id} className="flex items-center justify-between p-4 text-sm">
                     <div>
                       <div className="flex justify-between font-medium">
-                        <span>EMI Plan • {formatInrFromPaise(plan.principal_paise)}</span>
+                        <span>EMI Plan • <span className="font-mono">{formatInrFromPaise(plan.principal_paise)}</span></span>
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        Started {formatDateIst(plan.created_at)} • {(plan.interest_rate_bps / 100).toFixed(2)}% p.a.
+                        Started <span className="font-mono tabular-nums">{formatDateIst(plan.created_at)}</span> • <span className="font-mono tabular-nums">{(plan.interest_rate_bps / 100).toFixed(2)}%</span> p.a.
                       </div>
                       <div className="mt-1 text-xs font-mono tabular-nums text-muted-foreground">
                         {paidCount} / {total} Months Paid

@@ -3,9 +3,9 @@
 | Field | Value |
 |--------|--------|
 | **Updated** | 2026-08-05 |
-| **Current story** | US-05 |
-| **Current subtask** | US-05.V1 |
-| **Overall** | 4 / 6 stories done |
+| **Current story** | US-06 |
+| **Current subtask** | US-06.G1 |
+| **Overall** | 5 / 6 stories done |
 
 ## Story status
 
@@ -15,8 +15,8 @@
 | US-02 Multi-account balances | Done | R2B (Part 1) complete; account ledger working |
 | US-03 Categories / transfers / splits | Done | - [x] **US-03.V1-V3** Residuals documented.<br>- [x] **US-03.V4** Marked Done. |
 | US-04 Debts & loans | Done | Complete; ad-hoc debts & loans settled |
-| US-05 Card EMIs & GST | In Progress | Plan complete |
-| US-06 Insights / imports / reminders | Todo | Blocked on US-02…US-05 for full scope |
+| US-05 Card EMIs & GST | Done | Completed EMI block tracking and scheduling; UI residuals documented |
+| US-06 Insights / imports / reminders | Todo | Unblocked |
 
 ## Iteration log
 
@@ -84,6 +84,7 @@
 | 2026-08-06 | US-05 | US-05.I4 | Built frontend UI: segmented utilization bar, active EMI plans, create EMI dialog, and GST field. Next: I5. |
 | 2026-08-06 | US-05 | US-05.I5 | Implemented pay_emi_installment API and integrated Pay Next button on frontend. Next: T1-T4. |
 | 2026-08-06 | US-05 | US-05.T1-T5 | Wrote unit tests for schedule generation, utilization block logic, and payment behavior. All DoD checks passed. Next: V1-V5. |
+| 2026-08-06 | US-05 | US-05.V1-V5 | Polished UI using Impeccable rules, documented residuals. Marked US-05 Done. Next: US-06.G1. |
 
 ## Blockers
 

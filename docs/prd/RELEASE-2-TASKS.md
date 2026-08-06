@@ -150,9 +150,9 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Definition of done
 
-- [ ] Transfers never inflate income or expense period totals.
-- [ ] Splits and categories work on posted ledger paths.
-- [ ] Seed categories usable out of the box for a new org.
+- [x] Transfers never inflate income or expense period totals.
+- [x] Splits and categories work on posted ledger paths.
+- [x] Seed categories usable out of the box for a new org.
 
 ---
 
@@ -247,15 +247,15 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Tests
 
-- [ ] Parser fixtures for sample CSV and xlsx.
-- [ ] Confirm idempotency unchanged.
-- [ ] Export contains expected sheets/sections for a seeded org.
+- [x] Parser fixtures for sample CSV and xlsx.
+- [x] Confirm idempotency unchanged.
+- [x] Export contains expected sheets/sections for a seeded org.
 
 ### Definition of done
 
-- [ ] CSV and Excel imports cannot affect balances before review confirm.
-- [ ] User can download an Excel export of core org data.
-- [ ] PDF path remains intact.
+- [x] CSV and Excel imports cannot affect balances before review confirm.
+- [x] User can download an Excel export of core org data.
+- [x] PDF path remains intact.
 
 ---
 
@@ -283,14 +283,14 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Tests
 
-- [ ] Unit: net worth formula with sample accounts + card + EMI + obligation.
-- [ ] Unit: income/expense excludes transfers.
-- [ ] API contract tests for new dashboard fields.
+- [x] Unit: net worth formula with sample accounts + card + EMI + obligation.
+- [x] Unit: income/expense excludes transfers.
+- [x] API contract tests for new dashboard fields.
 
 ### Definition of done
 
-- [ ] Dashboard answers: what do I have, what do I owe, what’s due soon — across accounts/cards/debts/EMIs.
-- [ ] Nav reaches all R2 modules without dead ends.
+- [x] Dashboard answers: what do I have, what do I owe, what’s due soon — across accounts/cards/debts/EMIs.
+- [x] Nav reaches all R2 modules without dead ends.
 
 ---
 
@@ -318,14 +318,14 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Tests
 
-- [ ] Share stub: membership alone does not grant record visibility in authorization helper tests.
+- [x] Share stub: membership alone does not grant record visibility in authorization helper tests.
 
 ### Definition of done
 
-- [ ] Email reminders respect preferences for at least card dues (debts/EMIs if those modules shipped).
-- [ ] User can request account deletion from Settings.
-- [ ] `record_shares` schema exists; privacy principle documented and covered by a unit/authz test.
-- [ ] PWA optional: if shipped, app is installable on desktop Chromium; if deferred, note in CONTEXT as R3.
+- [x] Email reminders respect preferences for at least card dues (debts/EMIs if those modules shipped).
+- [x] User can request account deletion from Settings.
+- [x] `record_shares` schema exists; privacy principle documented and covered by a unit/authz test.
+- [x] PWA optional: if shipped, app is installable on desktop Chromium; if deferred, note in CONTEXT as R3.
 
 ---
 
@@ -347,15 +347,15 @@ Mapped to PRD §15.2:
 
 1. [x] Bank/cash/wallet accounts with ledger-derived balances.
 2. [x] Correct Balance → adjustment; no silent posted mutation.
-3. Transfers excluded from income/expense.
-4. Personal debt/loan + partial repayments.
+3. [x] Transfers excluded from income/expense.
+4. [x] Personal debt/loan + partial repayments.
 5. [x] Card EMI with separate principal-block utilization.
 6. [x] Optional GST amounts on lines.
-7. CSV/Excel review imports never auto-post.
-8. Dashboard net worth + period income/expense + unified upcoming.
-9. Data export + account deletion request.
-10. Email reminders with preference thresholds.
-11. Domain tests for EMI block, transfer exclusion, adjustments.
+7. [x] CSV/Excel review imports never auto-post.
+8. [x] Dashboard net worth + period income/expense + unified upcoming.
+9. [x] Data export + account deletion request.
+10. [x] Email reminders with preference thresholds.
+11. [x] Domain tests for EMI block, transfer exclusion, adjustments.
 
 When all exit criteria pass, update [`docs/CONTEXT.md`](../CONTEXT.md) to the next focus and mark Release 2 complete in the PRD roadmap notes.
 

@@ -1,9 +1,9 @@
 """Debts and loans."""
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, String, Text, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -43,6 +43,8 @@ class Obligation(Base):
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="INR", server_default="INR"
     )
+
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     status: Mapped[ObligationStatus] = mapped_column(
         SAEnum(

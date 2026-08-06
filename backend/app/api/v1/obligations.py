@@ -104,6 +104,7 @@ async def create_obligation(
         currency=body.currency,
         contact_id=body.contact_id,
         counterparty_name=body.counterparty_name,
+        due_date=body.due_date,
         notes=body.notes,
     )
 
@@ -144,6 +145,7 @@ async def update_obligation(
         organization_id=org.id,
         obligation_id=obligation_id,
         status=body.status,
+        due_date=body.due_date,
         notes=body.notes,
     )
 

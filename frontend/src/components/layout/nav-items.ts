@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Bell,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -26,5 +27,6 @@ export const appNavItems: NavItem[] = [
   { href: "/app/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/app/statements", label: "Statements", icon: FileText },
   { href: "/app/categories", label: "Categories", icon: Tags },
+  { href: "/app/notifications", label: "Notifications", icon: Bell },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];

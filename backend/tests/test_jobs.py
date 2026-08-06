@@ -1,13 +1,12 @@
 """Tests for background jobs (reminders)."""
 
 import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.profile import Profile
-from app.models.organization import Organization, OrganizationMember
 from app.models.credit_card import CreditCard
 from app.models.enums import CardStatus, DueRuleType
+from app.models.organization import Organization, OrganizationMember
+from app.models.profile import Profile
+
 
 class _FakeResult:
     def __init__(self, values: list[object] | object = None) -> None:
@@ -67,8 +66,8 @@ async def test_send_reminders_threshold(
     
     from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo
-    IST = ZoneInfo("Asia/Kolkata")
-    today = datetime.now(IST).date()
+    ist = ZoneInfo("Asia/Kolkata")
+    today = datetime.now(ist).date()
 
     from uuid import uuid4
     user_id = uuid4()
@@ -82,8 +81,8 @@ async def test_send_reminders_threshold(
         is_active=True,
         timezone="Asia/Kolkata"
     )
-    org = Organization(id=org_id, name="Test Org", slug="test-org")
-    member = OrganizationMember(organization_id=org_id, user_id=user_id)
+    Organization(id=org_id, name="Test Org", slug="test-org")
+    OrganizationMember(organization_id=org_id, user_id=user_id)
 
     # due in 5 days
     due_5_date = today + timedelta(days=5)
@@ -151,7 +150,7 @@ async def test_send_reminders_threshold(
     # It should send 1 email to test_reminders@example.com
     # The text should include "Due Soon Card" and NOT "Far Due Card"
     found = False
-    for to_email, subject, text_body in sent_emails:
+    for to_email, _subject, text_body in sent_emails:
         if to_email == "test_reminders@example.com":
             found = True
             assert "Due Soon Card" in text_body

@@ -487,11 +487,13 @@ class ObligationCreate(BaseModel):
     type: ObligationType
     amount_paise: int = Field(gt=0)
     currency: str = "INR"
+    due_date: date | None = None
     notes: str | None = None
 
 
 class ObligationUpdate(BaseModel):
     status: ObligationStatus | None = None
+    due_date: date | None = None
     notes: str | None = None
 
 
@@ -503,6 +505,7 @@ class ObligationResponse(ORMModel):
     type: ObligationType
     amount_paise: int
     currency: str
+    due_date: date | None
     status: ObligationStatus
     notes: str | None
     created_by: UUID | None

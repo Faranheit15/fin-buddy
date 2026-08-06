@@ -276,6 +276,24 @@ async def dashboard(
     # Sort upcoming items by due date
     upcoming_items.sort(key=lambda x: x.due_date)
 
+    # Add obligation dues to upcoming
+    for obl, remaining in obligations:
+        if obl.due_date and remaining > 0:
+            days_to_due = (obl.due_date - today).days
+            if 0 <= days_to_due <= due_soon_days:
+                label = obl.counterparty_name or "Obligation"
+                upcoming_items.append(UpcomingItem(
+                    id=f"obl-due-{obl.id}",
+                    type="obligation_due",
+                    title=f"{label} ({obl.type.value})",
+                    amount_paise=remaining,
+                    due_date=obl.due_date,
+                    href=f"/app/debts/{obl.id}"
+                ))
+
+    # Re-sort after adding obligations
+    upcoming_items.sort(key=lambda x: x.due_date)
+
     return DashboardResponse(
         total_credit_limit_paise=total_limit,
         total_outstanding_paise=total_outstanding,

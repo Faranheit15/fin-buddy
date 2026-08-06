@@ -1,13 +1,12 @@
 """Tests for user deletion endpoint."""
 
-import pytest
-from httpx import AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import uuid4
 
+import pytest
+
+from app.models.organization import Organization
 from app.models.profile import Profile
-from app.models.organization import Organization, OrganizationMember
+
 
 class _FakeResult:
     def __init__(self, values: list[object] | object = None) -> None:
@@ -78,8 +77,8 @@ async def test_delete_me(
         [profile]
     ])
 
-    from app.services.auth_service import delete_account
     from app.core.config import Settings
+    from app.services.auth_service import delete_account
     
     await delete_account(db, Settings(), uid) # type: ignore[arg-type]
         

@@ -11,6 +11,7 @@ export type Obligation = {
   type: ObligationType;
   amount_paise: number;
   currency: string;
+  due_date: string | null;
   status: ObligationStatus;
   notes: string | null;
   created_by: string | null;
@@ -25,11 +26,13 @@ export type ObligationCreate = {
   type: ObligationType;
   amount_paise: number;
   currency?: string;
+  due_date?: string | null;
   notes?: string | null;
 };
 
 export type ObligationUpdate = Partial<{
   status: ObligationStatus;
+  due_date: string | null;
   notes: string | null;
 }>;
 

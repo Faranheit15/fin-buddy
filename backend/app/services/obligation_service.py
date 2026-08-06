@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
@@ -24,6 +24,7 @@ async def create_obligation(
     currency: str = "INR",
     contact_id: UUID | None = None,
     counterparty_name: str | None = None,
+    due_date: date | None = None,
     notes: str | None = None,
 ) -> Obligation:
     if amount_paise <= 0:
@@ -41,6 +42,7 @@ async def create_obligation(
         type=type,
         amount_paise=amount_paise,
         currency=currency,
+        due_date=due_date,
         status=ObligationStatus.ACTIVE,
         notes=notes,
         created_by=user_id,
@@ -116,6 +118,7 @@ async def update_obligation(
     organization_id: UUID,
     obligation_id: UUID,
     status: ObligationStatus | None = None,
+    due_date: date | None = None,
     notes: str | None = None,
 ) -> Obligation:
     obl, _ = await get_obligation_with_balance(
@@ -123,6 +126,8 @@ async def update_obligation(
     )
     if status is not None:
         obl.status = status
+    if due_date is not None:
+        obl.due_date = due_date
     if notes is not None:
         obl.notes = notes
     await db.flush()

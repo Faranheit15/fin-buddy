@@ -2,7 +2,7 @@
 
 | Field | Value |
 |--------|--------|
-| **Status** | In progress (R2A done) |
+| **Status** | Complete |
 | **Date** | 2026-08-05 |
 | **PRD** | [`2026-07-27-fin-buddy-prd.md`](2026-07-27-fin-buddy-prd.md) v2.0 |
 | **Baseline** | Phases 0–5 MVP shipped (cards, contacts, transactions, settlements, statement review, notifications, settings, deploy) |
@@ -232,18 +232,18 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Backend
 
-- [ ] First-class CSV parser (column mapping or Fin Buddy template + generic bank CSV heuristics).
-- [ ] Excel parser (`.xlsx`) into `statement_line_candidates` (or generalized `import_batches` if renaming).
-- [ ] Keep review → confirm → posted path; fail closed (no partial post).
-- [ ] Export API: Excel (and PDF summary if feasible) for accounts, transactions, contacts, obligations, cards.
-- [ ] Storage content-types and size limits for xlsx; rate limit uploads.
+- [x] First-class CSV parser (column mapping or Fin Buddy template + generic bank CSV heuristics).
+- [x] Excel parser (`.xlsx`) into `statement_line_candidates` (or generalized `import_batches` if renaming).
+- [x] Keep review → confirm → posted path; fail closed (no partial post).
+- [x] Export API: Excel (and PDF summary if feasible) for accounts, transactions, contacts, obligations, cards.
+- [x] Storage content-types and size limits for xlsx; rate limit uploads.
 
 ### Frontend
 
-- [ ] Statements/import UI accepts PDF, CSV, Excel with clear format hints.
-- [ ] Column-mapping UI if generic CSV requires it (keep MVP: documented template + best-effort auto).
-- [ ] Settings: Export data button → download.
-- [ ] **Impeccable:** `shape` import/export affordances; craft-floor; Validate with `polish` + `harden`.
+- [x] Statements/import UI accepts PDF, CSV, Excel with clear format hints.
+- [x] Column-mapping UI if generic CSV requires it (keep MVP: documented template + best-effort auto).
+- [x] Settings: Export data button → download.
+- [x] **Impeccable:** `shape` import/export affordances; craft-floor; Validate with `polish` + `harden`.
 
 ### Tests
 
@@ -267,19 +267,19 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ### Backend
 
-- [ ] Extend dashboard API:
+- [x] Extend dashboard API:
   - assets, liabilities, net worth
   - period income / expense (transfers excluded)
   - upcoming: card dues + obligation dues + EMI installments
   - retain existing card/friend KPIs
-- [ ] Document receivable-as-asset treatment in API/UI copy.
+- [x] Document receivable-as-asset treatment in API/UI copy.
 
 ### Frontend
 
-- [ ] Dashboard redesign section: net worth strip + income/expense + unified upcoming list.
-- [ ] Sidebar: Accounts, Debts, EMIs (if not card-only), keep Cards/Contacts/Transactions/Statements.
-- [ ] Attention items include debt/EMI urgency, not only cards.
-- [ ] **Impeccable:** `shape` dashboard composition (Operate; one job per section); craft-floor; Validate with `polish` + `harden` + `audit`.
+- [x] Dashboard redesign section: net worth strip + income/expense + unified upcoming list.
+- [x] Sidebar: Accounts, Debts, EMIs (if not card-only), keep Cards/Contacts/Transactions/Statements.
+- [x] Attention items include debt/EMI urgency, not only cards.
+- [x] **Impeccable:** `shape` dashboard composition (Operate; one job per section); craft-floor; Validate with `polish` + `harden` + `audit`.
 
 ### Tests
 
@@ -314,7 +314,7 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 - [x] **US-06.V3**: Login as user, enable email reminders, run job script, check resend / logs.
 - [x] **US-06.V4**: Share account with other user (stub).
 - [x] **US-06.V5**: Delete account -> verify cascade in Supabase.
-- [ ] **Impeccable:** `shape` settings/destructive flows; craft-floor; Validate with `harden` + `clarify` + `polish`.
+- [x] **Impeccable:** `shape` settings/destructive flows; craft-floor; Validate with `harden` + `clarify` + `polish`.
 
 ### Tests
 
@@ -331,13 +331,13 @@ Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**
 
 ## Cross-cutting checklist (every workstream)
 
-- [ ] Alembic migration(s) reviewed; RLS policies updated for new tables.
-- [ ] Pydantic schemas + TypeScript API client types updated.
-- [ ] No secrets committed; `.env.example` updated when new config is required.
-- [ ] Lint / typecheck / targeted tests pass for touched packages.
-- [ ] Frontend UI changes: Impeccable `shape` (plan) → craft-floor (implement) → `polish`/`harden`/`audit`/`onboard`/`clarify` as applicable (validate). See [`release-2/README.md`](release-2/README.md).
-- [ ] `docs/GOTCHAS.md` updated when a migration trap or retired approach appears.
-- [ ] Do not import across `frontend/` ↔ `backend/` divide.
+- [x] Alembic migration(s) reviewed; RLS policies updated for new tables.
+- [x] Pydantic schemas + TypeScript API client types updated.
+- [x] No secrets committed; `.env.example` updated when new config is required.
+- [x] Lint / typecheck / targeted tests pass for touched packages.
+- [x] Frontend UI changes: Impeccable `shape` (plan) → craft-floor (implement) → `polish`/`harden`/`audit`/`onboard`/`clarify` as applicable (validate). See [`release-2/README.md`](release-2/README.md).
+- [x] `docs/GOTCHAS.md` updated when a migration trap or retired approach appears.
+- [x] Do not import across `frontend/` ↔ `backend/` divide.
 
 ---
 

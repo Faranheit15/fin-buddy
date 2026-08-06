@@ -8,6 +8,7 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { AttentionStrip } from "@/components/dashboard/attention-strip";
 import { CardsTable } from "@/components/dashboard/cards-table";
 import { ContactsList } from "@/components/dashboard/contacts-list";
+import { KpiRow } from "@/components/dashboard/kpi-row";
 import { NetWorthStrip } from "@/components/dashboard/net-worth-strip";
 import { IncomeExpenseStrip } from "@/components/dashboard/income-expense-strip";
 import { UpcomingList } from "@/components/dashboard/upcoming-list";
@@ -277,6 +278,13 @@ export default function DashboardPage() {
       ) : useLive || showSynthetic ? (
         <>
           <AttentionStrip items={attention} />
+
+          <KpiRow
+            totalLimitPaise={kpis.totalLimitPaise}
+            totalOutstandingPaise={kpis.totalOutstandingPaise}
+            totalAvailablePaise={kpis.totalAvailablePaise}
+            friendDuesPaise={kpis.friendDuesPaise}
+          />
           
           <NetWorthStrip
             netWorthPaise={kpis.netWorthPaise}

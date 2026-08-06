@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-06 |
-| **Current subtask** | US-06.I2 |
+| **Current subtask** | US-06.I3 |
 | **Overall** | 5 / 6 stories done |
 
 ## Story status
@@ -88,6 +88,7 @@
 | 2026-08-06 | US-06 | US-06.G1-G4 | Defined CSV template, net-worth formula, Resend as email provider, and hard-delete policy. Next: P1. |
 | 2026-08-06 | US-06 | US-06.P1-P5 | Written specs for parsers, export, dashboard API/UI, reminder job, deletion, and settings UI. Next: I1. |
 | 2026-08-06 | US-06 | US-06.I1 | Implemented pandas-backed CSV and Excel parsers mapping to StatementLineCandidate. Next: I2. |
+| 2026-08-06 | US-06 | US-06.I2 | Added /api/v1/export returning an Excel workbook of core organization data, and a Download button to Settings UI. Next: I3. |
 
 ## Blockers
 

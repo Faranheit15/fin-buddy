@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Save, User } from "lucide-react";
+import { Building2, Download, Save, User, FileSpreadsheet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -195,6 +195,61 @@ function OrgSettingsForm({
   );
 }
 
+function ExportSettingsCard({ accessToken }: { accessToken: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleExport() {
+    setDownloading(true);
+    setErr(null);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/export`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to download export");
+      }
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "finbuddy_export.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Failed to download export");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <Card className="shadow-sm ring-1 ring-foreground/10">
+      <CardHeader className="border-b pb-3!">
+        <div className="flex items-center gap-2">
+          <FileSpreadsheet className="size-4 text-muted-foreground" />
+          <CardTitle>Data Export</CardTitle>
+        </div>
+        <CardDescription>
+          Download your complete ledger, accounts, and obligations as an Excel workbook.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-4">
+        {err ? <p className="mb-4 text-sm text-destructive">{err}</p> : null}
+        <Button onClick={handleExport} size="sm" variant="outline" disabled={downloading}>
+          <Download className="mr-2 size-3.5" />
+          {downloading ? "Downloading…" : "Download Excel Export"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const { accessToken, ready, profile, organizations, refreshProfile } = useAuth();
   const primaryOrg = organizations[0] ?? null;
@@ -277,6 +332,8 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ExportSettingsCard accessToken={accessToken} />
     </div>
   );
 }

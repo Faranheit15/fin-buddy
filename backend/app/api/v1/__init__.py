@@ -11,6 +11,7 @@ from app.api.v1 import (
     contacts,
     dashboard,
     emis,
+    export,
     health,
     notifications,
     obligations,
@@ -36,3 +37,4 @@ api_router.include_router(admin.router)
 api_router.include_router(categories.router)
 api_router.include_router(transfers.router)
 api_router.include_router(emis.router)
+api_router.include_router(export.router)

@@ -55,11 +55,11 @@
 
 ### Test
 
-- [ ] **US-05.T1** Unit: principal block vs interest/GST billing effect.
-- [ ] **US-05.T2** Unit: available credit after create and after principal reduction.
-- [ ] **US-05.T3** Unit: schedule length; sum(principal) ≈ plan principal.
-- [ ] **US-05.T4** API: create plan updates utilization fields.
-- [ ] **US-05.T5** Backend + frontend DoD.
+- [x] **US-05.T1** Unit: principal block vs interest/GST billing effect.
+- [x] **US-05.T2** Unit: available credit after create and after principal reduction.
+- [x] **US-05.T3** Unit: schedule length; sum(principal) ≈ plan principal.
+- [x] **US-05.T4** API: create plan updates utilization fields.
+- [x] **US-05.T5** Backend + frontend DoD.
 
 ### Validate
 

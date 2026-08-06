@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, DbSession, OrgContext, client_meta
 from app.core.exceptions import AppError
@@ -61,6 +62,7 @@ async def list_transactions(
     total = await db.scalar(select(func.count()).select_from(Transaction).where(*filters)) or 0
     result = await db.execute(
         select(Transaction)
+        .options(selectinload(Transaction.splits))
         .where(*filters)
         .order_by(Transaction.occurred_at.desc())
         .offset((page - 1) * page_size)

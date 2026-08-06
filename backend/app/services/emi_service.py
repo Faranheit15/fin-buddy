@@ -162,3 +162,100 @@ async def create_emi_plan(
     return plan
 
 
+async def pay_emi_installment(
+    db: DbSession,
+    *,
+    organization_id: UUID,
+    user_id: UUID,
+    installment_id: UUID,
+    ip: str | None = None,
+    ua: str | None = None,
+) -> EmiInstallment:
+    from datetime import UTC, datetime, time
+
+    from app.core.exceptions import AppError, NotFoundError
+    from app.models.enums import PostingStatus, TransactionType
+    from app.services.transaction_service import create_transaction
+    
+    result = await db.execute(
+        select(EmiInstallment, EmiPlan)
+        .join(EmiPlan, EmiInstallment.plan_id == EmiPlan.id)
+        .where(
+            EmiInstallment.id == installment_id,
+            EmiPlan.organization_id == organization_id,
+        )
+    )
+    row = result.first()
+    if not row:
+        raise NotFoundError("Installment not found")
+        
+    inst: EmiInstallment = row[0]
+    plan: EmiPlan = row[1]
+    
+    if inst.status == EmiInstallmentStatus.PAID:
+        raise AppError("Installment is already paid")
+        
+    occurred_at = datetime.combine(inst.due_date, time.min, tzinfo=UTC)
+    
+    if inst.interest_paise > 0:
+        await create_transaction(
+            db,
+            organization_id=organization_id,
+            user_id=user_id,
+            credit_card_id=plan.credit_card_id,
+            tx_type=TransactionType.EMI_INTEREST,
+            amount_paise=inst.interest_paise,
+            occurred_at=occurred_at,
+            merchant=f"EMI Interest - Month {inst.sequence_number}/{plan.tenure_months}",
+            posting_status=PostingStatus.POSTED,
+            ip=ip,
+            ua=ua,
+        )
+        
+    if inst.gst_paise > 0:
+        await create_transaction(
+            db,
+            organization_id=organization_id,
+            user_id=user_id,
+            credit_card_id=plan.credit_card_id,
+            tx_type=TransactionType.EMI_GST,
+            amount_paise=inst.gst_paise,
+            occurred_at=occurred_at,
+            merchant=f"EMI GST - Month {inst.sequence_number}/{plan.tenure_months}",
+            posting_status=PostingStatus.POSTED,
+            ip=ip,
+            ua=ua,
+        )
+        
+    if inst.fees_paise > 0:
+        await create_transaction(
+            db,
+            organization_id=organization_id,
+            user_id=user_id,
+            credit_card_id=plan.credit_card_id,
+            tx_type=TransactionType.EMI_FEE,
+            amount_paise=inst.fees_paise,
+            occurred_at=occurred_at,
+            merchant=f"EMI Fees - Month {inst.sequence_number}/{plan.tenure_months}",
+            posting_status=PostingStatus.POSTED,
+            ip=ip,
+            ua=ua,
+        )
+        
+    inst.status = EmiInstallmentStatus.PAID
+    await db.flush()
+    
+    result_pending = await db.scalar(
+        select(func.count(EmiInstallment.id))
+        .where(
+            EmiInstallment.plan_id == plan.id,
+            EmiInstallment.status == EmiInstallmentStatus.PENDING
+        )
+    )
+    if result_pending == 0:
+        plan.status = EmiPlanStatus.COMPLETED
+        
+    await db.commit()
+    return inst
+
+

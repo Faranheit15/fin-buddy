@@ -224,17 +224,44 @@ export default function CardDetailPage() {
           ) : (
             <div className="divide-y">
               {snapshot.emis.map(plan => {
-                const paid = plan.installments.filter(i => i.status === "paid").length;
+                const paidCount = plan.installments.filter(i => i.status === "paid").length;
                 const total = plan.installments.length;
+                const nextPending = plan.installments.find(i => i.status === "pending");
                 return (
-                  <div key={plan.id} className="p-4 text-sm">
-                    <div className="flex justify-between font-medium">
-                      <span>EMI Plan • {formatInrFromPaise(plan.principal_paise)}</span>
-                      <span className="font-mono tabular-nums">{paid} / {total} Months</span>
+                  <div key={plan.id} className="flex items-center justify-between p-4 text-sm">
+                    <div>
+                      <div className="flex justify-between font-medium">
+                        <span>EMI Plan • {formatInrFromPaise(plan.principal_paise)}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Started {formatDateIst(plan.created_at)} • {(plan.interest_rate_bps / 100).toFixed(2)}% p.a.
+                      </div>
+                      <div className="mt-1 text-xs font-mono tabular-nums text-muted-foreground">
+                        {paidCount} / {total} Months Paid
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      Started {formatDateIst(plan.created_at)} • {(plan.interest_rate_bps / 100).toFixed(2)}% p.a.
-                    </div>
+                    {nextPending && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={busy}
+                        onClick={async () => {
+                          if (!accessToken) return;
+                          setBusy(true);
+                          try {
+                            const { payInstallment } = await import("@/lib/api/emis");
+                            await payInstallment(accessToken, nextPending.id);
+                            setReloadKey(k => k + 1);
+                          } catch (err) {
+                            setActionError(err instanceof ApiError ? err.message : "Failed to pay installment");
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      >
+                        Pay Next
+                      </Button>
+                    )}
                   </div>
                 );
               })}

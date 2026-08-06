@@ -53,3 +53,11 @@ export function listCardEmiPlans(accessToken: string, cardId: string) {
     { accessToken },
   );
 }
+
+export function payInstallment(accessToken: string, installmentId: string) {
+  return apiFetch<EmiInstallment>(
+    `/api/v1/emis/installments/${installmentId}/pay`,
+    { method: "POST" },
+    { accessToken },
+  );
+}

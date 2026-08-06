@@ -2,14 +2,14 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import DbSession, OrgContext
 from app.models.emi import EmiPlan
-from app.schemas.domain import EmiPlanCreate, EmiPlanResponse
-from app.services.emi_service import create_emi_plan
+from app.schemas.domain import EmiInstallmentResponse, EmiPlanCreate, EmiPlanResponse
+from app.services.emi_service import create_emi_plan, pay_emi_installment
 
 router = APIRouter(prefix="/emis", tags=["emis"])
 
@@ -61,3 +61,22 @@ async def list_card_emi_plans(
         plan.installments.sort(key=lambda x: x.sequence_number)
         
     return [EmiPlanResponse.model_validate(p) for p in plans]
+
+
+@router.post("/installments/{installment_id}/pay", response_model=EmiInstallmentResponse)
+async def pay_installment_api(
+    installment_id: UUID,
+    request: Request,
+    db: DbSession,
+    org_ctx: OrgContext,
+) -> EmiInstallmentResponse:
+    org, user = org_ctx
+    inst = await pay_emi_installment(
+        db,
+        organization_id=org.id,
+        user_id=user.id,
+        installment_id=installment_id,
+        ip=request.client.host if request.client else None,
+        ua=request.headers.get("user-agent"),
+    )
+    return EmiInstallmentResponse.model_validate(inst)

@@ -4,7 +4,7 @@
 |--------|--------|
 | **Updated** | 2026-08-05 |
 | **Current story** | US-05 |
-| **Current subtask** | US-05.I5 |
+| **Current subtask** | US-05.T1 |
 | **Overall** | 4 / 6 stories done |
 
 ## Story status
@@ -82,6 +82,7 @@
 | 2026-08-06 | US-05 | US-05.I2 | Updated utilization service to compute spend vs EMI block. Added python-dateutil. Next: I3. |
 | 2026-08-06 | US-05 | US-05.I3 | Added gst_paise to transactions and implemented EMI APIs. Next: I4. |
 | 2026-08-06 | US-05 | US-05.I4 | Built frontend UI: segmented utilization bar, active EMI plans, create EMI dialog, and GST field. Next: I5. |
+| 2026-08-06 | US-05 | US-05.I5 | Implemented pay_emi_installment API and integrated Pay Next button on frontend. Next: T1-T4. |
 
 ## Blockers
 

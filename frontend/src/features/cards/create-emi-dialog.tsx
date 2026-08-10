@@ -59,7 +59,13 @@ export function CreateEmiDialog({ cardId, onCreated }: { cardId: string; onCreat
       setOpen(false);
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to create EMI");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to create EMI",
+      );
     } finally {
       setBusy(false);
     }
@@ -67,73 +73,75 @@ export function CreateEmiDialog({ cardId, onCreated }: { cardId: string; onCreat
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>Convert to EMI</Button>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        Convert to EMI
+      </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create EMI Plan</DialogTitle>
-          <DialogDescription>Block limit for a new EMI plan.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="emi-principal">Principal (₹)</Label>
-              <Input
-                id="emi-principal"
-                required
-                inputMode="decimal"
-                value={principalRupees}
-                onChange={(e) => setPrincipalRupees(e.target.value)}
-                disabled={busy}
-              />
+          <DialogHeader>
+            <DialogTitle>Create EMI Plan</DialogTitle>
+            <DialogDescription>Block limit for a new EMI plan.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="emi-principal">Principal (₹)</Label>
+                <Input
+                  id="emi-principal"
+                  required
+                  inputMode="decimal"
+                  value={principalRupees}
+                  onChange={(e) => setPrincipalRupees(e.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="emi-tenure">Tenure (months)</Label>
+                <Input
+                  id="emi-tenure"
+                  required
+                  inputMode="numeric"
+                  value={tenureMonths}
+                  onChange={(e) => setTenureMonths(e.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="emi-interest">Interest Rate (%)</Label>
+                <Input
+                  id="emi-interest"
+                  required
+                  inputMode="decimal"
+                  value={interestPercent}
+                  onChange={(e) => setInterestPercent(e.target.value)}
+                  placeholder="15.0"
+                  disabled={busy}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="emi-start">Start Date</Label>
+                <Input
+                  id="emi-start"
+                  required
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  disabled={busy}
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="emi-tenure">Tenure (months)</Label>
-              <Input
-                id="emi-tenure"
-                required
-                inputMode="numeric"
-                value={tenureMonths}
-                onChange={(e) => setTenureMonths(e.target.value)}
-                disabled={busy}
-              />
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={busy}>
+                Create EMI
+              </Button>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="emi-interest">Interest Rate (%)</Label>
-              <Input
-                id="emi-interest"
-                required
-                inputMode="decimal"
-                value={interestPercent}
-                onChange={(e) => setInterestPercent(e.target.value)}
-                placeholder="15.0"
-                disabled={busy}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="emi-start">Start Date</Label>
-              <Input
-                id="emi-start"
-                required
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                disabled={busy}
-              />
-            </div>
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={busy}>
-              Create EMI
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

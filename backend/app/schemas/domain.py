@@ -431,13 +431,13 @@ class DashboardResponse(BaseModel):
     total_outstanding_paise: int
     total_available_credit_paise: int
     total_friend_dues_paise: int
-    
+
     net_worth_paise: int = 0
     assets_paise: int = 0
     liabilities_paise: int = 0
     period_income_paise: int = 0
     period_expense_paise: int = 0
-    
+
     cards_count: int
     contacts_count: int
     transactions_count: int
@@ -570,4 +570,3 @@ class EmiPlanResponse(ORMModel):
     status: EmiPlanStatus
     created_at: datetime
     installments: list[EmiInstallmentResponse] = Field(default_factory=list)
-

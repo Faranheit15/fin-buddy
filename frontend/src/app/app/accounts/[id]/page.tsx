@@ -61,7 +61,10 @@ export default function AccountDetailPage() {
 
   async function archive() {
     if (!accessToken || !snapshot.account) return;
-    if (!confirm(`Archive ${snapshot.account.name}? History stays; it hides from the default list.`)) return;
+    if (
+      !confirm(`Archive ${snapshot.account.name}? History stays; it hides from the default list.`)
+    )
+      return;
     setBusy(true);
     setActionError(null);
     try {
@@ -142,7 +145,7 @@ export default function AccountDetailPage() {
             Correct balance
           </Button>
         )}
-        
+
         {isCard && account.credit_card_id && (
           <Link
             href={`/app/cards/${account.credit_card_id}`}

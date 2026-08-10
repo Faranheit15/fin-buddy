@@ -71,9 +71,7 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
               {profile.email}
             </span>
           ) : accessToken ? (
-            <span className="mt-1 block font-mono text-[10px] tracking-wide">
-              Loading profile…
-            </span>
+            <span className="mt-1 block font-mono text-[10px] tracking-wide">Loading profile…</span>
           ) : (
             <span className="mt-1 block font-mono text-[10px] tracking-wide">
               Sign in to sync your workspace

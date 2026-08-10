@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from app.api.deps import AppSettings, CurrentUser, DbSession, OrgContext, client_meta
 from app.core.exceptions import AppError
 from app.core.rate_limit import UPLOAD_LIMIT, enforce_rate_limit
+from app.core.upload_limits import read_upload_limited
 from app.models.enums import LineReviewStatus, StatementStatus
 from app.models.statement import Statement, StatementLineCandidate
 from app.schemas.common import PaginatedResponse
@@ -111,10 +112,12 @@ async def upload_statement(
     auto_parse: bool = Form(True),
 ) -> StatementDetailResponse:
     """Upload a statement PDF or FinBuddy sample .txt and optionally parse immediately."""
-    enforce_rate_limit(request, bucket="statement_upload", limit=UPLOAD_LIMIT, window_seconds=60.0)
+    await enforce_rate_limit(
+        request, bucket="statement_upload", limit=UPLOAD_LIMIT, window_seconds=60.0
+    )
     org, _ = org_ctx
     card = await statement_service.ensure_card(db, org.id, credit_card_id)
-    data = await file.read()
+    data = await read_upload_limited(file, max_bytes=settings.statement_max_upload_bytes)
     filename = file.filename or "statement.bin"
     ip, ua = client_meta(request)
 

@@ -40,13 +40,16 @@ Set env (use `--secret` for secrets):
 ```bash
 fastapi cloud env set ENVIRONMENT production
 fastapi cloud env set DEBUG false
-fastapi cloud env set AUTO_MIGRATE true
+# Run Alembic as a one-off release step; never let every application replica
+# compete to migrate during startup.
+fastapi cloud env set AUTO_MIGRATE false
 fastapi cloud env set AUTO_SEED false
 fastapi cloud env set DEMO_AUTH_ENABLED false
 fastapi cloud env set STATEMENT_STORAGE_BACKEND supabase
 fastapi cloud env set STATEMENT_STORAGE_BUCKET statements
-fastapi cloud env set CORS_ORIGINS "https://<your-app>.vercel.app"
+fastapi cloud env set CORS_ORIGINS ""
 fastapi cloud env set PLATFORM_ADMIN_EMAILS "you@example.com"
+fastapi cloud env set --secret JOB_RUNNER_SECRET "generate-a-long-random-value"
 fastapi cloud env set --secret DATABASE_URL "postgresql://..."
 fastapi cloud env set --secret SUPABASE_URL "https://....supabase.co"
 fastapi cloud env set --secret SUPABASE_ANON_KEY "..."
@@ -54,7 +57,15 @@ fastapi cloud env set --secret SUPABASE_SERVICE_ROLE_KEY "..."
 fastapi cloud env set --secret SUPABASE_JWT_SECRET "..."
 ```
 
-Redeploy after env changes if required by the platform. Probe:
+Run the migration exactly once against the target Supabase database before scaling or serving API traffic:
+
+```bash
+uv run alembic upgrade head
+```
+
+Redeploy after env changes if required by the platform. Configure your trusted
+scheduler to send `X-Job-Secret` with `POST /api/v1/jobs/send-reminders`; the
+endpoint is intentionally unavailable until `JOB_RUNNER_SECRET` is set. Probe:
 
 `GET https://<your-api>/api/v1/health`
 
@@ -63,23 +74,16 @@ Redeploy after env changes if required by the platform. Probe:
 - Root directory: `frontend`
 - Framework preset: **Next.js** (do not leave as Other / unset)
 - Install: `bun install` / Build: `bun run build`
-- Env (Production) — browser calls `/backend/*`; Next rewrites that to `BACKEND_URL` **at build time**:
+- Env (Production) — browser calls the same-origin `/api/backend/*` BFF route. The BFF reads `BACKEND_URL` server-side and attaches HttpOnly-session credentials to FastAPI:
 
 | Variable | Value |
 |----------|--------|
 | `NEXT_PUBLIC_APP_URL` | `https://fin-buddy-dev.vercel.app` |
-| `NEXT_PUBLIC_API_URL` | `https://fin-buddy.fastapicloud.dev` |
 | `BACKEND_URL` | `https://fin-buddy.fastapicloud.dev` |
 
 Do **not** put service role or JWT secret in Vercel.
 
-After changing these, **Redeploy** the frontend (Settings alone are not enough for rewrites).
-
-On FastAPI Cloud, allow the Vercel origin:
-
-```bash
-fastapi cloud env set CORS_ORIGINS "https://fin-buddy-dev.vercel.app"
-```
+`BACKEND_URL` is server-only. Do not put service-role or JWT secrets in Vercel, and do not configure cross-origin browser CORS for the BFF topology. Redeploy Vercel after changing environment variables.
 
 **Gotcha:** `output: "standalone"` is Docker-only (`DOCKER_BUILD=1`). Enabling it on Vercel can yield a green build that still returns platform `404 NOT_FOUND`.
 

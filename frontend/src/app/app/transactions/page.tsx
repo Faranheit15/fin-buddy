@@ -150,14 +150,8 @@ function TransactionsInner() {
     qDebounced,
   ]);
 
-  const accountMap = useMemo(
-    () => Object.fromEntries(accounts.map((a) => [a.id, a])),
-    [accounts],
-  );
-  const contactMap = useMemo(
-    () => Object.fromEntries(contacts.map((c) => [c.id, c])),
-    [contacts],
-  );
+  const accountMap = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts]);
+  const contactMap = useMemo(() => Object.fromEntries(contacts.map((c) => [c.id, c])), [contacts]);
   const categoryMap = useMemo(
     () => Object.fromEntries(categories.map((c) => [c.id, c])),
     [categories],
@@ -425,7 +419,9 @@ function TransactionsInner() {
                 {txs.map((tx) => {
                   const account = accountMap[tx.account_id];
                   const contact = tx.contact_id ? contactMap[tx.contact_id] : null;
-                  const categoryName = tx.category_id ? categoryMap[tx.category_id]?.name : tx.category;
+                  const categoryName = tx.category_id
+                    ? categoryMap[tx.category_id]?.name
+                    : tx.category;
                   const reduce =
                     tx.type === "refund" ||
                     tx.type === "payment_to_issuer" ||
@@ -444,7 +440,10 @@ function TransactionsInner() {
                           {tx.merchant}
                         </p>
                         {categoryName && (
-                          <p className="truncate text-[11px] text-muted-foreground" title={categoryName}>
+                          <p
+                            className="truncate text-[11px] text-muted-foreground"
+                            title={categoryName}
+                          >
                             {categoryName}
                           </p>
                         )}
@@ -470,10 +469,7 @@ function TransactionsInner() {
                       </td>
                       <td className="px-4 py-3 text-xs">
                         {contact ? (
-                          <Link
-                            href={`/app/contacts/${contact.id}`}
-                            className="hover:underline"
-                          >
+                          <Link href={`/app/contacts/${contact.id}`} className="hover:underline">
                             {contact.name}
                           </Link>
                         ) : (

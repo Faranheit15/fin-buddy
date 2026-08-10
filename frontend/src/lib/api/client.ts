@@ -6,6 +6,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code?: string,
     readonly details?: unknown,
+    readonly requestId?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -27,15 +28,14 @@ type ErrorBody = {
 
 /**
  * Resolve API base URL.
- * - In the browser: always use same-origin `/backend` proxy (next.config rewrites)
- *   so CORS never blocks auth.
- * - On the server: call the real backend URL.
+ * - In the browser: use the same-origin Next.js BFF, which owns credentials.
+ * - On the server: call the configured backend directly.
  */
 export function apiBase(): string {
   if (typeof window !== "undefined") {
-    return "/backend";
+    return "/api/backend";
   }
-  return (env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001").replace(/\/$/, "");
+  return env.BACKEND_URL.replace(/\/$/, "");
 }
 
 /**
@@ -53,7 +53,7 @@ export async function apiFetch<T>(
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
   }
-  if (options.accessToken) {
+  if (options.accessToken && typeof window === "undefined") {
     headers.set("Authorization", `Bearer ${options.accessToken}`);
   }
 
@@ -67,7 +67,7 @@ export async function apiFetch<T>(
   } catch (err) {
     const hint =
       typeof window !== "undefined"
-        ? "Is the Fin Buddy API running, and is BACKEND_URL / NEXT_PUBLIC_API_URL correct in next.config rewrites?"
+        ? "Is the Fin Buddy API running, and is the Next.js BFF route able to reach the configured backend?"
         : "Is the Fin Buddy API reachable from the Next.js server?";
     const detail = err instanceof Error ? err.message : "network error";
     throw new ApiError(`Failed to reach API (${url}): ${detail}. ${hint}`, 0, "network_error");
@@ -87,7 +87,13 @@ export async function apiFetch<T>(
       // non-JSON error body
     }
 
-    throw new ApiError(message, response.status, code, details);
+    throw new ApiError(
+      message,
+      response.status,
+      code,
+      details,
+      response.headers.get("x-request-id") ?? undefined,
+    );
   }
 
   if (response.status === 204) {

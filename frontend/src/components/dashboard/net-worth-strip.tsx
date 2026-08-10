@@ -22,9 +22,7 @@ export function NetWorthStrip({
           <p className="font-mono text-3xl font-semibold tracking-tight text-foreground tabular-nums">
             {formatInrFromPaise(netWorthPaise)}
           </p>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Assets minus liabilities
-          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">Assets minus liabilities</p>
         </CardContent>
         <CardContent className="flex flex-col gap-1 p-5">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -34,9 +32,7 @@ export function NetWorthStrip({
           <p className="font-mono text-xl font-medium tracking-tight text-foreground tabular-nums">
             {formatInrFromPaise(assetsPaise)}
           </p>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Bank, cash, receivables
-          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">Bank, cash, receivables</p>
         </CardContent>
         <CardContent className="flex flex-col gap-1 p-5">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -46,9 +42,7 @@ export function NetWorthStrip({
           <p className="font-mono text-xl font-medium tracking-tight text-foreground tabular-nums">
             {formatInrFromPaise(liabilitiesPaise)}
           </p>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Cards, payables
-          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">Cards, payables</p>
         </CardContent>
       </div>
     </Card>

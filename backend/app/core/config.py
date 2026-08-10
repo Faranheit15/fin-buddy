@@ -62,9 +62,10 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
 
     # CORS — comma-separated origins in .env (NoDecode: do not require JSON)
-    cors_origins: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:3000"]
-    )
+    cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    # Only these immediate peers may supply X-Forwarded-For. Keep empty unless
+    # the deployment has a known reverse proxy in front of the API.
+    trusted_proxy_ips: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     # Database (Supabase Postgres connection string)
     # Example: postgresql://postgres.[project-ref]:[password]@aws-0-...pooler.supabase.com:6543/postgres
@@ -109,12 +110,16 @@ class Settings(BaseSettings):
 
     # Email provider (Resend)
     resend_api_key: str | None = None
-
     # Request / activity logging
     log_api_requests: bool = True
     log_request_body: bool = False  # avoid PII in prod unless needed
+    operational_log_retention_days: int = Field(default=90, ge=1, le=3650)
 
-    @field_validator("cors_origins", "platform_admin_emails", mode="before")
+    # Required by the externally scheduled reminder endpoint. Never expose it
+    # to browsers; a scheduler sends it in X-Job-Secret.
+    job_runner_secret: str | None = None
+
+    @field_validator("cors_origins", "platform_admin_emails", "trusted_proxy_ips", mode="before")
     @classmethod
     def parse_csv_list(cls, value: object) -> list[str]:
         return _parse_string_list(value)

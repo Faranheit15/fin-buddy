@@ -59,11 +59,7 @@ export default function CategoriesPage() {
   }
 
   if (!accessToken) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Sign in to manage categories.
-      </p>
-    );
+    return <p className="text-sm text-muted-foreground">Sign in to manage categories.</p>;
   }
 
   const loading = snapshot.gen !== reloadKey;
@@ -139,9 +135,7 @@ export default function CategoriesPage() {
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map((cat) => (
                     <tr key={cat.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 font-medium">
-                        {cat.name}
-                      </td>
+                      <td className="px-4 py-3 font-medium">{cat.name}</td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className="capitalize text-[10px]">
                           {cat.kind}

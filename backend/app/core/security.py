@@ -1,11 +1,12 @@
 """JWT verification and auth dependencies."""
 
 from dataclasses import dataclass
+from secrets import compare_digest
 from typing import Annotated, Any
 from uuid import UUID
 
 import jwt
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWTError
 from sqlalchemy import select
@@ -56,16 +57,23 @@ def decode_supabase_jwt(token: str, settings: Settings) -> dict[str, Any]:
         iss = str(payload.get("iss") or "").rstrip("/")
         expected = settings.supabase_jwt_issuer.rstrip("/")
         is_demo = (payload.get("app_metadata") or {}).get("provider") == "demo"
-        if (
-            iss
-            and not is_demo
-            and iss != expected
-            and not expected.startswith(iss)
-            and not iss.startswith(expected.removesuffix("/auth/v1"))
-        ):
+        if iss and not is_demo and iss != expected:
             raise UnauthorizedError("Invalid token issuer")
 
     return payload
+
+
+def require_job_runner(request: Request, settings: Settings) -> None:
+    """Fail closed unless a scheduler proves knowledge of its shared secret."""
+    expected = settings.job_runner_secret
+    supplied = request.headers.get("x-job-secret")
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Scheduled jobs are not configured",
+        )
+    if not supplied or not compare_digest(supplied, expected):
+        raise UnauthorizedError("Invalid scheduled-job credential")
 
 
 async def get_current_user(

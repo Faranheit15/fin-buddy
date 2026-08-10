@@ -72,7 +72,7 @@ export function CorrectBalanceDialog({
       });
       onOpenChange(false);
       onCorrected();
-      
+
       // Reset
       setTargetBalance("");
       setReason("");

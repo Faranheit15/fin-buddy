@@ -78,7 +78,7 @@ export function ObligationForm({
             placeholder="5000"
           />
         </div>
-        
+
         {contacts.length > 0 ? (
           <div className="space-y-1.5">
             <Label htmlFor="obl-contact">Contact</Label>

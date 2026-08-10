@@ -63,9 +63,7 @@ export function CardForm({ accessToken, onCreated, onCancel }: CardFormProps) {
         due_rule_type: dueRuleType,
         due_rule_value: Number(dueRuleValue),
         notes: notes.trim() || null,
-        opening_balance_paise: openingRupees
-          ? rupeesToPaise(openingRupees) || null
-          : null,
+        opening_balance_paise: openingRupees ? rupeesToPaise(openingRupees) || null : null,
       });
       onCreated(card);
     } catch (err) {

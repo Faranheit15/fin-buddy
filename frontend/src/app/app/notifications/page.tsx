@@ -81,11 +81,7 @@ export default function NotificationsPage() {
   }
 
   if (!accessToken) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Sign in to view in-app notifications.
-      </p>
-    );
+    return <p className="text-sm text-muted-foreground">Sign in to view in-app notifications.</p>;
   }
 
   const loading = snapshot.gen !== reloadKey;
@@ -158,7 +154,10 @@ export default function NotificationsPage() {
           title="All quiet"
           description="No notifications yet. Due-soon, high utilization, and statement-ready alerts will appear here."
           action={
-            <Link href="/app/settings" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+            <Link
+              href="/app/settings"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
               Adjust thresholds
             </Link>
           }

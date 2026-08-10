@@ -22,11 +22,7 @@ export type CategoryUpdate = {
 };
 
 export function listCategories(accessToken: string) {
-  return apiFetch<Category[]>(
-    "/api/v1/categories",
-    { method: "GET" },
-    { accessToken },
-  );
+  return apiFetch<Category[]>("/api/v1/categories", { method: "GET" }, { accessToken });
 }
 
 export function createCategory(accessToken: string, body: CategoryCreate) {
@@ -37,11 +33,7 @@ export function createCategory(accessToken: string, body: CategoryCreate) {
   );
 }
 
-export function updateCategory(
-  accessToken: string,
-  id: string,
-  body: CategoryUpdate,
-) {
+export function updateCategory(accessToken: string, id: string, body: CategoryUpdate) {
   return apiFetch<Category>(
     `/api/v1/categories/${id}`,
     { method: "PATCH", body: JSON.stringify(body) },
@@ -50,9 +42,5 @@ export function updateCategory(
 }
 
 export function deleteCategory(accessToken: string, id: string) {
-  return apiFetch<void>(
-    `/api/v1/categories/${id}`,
-    { method: "DELETE" },
-    { accessToken },
-  );
+  return apiFetch<void>(`/api/v1/categories/${id}`, { method: "DELETE" }, { accessToken });
 }

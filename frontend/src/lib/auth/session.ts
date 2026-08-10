@@ -1,15 +1,20 @@
 /**
- * Frontend session cookies (set via Next.js route handlers on this origin).
- * Auth credentials themselves are obtained only from the FastAPI backend.
+ * Session cookie names and non-secret browser session metadata.
+ * Credentials are read only by Next.js route handlers.
  */
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+const useSecureCookies = process.env.NODE_ENV === "production" || appUrl.startsWith("https://");
 
 export const ACCESS_COOKIE = "fb_access_token";
 export const REFRESH_COOKIE = "fb_refresh_token";
 export const EXPIRES_COOKIE = "fb_expires_at";
 
-export type StoredSession = {
-  accessToken: string;
-  refreshToken: string | null;
+/** A non-secret UI marker retained while API call sites migrate to BFF-only signatures. */
+export const BFF_SESSION_MARKER = "bff-session";
+
+export type BrowserSession = {
+  authenticated: true;
   expiresAt: number | null;
 };
 
@@ -21,17 +26,11 @@ export type BackendTokenPair = {
   token_type?: string;
 };
 
-export function tokensFromBackendSession(
-  session: BackendTokenPair | null | undefined,
-): StoredSession | null {
-  if (!session?.access_token) return null;
-  let expiresAt = session.expires_at ?? null;
-  if (!expiresAt && session.expires_in) {
-    expiresAt = Math.floor(Date.now() / 1000) + session.expires_in;
-  }
+export function sessionCookieOptions() {
   return {
-    accessToken: session.access_token,
-    refreshToken: session.refresh_token ?? null,
-    expiresAt,
+    httpOnly: true,
+    sameSite: "strict" as const,
+    secure: useSecureCookies,
+    path: "/",
   };
 }

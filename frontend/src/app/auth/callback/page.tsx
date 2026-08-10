@@ -12,10 +12,26 @@ import { establishSessionFromTokens } from "@/lib/api/auth";
  * We immediately hand them to the FastAPI backend to validate + bootstrap profile,
  * then store cookies on this origin. No browser Supabase client is used.
  */
+function safeAppPath(value: string | null, origin: string): string {
+  if (!value) return "/app";
+  try {
+    const destination = new URL(value, origin);
+    if (
+      destination.origin === origin &&
+      (destination.pathname === "/app" || destination.pathname.startsWith("/app/"))
+    ) {
+      return `${destination.pathname}${destination.search}${destination.hash}`;
+    }
+  } catch {
+    // Invalid or external destinations intentionally fall back to the dashboard.
+  }
+  return "/app";
+}
+
 function CallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { applyBackendSession } = useAuth();
+  const { applyEstablishedSession } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,7 +39,7 @@ function CallbackInner() {
 
     void (async () => {
       try {
-        const next = searchParams.get("next") || "/app";
+        const next = safeAppPath(searchParams.get("next"), window.location.origin);
 
         // Hash tokens: #access_token=...&refresh_token=...
         const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
@@ -31,8 +47,7 @@ function CallbackInner() {
         const queryAccess = searchParams.get("access_token");
         const accessToken =
           hashParams.get("access_token") || queryAccess || searchParams.get("token");
-        const refreshToken =
-          hashParams.get("refresh_token") || searchParams.get("refresh_token");
+        const refreshToken = hashParams.get("refresh_token") || searchParams.get("refresh_token");
         const expiresIn = hashParams.get("expires_in") || searchParams.get("expires_in");
         const expiresAt = hashParams.get("expires_at") || searchParams.get("expires_at");
 
@@ -44,6 +59,9 @@ function CallbackInner() {
           );
         }
 
+        // Remove hosted-auth credentials from the address bar before any asynchronous work.
+        window.history.replaceState({}, "", "/auth/callback");
+
         const backend = await establishSessionFromTokens({
           access_token: accessToken,
           refresh_token: refreshToken,
@@ -51,11 +69,11 @@ function CallbackInner() {
           expires_at: expiresAt ? Number(expiresAt) : null,
         });
 
-        if (!backend.session?.access_token) {
+        if (!backend.session?.authenticated) {
           throw new Error(backend.message || "Backend rejected session tokens");
         }
 
-        await applyBackendSession(backend.session);
+        await applyEstablishedSession();
         if (!cancelled) {
           // Clear tokens from the address bar
           window.history.replaceState({}, "", "/auth/callback");
@@ -72,7 +90,7 @@ function CallbackInner() {
     return () => {
       cancelled = true;
     };
-  }, [applyBackendSession, router, searchParams]);
+  }, [applyEstablishedSession, router, searchParams]);
 
   if (error) {
     return (

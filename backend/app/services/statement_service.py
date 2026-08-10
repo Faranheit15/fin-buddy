@@ -189,8 +189,9 @@ async def run_parse(
             raise AppError("No file stored for statement", code="missing_file")
         data = await storage.read_bytes(statement.pdf_storage_path, settings)
         filename = statement.pdf_storage_path.rsplit("/", 1)[-1]
-        
+
         from app.services.parsers import parse_statement_bytes
+
         result = parse_statement_bytes(data, filename, issuer=card.issuer)
 
         # Fill metadata if missing

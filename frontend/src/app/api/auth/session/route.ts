@@ -1,76 +1,56 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import {
-  ACCESS_COOKIE,
-  EXPIRES_COOKIE,
-  REFRESH_COOKIE,
-  type StoredSession,
-} from "@/lib/auth/session";
+import { ACCESS_COOKIE, EXPIRES_COOKIE, REFRESH_COOKIE } from "@/lib/auth/session";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-const useSecureCookies =
-  process.env.NODE_ENV === "production" || appUrl.startsWith("https://");
-
-const COOKIE_BASE = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: useSecureCookies,
-  path: "/",
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, private",
+  Pragma: "no-cache",
+  Vary: "Cookie",
 };
 
-/**
- * Persist backend-issued tokens as httpOnly cookies on the Next.js origin
- * so middleware can protect /app without calling Supabase from the browser.
- */
-export async function POST(request: Request) {
-  const body = (await request.json()) as Partial<StoredSession>;
-  if (!body.accessToken) {
-    return NextResponse.json({ error: "accessToken required" }, { status: 400 });
+function isSameOriginRequest(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).origin === new URL(request.url).origin;
+  } catch {
+    return false;
   }
-
-  const jar = await cookies();
-  const maxAge = body.expiresAt
-    ? Math.max(body.expiresAt - Math.floor(Date.now() / 1000), 60)
-    : 60 * 60 * 24 * 7;
-
-  jar.set(ACCESS_COOKIE, body.accessToken, { ...COOKIE_BASE, maxAge });
-  if (body.refreshToken) {
-    jar.set(REFRESH_COOKIE, body.refreshToken, { ...COOKIE_BASE, maxAge: 60 * 60 * 24 * 30 });
-  } else {
-    jar.delete(REFRESH_COOKIE);
-  }
-  if (body.expiresAt) {
-    jar.set(EXPIRES_COOKIE, String(body.expiresAt), { ...COOKIE_BASE, maxAge });
-  }
-
-  return NextResponse.json({ ok: true });
 }
 
+function forbiddenResponse() {
+  return NextResponse.json(
+    { error: "Cross-site session changes are not allowed" },
+    { status: 403, headers: NO_STORE_HEADERS },
+  );
+}
+
+/**
+ * Exposes only non-secret session state to browser code. Tokens stay readable
+ * exclusively by same-origin Next.js route handlers.
+ */
 export async function GET() {
   const jar = await cookies();
-  const accessToken = jar.get(ACCESS_COOKIE)?.value ?? null;
-  const refreshToken = jar.get(REFRESH_COOKIE)?.value ?? null;
   const expiresRaw = jar.get(EXPIRES_COOKIE)?.value;
   const expiresAt = expiresRaw ? Number(expiresRaw) : null;
+  const authenticated = Boolean(jar.get(ACCESS_COOKIE)?.value);
 
-  if (!accessToken) {
-    return NextResponse.json({ session: null });
-  }
-
-  return NextResponse.json({
-    session: {
-      accessToken,
-      refreshToken,
-      expiresAt: Number.isFinite(expiresAt) ? expiresAt : null,
-    } satisfies StoredSession,
-  });
+  return NextResponse.json(
+    {
+      session: authenticated
+        ? { authenticated: true, expiresAt: Number.isFinite(expiresAt) ? expiresAt : null }
+        : null,
+    },
+    { headers: NO_STORE_HEADERS },
+  );
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
+  if (!isSameOriginRequest(request)) return forbiddenResponse();
   const jar = await cookies();
   jar.delete(ACCESS_COOKIE);
   jar.delete(REFRESH_COOKIE);
   jar.delete(EXPIRES_COOKIE);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true }, { headers: NO_STORE_HEADERS });
 }

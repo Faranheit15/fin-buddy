@@ -47,11 +47,7 @@ export function createEmiPlan(accessToken: string, body: EmiPlanCreate) {
 }
 
 export function listCardEmiPlans(accessToken: string, cardId: string) {
-  return apiFetch<EmiPlan[]>(
-    `/api/v1/emis/card/${cardId}`,
-    { method: "GET" },
-    { accessToken },
-  );
+  return apiFetch<EmiPlan[]>(`/api/v1/emis/card/${cardId}`, { method: "GET" }, { accessToken });
 }
 
 export function payInstallment(accessToken: string, installmentId: string) {

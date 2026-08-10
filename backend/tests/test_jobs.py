@@ -1,6 +1,7 @@
 """Tests for background jobs (reminders)."""
 
 import pytest
+from starlette.requests import Request
 
 from app.models.credit_card import CreditCard
 from app.models.enums import CardStatus, DueRuleType
@@ -14,7 +15,7 @@ class _FakeResult:
             self._values = values
         else:
             self._values = [values] if values is not None else []
-            
+
     def scalar_one_or_none(self) -> object:
         if not self._values:
             return None
@@ -26,15 +27,19 @@ class _FakeResult:
     def all(self) -> list[object]:
         return self._values
 
+
 class _FakeScalars:
     def __init__(self, values: list[object]) -> None:
         self._values = values
+
     def all(self) -> list[object]:
         return self._values
+
     def first(self) -> object:
         if not self._values:
             return None
         return self._values[0]
+
 
 class _RecordingSession:
     def __init__(self, results: list[object] | None = None) -> None:
@@ -63,13 +68,15 @@ async def test_send_reminders_threshold(
     # We create a profile with due_soon_days = 7
     # One card due in 5 days (should include)
     # One card due in 10 days (should exclude)
-    
+
     from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo
+
     ist = ZoneInfo("Asia/Kolkata")
     today = datetime.now(ist).date()
 
     from uuid import uuid4
+
     user_id = uuid4()
     org_id = uuid4()
 
@@ -79,7 +86,7 @@ async def test_send_reminders_threshold(
         due_soon_days=7,
         email_reminders_enabled=True,
         is_active=True,
-        timezone="Asia/Kolkata"
+        timezone="Asia/Kolkata",
     )
     Organization(id=org_id, name="Test Org", slug="test-org")
     OrganizationMember(organization_id=org_id, user_id=user_id)
@@ -93,9 +100,9 @@ async def test_send_reminders_threshold(
         issuer="Bank",
         network="visa",
         credit_limit_paise=10000000,
-        statement_day=1, # doesn't matter much if we set next_due_date logic
+        statement_day=1,  # doesn't matter much if we set next_due_date logic
         due_rule_type=DueRuleType.FIXED_DAY,
-        due_rule_value=due_5_date.day, # simplistic
+        due_rule_value=due_5_date.day,  # simplistic
         status=CardStatus.ACTIVE,
     )
 
@@ -108,42 +115,60 @@ async def test_send_reminders_threshold(
         issuer="Bank",
         network="visa",
         credit_limit_paise=10000000,
-        statement_day=2, 
+        statement_day=2,
         due_rule_type=DueRuleType.FIXED_DAY,
         due_rule_value=1,
         status=CardStatus.ACTIVE,
     )
 
     # Mock db queries
-    db = _RecordingSession([
-        # 1. profiles
-        [profile],
-        # 2. orgs
-        [(org_id,)],
-        # 3. cards
-        [card_5, card_15],
-        # 4. EMIs (empty)
-        []
-    ])
+    db = _RecordingSession(
+        [
+            # 1. profiles
+            [profile],
+            # 2. orgs
+            [(org_id,)],
+            # 3. cards
+            [card_5, card_15],
+            # 4. EMIs (empty)
+            [],
+        ]
+    )
 
     # 3. Call endpoint directly
     from app.api.v1.jobs import send_reminders
     from app.core.config import Settings
-    settings = Settings()
-    
+
+    settings = Settings(job_runner_secret="test-job-secret")
+    request = Request(
+        {
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": "POST",
+            "scheme": "http",
+            "path": "/api/v1/jobs/send-reminders",
+            "raw_path": b"/api/v1/jobs/send-reminders",
+            "query_string": b"",
+            "headers": [(b"x-job-secret", b"test-job-secret")],
+            "client": ("127.0.0.1", 12345),
+            "server": ("test", 80),
+        }
+    )
+
     # We must also mock cards_outstanding_map
     async def mock_outstanding_map(db_session, org_id):
         return {card_5.id: 500000, card_15.id: 1000000}
-        
+
     def mock_next_due(today_d, statement_day, due_rule_type, due_rule_value):
         if statement_day == 1:
             return due_5_date
-        return today_d + timedelta(days=15) # out of range
+        return today_d + timedelta(days=15)  # out of range
 
     monkeypatch.setattr("app.api.v1.jobs.cards_outstanding_map", mock_outstanding_map)
     monkeypatch.setattr("app.api.v1.jobs.next_due_date_for_card", mock_next_due)
 
-    res = await send_reminders(db, settings) # type: ignore[arg-type]
+    res = await send_reminders(request, db, settings)  # type: ignore[arg-type]
     assert "Reminders sent to 1 users" in res.message
 
     # 4. Verify email
@@ -158,5 +183,5 @@ async def test_send_reminders_threshold(
             assert "5,000.00" in text_body
             assert "in 5 days" in text_body
             break
-    
+
     assert found, "Expected reminder email was not sent"

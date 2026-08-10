@@ -403,9 +403,7 @@ export default function StatementReviewPage() {
                             const v = e.target.value;
                             void onLineField(
                               line,
-                              v
-                                ? { proposed_contact_id: v }
-                                : { clear_contact: true },
+                              v ? { proposed_contact_id: v } : { clear_contact: true },
                             );
                           }}
                         >
@@ -418,9 +416,7 @@ export default function StatementReviewPage() {
                         </select>
                       </td>
                       <td className="px-3 py-2 font-mono text-xs tabular-nums">
-                        {line.amount_paise != null
-                          ? formatInrFromPaise(line.amount_paise)
-                          : "—"}
+                        {line.amount_paise != null ? formatInrFromPaise(line.amount_paise) : "—"}
                       </td>
                       <td className="px-3 py-2">
                         <Badge variant="outline" className="text-[10px] capitalize">

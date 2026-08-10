@@ -11,7 +11,13 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ObligationPaymentForm } from "@/features/obligations/obligation-payment-form";
-import { getObligation, listObligationPayments, deleteObligation, type Obligation, type ObligationPayment } from "@/lib/api/obligations";
+import {
+  getObligation,
+  listObligationPayments,
+  deleteObligation,
+  type Obligation,
+  type ObligationPayment,
+} from "@/lib/api/obligations";
 import { getContact, type Contact } from "@/lib/api/contacts";
 import { ApiError } from "@/lib/api/client";
 import { formatDateIst, formatInrFromPaise } from "@/lib/format";
@@ -136,7 +142,10 @@ export default function DebtDetailPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {snapshot.contact && (
-            <Link href={`/app/contacts/${snapshot.contact.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-6 px-2 text-xs")}>
+            <Link
+              href={`/app/contacts/${snapshot.contact.id}`}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-6 px-2 text-xs")}
+            >
               View contact
             </Link>
           )}
@@ -147,7 +156,9 @@ export default function DebtDetailPage() {
       </div>
 
       {snapshot.error && (
-        <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{snapshot.error}</p>
+        <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {snapshot.error}
+        </p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -238,7 +249,13 @@ export default function DebtDetailPage() {
         <Button variant="ghost" size="sm" onClick={() => setReloadKey((k) => k + 1)}>
           Refresh
         </Button>
-        <Button variant="ghost" size="sm" disabled={busy} onClick={() => void doDelete()} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={busy}
+          onClick={() => void doDelete()}
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
           <Trash className="mr-1.5 size-3.5" />
           Delete
         </Button>

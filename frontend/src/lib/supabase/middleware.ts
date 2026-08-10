@@ -3,11 +3,14 @@ import { type NextRequest, NextResponse } from "next/server";
 import { ACCESS_COOKIE } from "@/lib/auth/session";
 
 /**
- * Route protection using backend-issued tokens stored as cookies on this origin.
- * Auth is performed by FastAPI; this only gates UI routes.
+ * Route protection using credentials stored as HttpOnly cookies on this origin.
+ * Auth is performed by FastAPI through the server-side BFF; this only gates UI routes.
  */
-export async function updateSession(request: NextRequest) {
-  const response = NextResponse.next({ request });
+export async function updateSession(
+  request: NextRequest,
+  requestHeaders = new Headers(request.headers),
+) {
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   const pathname = request.nextUrl.pathname;
 

@@ -282,6 +282,7 @@ async def test_correct_balance_card_account_sets_credit_card_id() -> None:
     assert tx.amount_paise == 50_00
     assert tx.delta_sign == -1
 
+
 @pytest.mark.asyncio
 async def test_contact_balance_ignores_obligations() -> None:
     # We want to test that contact_balance_paise only looks at transactions and settlements
@@ -293,18 +294,22 @@ async def test_contact_balance_ignores_obligations() -> None:
     # 1. Spends query (from transactions)
     # 2. Settlements query (from settlements)
     # It does not query obligations. We just verify the math works for spends/settlements.
-    db = _RecordingSession([
-        1000_00, # total spends
-        300_00,  # total settlements
-    ])
-    
-    balance = await ledger_service.contact_balance_paise(db, contact_id) # type: ignore[arg-type]
+    db = _RecordingSession(
+        [
+            1000_00,  # total spends
+            300_00,  # total settlements
+        ]
+    )
+
+    balance = await ledger_service.contact_balance_paise(db, contact_id)  # type: ignore[arg-type]
     assert balance == 700_00
 
     # Also check total_friend_dues
-    db = _RecordingSession([
-        1500_00, # total spends across org
-        500_00,  # total settlements
-    ])
-    friend_dues = await ledger_service.total_friend_dues(db, org_id) # type: ignore[arg-type]
+    db = _RecordingSession(
+        [
+            1500_00,  # total spends across org
+            500_00,  # total settlements
+        ]
+    )
+    friend_dues = await ledger_service.total_friend_dues(db, org_id)  # type: ignore[arg-type]
     assert friend_dues == 1000_00

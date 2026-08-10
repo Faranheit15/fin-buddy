@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api/client";
-import type { BackendTokenPair } from "@/lib/auth/session";
+import type { BrowserSession } from "@/lib/auth/session";
 import { env } from "@/lib/env";
 
 export type ProfileResponse = {
@@ -38,12 +38,12 @@ export type MeResponse = {
   organizations: OrganizationSummary[];
 };
 
+/** Browser-visible form of an auth response; credentials are never included. */
 export type AuthResponse = {
   user: ProfileResponse | null;
   organization: OrganizationSummary | null;
-  session: BackendTokenPair | null;
+  session: { authenticated: true } | null;
   message: string | null;
-  raw?: Record<string, unknown> | null;
 };
 
 export function loginWithPassword(email: string, password: string) {
@@ -61,17 +61,13 @@ export function demoLogin() {
   });
 }
 
-export function signupWithPassword(
-  email: string,
-  password: string,
-  display_name?: string,
-) {
+export function signupWithPassword(email: string, password: string, displayName?: string) {
   return apiFetch<AuthResponse>("/api/v1/auth/signup", {
     method: "POST",
     body: JSON.stringify({
       email,
       password,
-      display_name: display_name || null,
+      display_name: displayName || null,
       redirect_to: `${env.NEXT_PUBLIC_APP_URL}/auth/callback`,
     }),
   });
@@ -87,12 +83,7 @@ export function requestMagicLink(email: string, redirectTo?: string) {
   });
 }
 
-export function verifyOtp(input: {
-  email?: string;
-  phone?: string;
-  token: string;
-  type?: string;
-}) {
+export function verifyOtp(input: { email?: string; phone?: string; token: string; type?: string }) {
   return apiFetch<AuthResponse>("/api/v1/auth/otp/verify", {
     method: "POST",
     body: JSON.stringify({
@@ -104,39 +95,28 @@ export function verifyOtp(input: {
   });
 }
 
-export function refreshSession(refreshToken: string) {
-  return apiFetch<AuthResponse>("/api/v1/auth/refresh", {
-    method: "POST",
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
-}
-
-export function establishSessionFromTokens(session: BackendTokenPair) {
+/** Complete an OAuth or magic-link return without exposing backend credentials in the response. */
+export function establishSessionFromTokens(session: {
+  access_token: string;
+  refresh_token?: string | null;
+  expires_in?: number | null;
+  expires_at?: number | null;
+}) {
   return apiFetch<AuthResponse>("/api/v1/auth/session", {
     method: "POST",
-    body: JSON.stringify({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token ?? null,
-      expires_in: session.expires_in ?? null,
-      expires_at: session.expires_at ?? null,
-    }),
+    body: JSON.stringify(session),
   });
 }
 
 export function getGoogleOAuthUrl(redirectTo: string) {
   const q = new URLSearchParams({ redirect_to: redirectTo });
-  return apiFetch<{ url: string; note: string }>(
-    `/api/v1/auth/oauth/google?${q.toString()}`,
-    { method: "GET" },
-  );
+  return apiFetch<{ url: string; note: string }>(`/api/v1/auth/oauth/google?${q.toString()}`, {
+    method: "GET",
+  });
 }
 
 export function fetchMe(accessToken: string, signal?: AbortSignal) {
-  return apiFetch<MeResponse>(
-    "/api/v1/auth/me",
-    { method: "GET" },
-    { accessToken, signal },
-  );
+  return apiFetch<MeResponse>("/api/v1/auth/me", { method: "GET" }, { accessToken, signal });
 }
 
 export function updateProfile(accessToken: string, body: ProfileUpdate) {
@@ -147,11 +127,7 @@ export function updateProfile(accessToken: string, body: ProfileUpdate) {
   );
 }
 
-export function updateOrganization(
-  accessToken: string,
-  orgId: string,
-  body: { name: string },
-) {
+export function updateOrganization(accessToken: string, orgId: string, body: { name: string }) {
   return apiFetch<OrganizationSummary>(
     `/api/v1/auth/organizations/${orgId}`,
     { method: "PATCH", body: JSON.stringify(body) },
@@ -160,46 +136,16 @@ export function updateOrganization(
 }
 
 export function logoutApi(accessToken: string) {
-  return apiFetch<{ message: string }>(
-    "/api/v1/auth/logout",
-    { method: "POST" },
-    { accessToken },
-  );
-}
-
-/** Persist tokens on the Next.js origin (httpOnly cookies). */
-export async function persistBrowserSession(session: {
-  accessToken: string;
-  refreshToken: string | null;
-  expiresAt: number | null;
-}) {
-  const res = await fetch("/api/auth/session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(session),
-  });
-  if (!res.ok) {
-    throw new Error("Failed to persist session");
-  }
+  return apiFetch<{ message: string }>("/api/v1/auth/logout", { method: "POST" }, { accessToken });
 }
 
 export async function clearBrowserSession() {
   await fetch("/api/auth/session", { method: "DELETE" });
 }
 
-export async function readBrowserSession(): Promise<{
-  accessToken: string;
-  refreshToken: string | null;
-  expiresAt: number | null;
-} | null> {
+export async function readBrowserSession(): Promise<BrowserSession | null> {
   const res = await fetch("/api/auth/session", { method: "GET", cache: "no-store" });
   if (!res.ok) return null;
-  const data = (await res.json()) as {
-    session: {
-      accessToken: string;
-      refreshToken: string | null;
-      expiresAt: number | null;
-    } | null;
-  };
+  const data = (await res.json()) as { session: BrowserSession | null };
   return data.session;
 }

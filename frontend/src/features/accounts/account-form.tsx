@@ -30,9 +30,9 @@ export function AccountForm({ accessToken, onCreated, onCancel }: AccountFormPro
     try {
       const nm = name.trim();
       if (!nm) throw new Error("Account name is required");
-      
+
       const balancePaise = openingBalance.trim() ? rupeesToPaise(openingBalance) : null;
-      
+
       await createAccount(accessToken, {
         kind,
         name: nm,

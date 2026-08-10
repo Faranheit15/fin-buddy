@@ -43,13 +43,16 @@ def test_emi_schedule_generator() -> None:
 @pytest.mark.asyncio
 async def test_card_emi_blocked_paise() -> None:
     # Test T1/T2: available credit after create and after principal reduction
-    db = _RecordingSession([
-        # card_emi_blocked_paise returns a scalar (sum of pending principal)
-        [50000_00]
-    ])
+    db = _RecordingSession(
+        [
+            # card_emi_blocked_paise returns a scalar (sum of pending principal)
+            [50000_00]
+        ]
+    )
 
     blocked = await emi_service.card_emi_blocked_paise(
-        db, credit_card_id=uuid4()  # type: ignore[arg-type]
+        db,
+        credit_card_id=uuid4(),  # type: ignore[arg-type]
     )
     assert blocked == 50000_00
 
@@ -87,12 +90,14 @@ async def test_pay_emi_installment(mock_create_transaction: AsyncMock) -> None:
         status=EmiInstallmentStatus.PENDING,
     )
 
-    db = _RecordingSession([
-        # 1. find installment and plan
-        [(inst, plan)],
-        # 2. Check if plan is completed (count of pending)
-        [2],
-    ])
+    db = _RecordingSession(
+        [
+            # 1. find installment and plan
+            [(inst, plan)],
+            # 2. Check if plan is completed (count of pending)
+            [2],
+        ]
+    )
 
     await emi_service.pay_emi_installment(
         db,  # type: ignore[arg-type]
@@ -148,9 +153,11 @@ async def test_pay_emi_installment_already_paid() -> None:
         status=EmiInstallmentStatus.PAID,
     )
 
-    db = _RecordingSession([
-        [(inst, plan)],
-    ])
+    db = _RecordingSession(
+        [
+            [(inst, plan)],
+        ]
+    )
 
     with pytest.raises(AppError) as exc:
         await emi_service.pay_emi_installment(

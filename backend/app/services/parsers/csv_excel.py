@@ -21,16 +21,25 @@ class CsvExcelParser:
             else:
                 df = pd.read_excel(io.BytesIO(data))
         except Exception as exc:
-            raise AppError(f"Failed to read file as tabular data: {exc}", code="tabular_read_failed") from exc
+            raise AppError(
+                f"Failed to read file as tabular data: {exc}", code="tabular_read_failed"
+            ) from exc
 
         # Basic column normalization
         # We look for common headers: Date, Description, Amount, Type (or Debit/Credit)
         cols = {c.lower().strip(): c for c in df.columns}
-        
+
         date_col = next((c for c in cols if "date" in c or "time" in c), None)
-        desc_col = next((c for c in cols if "desc" in c or "merchant" in c or "narrative" in c or "particulars" in c), None)
+        desc_col = next(
+            (
+                c
+                for c in cols
+                if "desc" in c or "merchant" in c or "narrative" in c or "particulars" in c
+            ),
+            None,
+        )
         amt_col = next((c for c in cols if "amount" in c or "value" in c), None)
-        
+
         # Sometimes there's separate Debit and Credit columns
         debit_col = next((c for c in cols if "debit" in c or "withdrawal" in c), None)
         credit_col = next((c for c in cols if "credit" in c or "deposit" in c), None)
@@ -48,7 +57,7 @@ class CsvExcelParser:
             raw_date = str(row[cols[date_col]]) if not pd.isna(row[cols[date_col]]) else ""
             if not raw_date.strip():
                 continue
-            
+
             try:
                 # pandas to_datetime handles many formats
                 dt = pd.to_datetime(raw_date)
@@ -69,7 +78,7 @@ class CsvExcelParser:
                     amount = abs(float(amount_str))
                 except ValueError:
                     amount = 0.0
-                
+
                 # Determine type from type_col or sign
                 if type_col and not pd.isna(row[cols[type_col]]):
                     t_val = str(row[cols[type_col]]).lower().strip()
@@ -98,18 +107,20 @@ class CsvExcelParser:
                     tx_type = TransactionType.PAYMENT_TO_ISSUER
                 except ValueError:
                     pass
-            
+
             if amount == 0:
                 continue
-                
+
             amount_paise = int(round(amount * 100))
-            
-            lines.append(ParsedLine(
-                occurred_at=occurred_at,
-                merchant=merchant[:255],
-                amount_paise=amount_paise,
-                proposed_type=tx_type,
-                raw={str(k): v for k, v in row.to_dict().items()},
-            ))
+
+            lines.append(
+                ParsedLine(
+                    occurred_at=occurred_at,
+                    merchant=merchant[:255],
+                    amount_paise=amount_paise,
+                    proposed_type=tx_type,
+                    raw={str(k): v for k, v in row.to_dict().items()},
+                )
+            )
 
         return ParseResult(lines=lines, parser_name="csv_excel")

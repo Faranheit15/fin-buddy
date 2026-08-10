@@ -151,4 +151,3 @@ async def test_delete_obligation_success(fake_request: Request) -> None:
 
     assert len(db.deleted) == 1
     assert db.deleted[0] is obl
-

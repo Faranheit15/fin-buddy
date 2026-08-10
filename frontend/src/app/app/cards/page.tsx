@@ -68,9 +68,7 @@ export default function CardsPage() {
 
   if (!accessToken) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Sign in (or use demo login) to manage cards.
-      </p>
+      <p className="text-sm text-muted-foreground">Sign in (or use demo login) to manage cards.</p>
     );
   }
 
@@ -153,10 +151,7 @@ export default function CardsPage() {
                   return (
                     <tr key={card.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/app/cards/${card.id}`}
-                          className="group block min-w-0"
-                        >
+                        <Link href={`/app/cards/${card.id}`} className="group block min-w-0">
                           <p className="font-medium group-hover:underline">{card.nickname}</p>
                           <p className="font-mono text-xs text-muted-foreground">
                             {card.issuer} · •••• {card.last_four}
@@ -178,11 +173,7 @@ export default function CardsPage() {
                             <div
                               className={cn(
                                 "h-full rounded-full",
-                                critical
-                                  ? "bg-destructive"
-                                  : warn
-                                    ? "bg-amber-500"
-                                    : "bg-primary",
+                                critical ? "bg-destructive" : warn ? "bg-amber-500" : "bg-primary",
                               )}
                               style={{ width: `${Math.min(util, 100)}%` }}
                             />

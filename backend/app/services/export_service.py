@@ -18,12 +18,10 @@ from app.models.transaction import Transaction
 
 async def generate_org_export(db: AsyncSession, org_id: UUID) -> bytes:
     """Generate an Excel workbook with core organization data."""
-    
+
     # 1. Accounts
     accounts_res = await db.execute(
-        select(Account)
-        .where(Account.organization_id == org_id)
-        .order_by(Account.created_at)
+        select(Account).where(Account.organization_id == org_id).order_by(Account.created_at)
     )
     accounts = accounts_res.scalars().all()
     accounts_data = [
@@ -36,7 +34,7 @@ async def generate_org_export(db: AsyncSession, org_id: UUID) -> bytes:
         }
         for a in accounts
     ]
-    
+
     # 2. Transactions
     # For now, just raw transactions. If we had balances we would include them, but balance is computed.
     tx_res = await db.execute(
@@ -60,12 +58,10 @@ async def generate_org_export(db: AsyncSession, org_id: UUID) -> bytes:
         }
         for t in transactions
     ]
-    
+
     # 3. Contacts
     contacts_res = await db.execute(
-        select(Contact)
-        .where(Contact.organization_id == org_id)
-        .order_by(Contact.name)
+        select(Contact).where(Contact.organization_id == org_id).order_by(Contact.name)
     )
     contacts = contacts_res.scalars().all()
     contacts_data = [
@@ -78,7 +74,7 @@ async def generate_org_export(db: AsyncSession, org_id: UUID) -> bytes:
         }
         for c in contacts
     ]
-    
+
     # 4. Obligations
     ob_res = await db.execute(
         select(Obligation)
@@ -98,7 +94,7 @@ async def generate_org_export(db: AsyncSession, org_id: UUID) -> bytes:
         }
         for o in obligations
     ]
-    
+
     # 5. Cards
     cards_res = await db.execute(
         select(CreditCard)
@@ -126,5 +122,5 @@ async def generate_org_export(db: AsyncSession, org_id: UUID) -> bytes:
         pd.DataFrame(contacts_data).to_excel(writer, sheet_name="Contacts", index=False)
         pd.DataFrame(obligations_data).to_excel(writer, sheet_name="Obligations", index=False)
         pd.DataFrame(cards_data).to_excel(writer, sheet_name="Cards", index=False)
-    
+
     return output.getvalue()

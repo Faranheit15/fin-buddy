@@ -1,22 +1,12 @@
 import { apiFetch } from "@/lib/api/client";
 import { env } from "@/lib/env";
 
-export type StatementStatus =
-  | "uploaded"
-  | "parsing"
-  | "needs_review"
-  | "imported"
-  | "failed";
+export type StatementStatus = "uploaded" | "parsing" | "needs_review" | "imported" | "failed";
 
 export type LineReviewStatus = "pending" | "accepted" | "rejected" | "edited";
 
 export type TransactionType =
-  | "purchase"
-  | "refund"
-  | "fee"
-  | "interest"
-  | "payment_to_issuer"
-  | "opening_balance";
+  "purchase" | "refund" | "fee" | "interest" | "payment_to_issuer" | "opening_balance";
 
 export type Statement = {
   id: string;
@@ -83,8 +73,8 @@ export type StatementLineUpdate = {
 };
 
 function apiBase(): string {
-  if (typeof window !== "undefined") return "/backend";
-  return (env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001").replace(/\/$/, "");
+  if (typeof window !== "undefined") return "/api/backend";
+  return env.BACKEND_URL.replace(/\/$/, "");
 }
 
 export function listStatements(
@@ -105,11 +95,7 @@ export function listStatements(
 }
 
 export function getStatement(accessToken: string, id: string) {
-  return apiFetch<StatementDetail>(
-    `/api/v1/statements/${id}`,
-    { method: "GET" },
-    { accessToken },
-  );
+  return apiFetch<StatementDetail>(`/api/v1/statements/${id}`, { method: "GET" }, { accessToken });
 }
 
 export async function uploadStatement(
@@ -141,7 +127,10 @@ export async function uploadStatement(
   const url = `${apiBase()}/api/v1/statements/upload`;
   const response = await fetch(url, {
     method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers:
+      typeof window === "undefined" && accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : undefined,
     body: form,
   });
 

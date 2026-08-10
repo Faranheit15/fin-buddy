@@ -18,6 +18,7 @@ down_revision: str | Sequence[str] | None = "20260806_0011"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+
 def _auth_uid_exists() -> bool:
     conn = op.get_bind()
     return bool(
@@ -89,7 +90,7 @@ def downgrade() -> None:
     if _auth_uid_exists():
         op.execute(sa.text("DROP POLICY IF EXISTS record_shares_select ON record_shares"))
     op.execute(sa.text("ALTER TABLE record_shares DISABLE ROW LEVEL SECURITY"))
-    
+
     op.drop_index("ix_record_shares_shared_with", table_name="record_shares")
     op.drop_index("ix_record_shares_org_type_record", table_name="record_shares")
     op.drop_table("record_shares")

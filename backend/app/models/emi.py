@@ -33,11 +33,11 @@ class EmiPlan(Base):
         ForeignKey("transactions.id", ondelete="SET NULL"),
         nullable=True,
     )
-    
+
     principal_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     interest_rate_bps: Mapped[int] = mapped_column(Integer, nullable=False)  # e.g., 1500 for 15.00%
     tenure_months: Mapped[int] = mapped_column(Integer, nullable=False)
-    
+
     status: Mapped[EmiPlanStatus] = mapped_column(
         SAEnum(
             EmiPlanStatus,
@@ -47,14 +47,14 @@ class EmiPlan(Base):
         nullable=False,
         default=EmiPlanStatus.ACTIVE,
     )
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-    
+
     installments: Mapped[list["EmiInstallment"]] = relationship(
         "EmiInstallment", back_populates="plan", cascade="all, delete-orphan"
     )
@@ -70,16 +70,16 @@ class EmiInstallment(Base):
         nullable=False,
         index=True,
     )
-    
+
     sequence_number: Mapped[int] = mapped_column(Integer, nullable=False)
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
-    
+
     principal_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     interest_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     fees_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     gst_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     total_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    
+
     status: Mapped[EmiInstallmentStatus] = mapped_column(
         SAEnum(
             EmiInstallmentStatus,
@@ -89,12 +89,12 @@ class EmiInstallment(Base):
         nullable=False,
         default=EmiInstallmentStatus.PENDING,
     )
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-    
+
     plan: Mapped["EmiPlan"] = relationship("EmiPlan", back_populates="installments")

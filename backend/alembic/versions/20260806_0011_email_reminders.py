@@ -21,12 +21,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column(
         "profiles",
-        sa.Column(
-            "email_reminders_enabled",
-            sa.Boolean(),
-            nullable=False,
-            server_default="true"
-        )
+        sa.Column("email_reminders_enabled", sa.Boolean(), nullable=False, server_default="true"),
     )
 
 

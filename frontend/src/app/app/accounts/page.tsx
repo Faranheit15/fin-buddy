@@ -77,9 +77,7 @@ export default function AccountsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Accounts</h2>
-          <p className="text-sm text-muted-foreground">
-            Balances from posted ledger entries
-          </p>
+          <p className="text-sm text-muted-foreground">Balances from posted ledger entries</p>
         </div>
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>
           <Plus className="size-3.5" />
@@ -138,9 +136,10 @@ export default function AccountsPage() {
               </thead>
               <tbody className="divide-y">
                 {accounts.map((acc) => {
-                  const href = acc.kind === "credit_card" && acc.credit_card_id
-                    ? `/app/cards/${acc.credit_card_id}`
-                    : `/app/accounts/${acc.id}`;
+                  const href =
+                    acc.kind === "credit_card" && acc.credit_card_id
+                      ? `/app/cards/${acc.credit_card_id}`
+                      : `/app/accounts/${acc.id}`;
                   return (
                     <tr key={acc.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3">
@@ -152,7 +151,10 @@ export default function AccountsPage() {
                         </Link>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className="capitalize font-normal text-xs text-muted-foreground">
+                        <Badge
+                          variant="outline"
+                          className="capitalize font-normal text-xs text-muted-foreground"
+                        >
                           {acc.kind.replace("_", " ")}
                         </Badge>
                       </td>

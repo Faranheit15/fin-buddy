@@ -7,6 +7,7 @@ from fastapi import Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.core.request_meta import client_ip as trusted_client_ip
 from app.core.security import AuthUser, get_current_user, get_platform_admin
 from app.db.session import get_db
 from app.models.organization import Organization, OrganizationMember
@@ -30,9 +31,6 @@ OrgContext = Annotated[tuple[Organization, OrganizationMember], Depends(get_org_
 
 
 def client_meta(request: Request) -> tuple[str | None, str | None]:
-    ip = request.client.host if request.client else None
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        ip = forwarded.split(",")[0].strip()
+    ip = trusted_client_ip(request)
     ua = request.headers.get("user-agent")
     return ip, ua

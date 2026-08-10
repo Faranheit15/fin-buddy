@@ -90,7 +90,7 @@ uv run mypy app
 cd frontend
 bun install
 cp .env.example .env.local
-# Set NEXT_PUBLIC_API_URL=http://localhost:8000
+# Set BACKEND_URL=http://localhost:8000 (server-only BFF upstream)
 # Auth is handled by the backend (Supabase keys live only in backend/.env)
 bun run dev
 ```
@@ -100,7 +100,7 @@ bun run dev
 - Dashboard (auth required): http://localhost:3000/app  
 
 **Auth flow:** browser → FastAPI (`/api/v1/auth/*`) → Supabase (server-side).  
-Session cookies are stored on the Next.js origin after the backend returns tokens.
+The same-origin Next.js BFF stores session tokens in HttpOnly cookies and never returns them to browser JavaScript.
 
 In Supabase → **Authentication → URL Configuration** (required for production auth emails):
 
@@ -114,12 +114,13 @@ Also set on FastAPI Cloud:
 
 ```bash
 fastapi cloud env set FRONTEND_APP_URL "https://fin-buddy-dev.vercel.app"
-fastapi cloud env set CORS_ORIGINS "https://fin-buddy-dev.vercel.app"
+fastapi cloud env set CORS_ORIGINS ""
 ```
 
 And on Vercel (rebuild after changing):
 
 - `NEXT_PUBLIC_APP_URL=https://fin-buddy-dev.vercel.app`
+- `BACKEND_URL=https://fin-buddy.fastapicloud.dev` (server-only BFF upstream)
 
 Enable Email (and optionally Google) under **Authentication → Providers**.
 
@@ -203,17 +204,17 @@ See **[docs/DEPLOY.md](docs/DEPLOY.md)** for the full Vercel + FastAPI Cloud + S
 - Auth → URL Configuration:
   - Site URL: `https://your-app.vercel.app`
   - Redirect URLs: `https://your-app.vercel.app/auth/callback`
-- Add production origins to backend `CORS_ORIGINS`.
+- Leave backend `CORS_ORIGINS` empty: browser traffic uses the same-origin Next.js BFF.
 
 ### 2. Backend → FastAPI Cloud (or any ASGI host)
 
 ```bash
 cd backend
 # Set secrets to match backend/.env.example:
-#   DATABASE_URL, SUPABASE_*, JWT secret, CORS_ORIGINS (include Vercel URL)
+#   DATABASE_URL, SUPABASE_*, JWT secret; CORS_ORIGINS must remain empty for BFF traffic
 #   ENVIRONMENT=production
 #   DEBUG=false
-#   AUTO_MIGRATE=true   # single instance
+#   AUTO_MIGRATE=false  # run `uv run alembic upgrade head` once before serving
 #   AUTO_SEED=false     # optional in prod
 #   DEMO_LOGIN disabled in production by default
 ```
@@ -237,7 +238,7 @@ cd frontend
 # Env:
 #   NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
 #   NEXT_PUBLIC_API_URL=https://your-api.example.com
-#   BACKEND_URL=https://your-api.example.com   # server-side rewrite target
+#   BACKEND_URL=https://your-api.example.com   # server-only BFF upstream
 ```
 
 Do **not** put Supabase service role or JWT secret in the frontend.

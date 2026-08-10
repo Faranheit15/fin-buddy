@@ -6,9 +6,9 @@ import { useAuth } from "@/features/auth/auth-provider";
  * Shows workspace bootstrap status after login when profile is loaded from the API.
  */
 export function BootstrapBanner() {
-  const { ready, profile, organizations, configured } = useAuth();
+  const { ready, profile, organizations } = useAuth();
 
-  if (!configured || !ready) return null;
+  if (!ready) return null;
 
   if (!profile) {
     return (

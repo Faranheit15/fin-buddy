@@ -141,9 +141,7 @@ export default function ContactsPage() {
               </thead>
               <tbody className="divide-y">
                 {[...contacts]
-                  .sort(
-                    (a, b) => (b.outstanding_paise ?? 0) - (a.outstanding_paise ?? 0),
-                  )
+                  .sort((a, b) => (b.outstanding_paise ?? 0) - (a.outstanding_paise ?? 0))
                   .map((contact) => {
                     const bal = contact.outstanding_paise ?? 0;
                     return (

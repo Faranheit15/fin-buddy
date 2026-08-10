@@ -193,12 +193,11 @@ export function attentionItems(asOf = DEMO_AS_OF): DemoAttentionItem[] {
 
   for (const card of demoCards) {
     const due = new Date(card.nextDueDate);
-    const days =
-      Math.round(
-        (Date.UTC(due.getFullYear(), due.getMonth(), due.getDate()) -
-          Date.UTC(asOf.getFullYear(), asOf.getMonth(), asOf.getDate())) /
-          (24 * 60 * 60 * 1000),
-      );
+    const days = Math.round(
+      (Date.UTC(due.getFullYear(), due.getMonth(), due.getDate()) -
+        Date.UTC(asOf.getFullYear(), asOf.getMonth(), asOf.getDate())) /
+        (24 * 60 * 60 * 1000),
+    );
     const util = utilization(card);
 
     if (days < 0) {

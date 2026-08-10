@@ -11,6 +11,7 @@ from app.models.obligation import Obligation
 from app.models.obligation_payment import ObligationPayment
 from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
+from app.models.rate_limit import RateLimitWindow
 from app.models.settlement import Settlement
 from app.models.statement import Statement, StatementLineCandidate
 from app.models.transaction import Transaction
@@ -18,6 +19,7 @@ from app.models.transaction_split import TransactionSplit
 
 __all__ = [
     "Profile",
+    "RateLimitWindow",
     "Organization",
     "OrganizationMember",
     "Contact",

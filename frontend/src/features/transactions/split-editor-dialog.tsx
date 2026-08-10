@@ -54,7 +54,7 @@ export function SplitEditorDialog({
             id: `init-${i}`,
             categoryId: s.category_id,
             amountRupees: (s.amount_paise / 100).toFixed(2),
-          }))
+          })),
         );
       } else {
         setSplits([
@@ -78,7 +78,9 @@ export function SplitEditorDialog({
   }, 0);
   const remainingPaise = totalPaise - currentPaise;
 
-  const isComplete = currentPaise === totalPaise && splits.every((s) => s.categoryId && parseFloat(s.amountRupees) > 0);
+  const isComplete =
+    currentPaise === totalPaise &&
+    splits.every((s) => s.categoryId && parseFloat(s.amountRupees) > 0);
 
   function addSplit() {
     setSplits((prev) => [
@@ -142,7 +144,9 @@ export function SplitEditorDialog({
                   onChange={(e) => updateSplit(split.id, "categoryId", e.target.value)}
                   disabled={busy}
                 >
-                  <option value="" disabled>Select category</option>
+                  <option value="" disabled>
+                    Select category
+                  </option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}

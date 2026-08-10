@@ -28,9 +28,11 @@ def parse_statement_bytes(data: bytes, filename: str, *, issuer: str | None = No
     lower = filename.lower()
     if lower.endswith(".csv") or lower.endswith(".xlsx"):
         from app.services.parsers.csv_excel import CsvExcelParser
+
         return CsvExcelParser().parse_bytes(data, filename, issuer=issuer)
-    
+
     from app.services.statement_service import extract_text_from_bytes
+
     text = extract_text_from_bytes(data, filename)
     return parse_statement_text(text, issuer=issuer)
 

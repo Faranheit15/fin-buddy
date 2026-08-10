@@ -24,9 +24,7 @@ export function UpcomingList({ items }: UpcomingListProps) {
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 p-8 text-center">
             <p className="text-sm font-medium">All caught up</p>
-            <p className="text-xs text-muted-foreground">
-              No upcoming dues right now.
-            </p>
+            <p className="text-xs text-muted-foreground">No upcoming dues right now.</p>
           </div>
         ) : (
           <ul className="divide-y divide-border">

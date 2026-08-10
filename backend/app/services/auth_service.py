@@ -1,6 +1,7 @@
 """Authentication orchestration over Supabase Auth + local bootstrap."""
 
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,40 @@ from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
 from app.services.logging_service import log_activity
 from app.services.user_service import ensure_profile_and_org
+
+
+def _frontend_callback_url(settings: Settings, requested: str | None) -> str:
+    """Return the single trusted frontend callback URL for all auth redirects."""
+    if not settings.frontend_app_url:
+        raise AppError(
+            "FRONTEND_APP_URL must be configured for browser authentication",
+            code="frontend_url_not_configured",
+            status_code=503,
+        )
+    try:
+        frontend = urlsplit(settings.frontend_app_url)
+    except ValueError as exc:
+        raise AppError(
+            "FRONTEND_APP_URL is invalid", code="frontend_url_invalid", status_code=500
+        ) from exc
+    if frontend.scheme not in {"http", "https"} or not frontend.netloc:
+        raise AppError("FRONTEND_APP_URL is invalid", code="frontend_url_invalid", status_code=500)
+
+    callback = urlunsplit((frontend.scheme, frontend.netloc, "/auth/callback", "", ""))
+    if requested is None:
+        return callback
+
+    try:
+        candidate = urlsplit(requested)
+    except ValueError as exc:
+        raise AppError("Invalid authentication redirect URL", code="invalid_redirect") from exc
+    if (
+        candidate.query
+        or candidate.fragment
+        or urlunsplit((candidate.scheme, candidate.netloc, candidate.path, "", "")) != callback
+    ):
+        raise AppError("Invalid authentication redirect URL", code="invalid_redirect")
+    return callback
 
 
 def _session_payload(auth_response: dict[str, Any]) -> dict[str, Any]:
@@ -82,11 +117,7 @@ async def signup_with_email(
 ) -> tuple[Profile | None, Organization | None, dict[str, Any], dict[str, Any]]:
     client = SupabaseAuthClient(settings)
     data = {"full_name": display_name} if display_name else None
-    redirect = email_redirect_to or (
-        f"{settings.frontend_app_url.rstrip('/')}/auth/callback"
-        if settings.frontend_app_url
-        else None
-    )
+    redirect = _frontend_callback_url(settings, email_redirect_to)
     auth_response = await client.sign_up_email(
         email,
         password,
@@ -138,11 +169,7 @@ async def request_magic_link(
     redirect_to: str | None,
 ) -> dict[str, Any]:
     client = SupabaseAuthClient(settings)
-    redirect = redirect_to or (
-        f"{settings.frontend_app_url.rstrip('/')}/auth/callback"
-        if settings.frontend_app_url
-        else None
-    )
+    redirect = _frontend_callback_url(settings, redirect_to)
     return await client.sign_in_magic_link(email, redirect_to=redirect)
 
 
@@ -265,7 +292,8 @@ def google_oauth_url(settings: Settings, *, redirect_to: str) -> str:
     from urllib.parse import quote
 
     base = settings.supabase_url.rstrip("/")
-    return f"{base}/auth/v1/authorize?provider=google&redirect_to={quote(redirect_to, safe='')}"
+    callback = _frontend_callback_url(settings, redirect_to)
+    return f"{base}/auth/v1/authorize?provider=google&redirect_to={quote(callback, safe='')}"
 
 
 async def delete_account(
@@ -277,7 +305,9 @@ async def delete_account(
 
     # 1. Delete all organizations where user is owner
     result = await session.execute(
-        select(Organization).join(OrganizationMember).where(
+        select(Organization)
+        .join(OrganizationMember)
+        .where(
             OrganizationMember.user_id == user_id,
             OrganizationMember.role == OrgRole.OWNER,
         )
@@ -290,7 +320,7 @@ async def delete_account(
     profile = prof_result.scalar_one_or_none()
     if profile:
         await session.delete(profile)
-    
+
     await session.commit()
 
     # 3. Delete from Supabase Auth

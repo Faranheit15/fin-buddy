@@ -15,10 +15,7 @@ export default function HomePage() {
           </span>
           <span className="text-lg font-semibold tracking-tight">Fin Buddy</span>
         </div>
-        <Link
-          href="/login"
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-        >
+        <Link href="/login" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           Sign in
         </Link>
       </header>
@@ -31,9 +28,8 @@ export default function HomePage() {
           Track every card, cycle, and friend balance — without the spreadsheet chaos.
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-muted-foreground text-pretty">
-          Fin Buddy is a production-grade personal finance tool for multi-card limits,
-          statement and due dates, full spend ledgers, and settlements when friends use your
-          cards.
+          Fin Buddy is a production-grade personal finance tool for multi-card limits, statement and
+          due dates, full spend ledgers, and settlements when friends use your cards.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <Link href="/app" className={cn(buttonVariants({ size: "lg" }))}>

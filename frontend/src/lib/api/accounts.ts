@@ -50,7 +50,11 @@ export function listAccounts(
     include_archived: String(includeArchived),
   });
   if (kind) q.set("kind", kind);
-  return apiFetch<Paginated<AccountResponse>>(`/api/v1/accounts?${q}`, { method: "GET" }, { accessToken });
+  return apiFetch<Paginated<AccountResponse>>(
+    `/api/v1/accounts?${q}`,
+    { method: "GET" },
+    { accessToken },
+  );
 }
 
 export function getAccount(accessToken: string, id: string) {

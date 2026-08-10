@@ -90,13 +90,13 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(["credit_card_id"], ["credit_cards.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["reference_transaction_id"], ["transactions.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(
+            ["reference_transaction_id"], ["transactions.id"], ondelete="SET NULL"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_emi_plans_credit_card_id", "emi_plans", ["credit_card_id"], unique=False)
-    op.create_index(
-        "ix_emi_plans_organization_id", "emi_plans", ["organization_id"], unique=False
-    )
+    op.create_index("ix_emi_plans_organization_id", "emi_plans", ["organization_id"], unique=False)
 
     op.create_table(
         "emi_installments",
@@ -125,9 +125,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["plan_id"], ["emi_plans.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_emi_installments_plan_id", "emi_installments", ["plan_id"], unique=False
-    )
+    op.create_index("ix_emi_installments_plan_id", "emi_installments", ["plan_id"], unique=False)
 
     # RLS Policies
     op.execute(sa.text("ALTER TABLE emi_plans ENABLE ROW LEVEL SECURITY"))

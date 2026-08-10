@@ -65,6 +65,7 @@ async def dashboard(
 
     start_of_month_date = today.replace(day=1)
     from datetime import time
+
     start_of_month_dt = datetime.combine(start_of_month_date, time.min, tzinfo=IST)
 
     # One round-trip for the independent counters / sums.
@@ -105,26 +106,31 @@ async def dashboard(
     balances = await contacts_balances_map(db, org.id)
     total_outstanding = sum(outstanding_map.values())
     friend_dues = sum(bal for bal in balances.values() if bal > 0)
-    
+
     acc_bal_map = await accounts_balances_map(db, org.id)
     acc_result = await db.execute(select(Account).where(Account.organization_id == org.id))
     accounts = acc_result.scalars().all()
-    
+
     bank_cash_wallet_sum = sum(
-        acc_bal_map.get(acc.id, 0) for acc in accounts
+        acc_bal_map.get(acc.id, 0)
+        for acc in accounts
         if acc.kind in (AccountKind.BANK, AccountKind.CASH, AccountKind.WALLET)
     )
-    
+
     obligations = await obligation_service.list_obligations_with_balance(
         db, organization_id=org.id, status=ObligationStatus.ACTIVE
     )
-    receivables_sum = sum(remaining for obl, remaining in obligations if obl.type == ObligationType.RECEIVABLE)
-    payables_sum = sum(remaining for obl, remaining in obligations if obl.type == ObligationType.PAYABLE)
-    
+    receivables_sum = sum(
+        remaining for obl, remaining in obligations if obl.type == ObligationType.RECEIVABLE
+    )
+    payables_sum = sum(
+        remaining for obl, remaining in obligations if obl.type == ObligationType.PAYABLE
+    )
+
     assets_paise = bank_cash_wallet_sum + receivables_sum
     liabilities_paise = total_outstanding + payables_sum
     net_worth_paise = assets_paise - liabilities_paise
-    
+
     period_summary = await income_expense_summary(
         db, organization_id=org.id, start_date=start_of_month_dt
     )
@@ -142,9 +148,10 @@ async def dashboard(
     cards = list(result.scalars().all())
     card_summaries: list[DashboardCardSummary] = []
     attention: list[AttentionItem] = []
-    
+
     # We will build upcoming_items dynamically, starting with Cards and EMIs.
     from app.schemas.domain import UpcomingItem
+
     upcoming_items: list[UpcomingItem] = []
 
     for card in cards:
@@ -205,16 +212,18 @@ async def dashboard(
                     href=f"/app/cards/{card.id}",
                 )
             )
-            
+
         if days_to_due >= 0 and days_to_due <= due_soon_days:
-            upcoming_items.append(UpcomingItem(
-                id=f"card-due-{card.id}",
-                type="card_due",
-                title=f"{card.nickname} Card Due",
-                amount_paise=outstanding, # showing full outstanding
-                due_date=next_due,
-                href=f"/app/cards/{card.id}"
-            ))
+            upcoming_items.append(
+                UpcomingItem(
+                    id=f"card-due-{card.id}",
+                    type="card_due",
+                    title=f"{card.nickname} Card Due",
+                    amount_paise=outstanding,  # showing full outstanding
+                    due_date=next_due,
+                    href=f"/app/cards/{card.id}",
+                )
+            )
 
         if util >= high_util_pct:
             attention.append(
@@ -257,22 +266,24 @@ async def dashboard(
         .where(
             EmiPlan.organization_id == org.id,
             EmiPlan.status == EmiPlanStatus.ACTIVE,
-            EmiInstallment.status == EmiInstallmentStatus.PENDING
+            EmiInstallment.status == EmiInstallmentStatus.PENDING,
         )
     )
     for inst, plan in emi_result.all():
         days_to_due = (inst.due_date - today).days
         if days_to_due <= due_soon_days:
             card_name = next((c.nickname for c in cards if c.id == plan.credit_card_id), "Card")
-            upcoming_items.append(UpcomingItem(
-                id=f"emi-due-{inst.id}",
-                type="emi_due",
-                title=f"{card_name} EMI {inst.sequence_number}/{plan.tenure_months}",
-                amount_paise=inst.total_paise,
-                due_date=inst.due_date,
-                href=f"/app/cards/{plan.credit_card_id}"
-            ))
-            
+            upcoming_items.append(
+                UpcomingItem(
+                    id=f"emi-due-{inst.id}",
+                    type="emi_due",
+                    title=f"{card_name} EMI {inst.sequence_number}/{plan.tenure_months}",
+                    amount_paise=inst.total_paise,
+                    due_date=inst.due_date,
+                    href=f"/app/cards/{plan.credit_card_id}",
+                )
+            )
+
     # Sort upcoming items by due date
     upcoming_items.sort(key=lambda x: x.due_date)
 
@@ -282,14 +293,16 @@ async def dashboard(
             days_to_due = (obl.due_date - today).days
             if 0 <= days_to_due <= due_soon_days:
                 label = obl.counterparty_name or "Obligation"
-                upcoming_items.append(UpcomingItem(
-                    id=f"obl-due-{obl.id}",
-                    type="obligation_due",
-                    title=f"{label} ({obl.type.value})",
-                    amount_paise=remaining,
-                    due_date=obl.due_date,
-                    href=f"/app/debts/{obl.id}"
-                ))
+                upcoming_items.append(
+                    UpcomingItem(
+                        id=f"obl-due-{obl.id}",
+                        type="obligation_due",
+                        title=f"{label} ({obl.type.value})",
+                        amount_paise=remaining,
+                        due_date=obl.due_date,
+                        href=f"/app/debts/{obl.id}",
+                    )
+                )
 
     # Re-sort after adding obligations
     upcoming_items.sort(key=lambda x: x.due_date)

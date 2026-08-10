@@ -77,7 +77,8 @@ export function TransactionForm({
 
       if (type === "transfer") {
         if (!toAccountId) throw new Error("Select destination account");
-        if (accountId === toAccountId) throw new Error("Source and destination accounts must be different");
+        if (accountId === toAccountId)
+          throw new Error("Source and destination accounts must be different");
         const [outTx] = await createTransfer(accessToken, {
           from_account_id: accountId,
           to_account_id: toAccountId,
@@ -173,7 +174,7 @@ export function TransactionForm({
             <option value="transfer">Transfer (between accounts)</option>
           </select>
         </div>
-        
+
         {type === "transfer" && (
           <div className="space-y-1.5">
             <Label htmlFor="tx-to-account">To Account</Label>

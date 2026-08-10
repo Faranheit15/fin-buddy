@@ -13,7 +13,9 @@ from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestContextMiddleware
-from app.db.session import dispose_db
+from app.core.upload_limits import StatementUploadLimitMiddleware
+from app.db.session import dispose_db, get_async_session_factory
+from app.services.retention_service import purge_operational_logs
 
 logger = get_logger(__name__)
 
@@ -34,6 +36,16 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Sync bootstrap (Alembic + seeds) before serving traffic
     if settings.environment != "test":
         bootstrap_database(settings)
+        if settings.database_configured:
+            try:
+                async with get_async_session_factory()() as session:
+                    await purge_operational_logs(
+                        session,
+                        retention_days=settings.operational_log_retention_days,
+                    )
+                    await session.commit()
+            except Exception:
+                logger.warning("operational_log_retention_failed", exc_info=True)
 
     yield
 
@@ -58,14 +70,18 @@ def create_app() -> FastAPI:
     # attaches Access-Control-* headers — including on error responses.
     application.add_middleware(RequestContextMiddleware)
     application.add_middleware(
+        StatementUploadLimitMiddleware,
+        max_upload_bytes=settings.statement_max_upload_bytes,
+    )
+    application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+"
         if settings.environment in ("development", "test")
         else None,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Organization-Id", "X-Request-Id"],
     )
 
     register_exception_handlers(application)

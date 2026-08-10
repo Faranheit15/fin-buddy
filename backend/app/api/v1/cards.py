@@ -103,10 +103,7 @@ async def list_cards(
     cards = list(result.scalars().all())
     outstanding = await cards_outstanding_map(db, org.id)
     emi_blocked_map = await cards_emi_blocked_map(db, org.id)
-    items = [
-        _to_response(c, outstanding.get(c.id, 0), emi_blocked_map.get(c.id, 0)) 
-        for c in cards
-    ]
+    items = [_to_response(c, outstanding.get(c.id, 0), emi_blocked_map.get(c.id, 0)) for c in cards]
     return PaginatedResponse(items=items, total=int(total), page=page, page_size=page_size)
 
 

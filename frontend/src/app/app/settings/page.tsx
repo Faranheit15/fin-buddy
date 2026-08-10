@@ -142,9 +142,7 @@ function ProfileSettingsForm({
       </div>
 
       {err ? <p className="text-sm text-destructive">{err}</p> : null}
-      {msg ? (
-        <p className="text-sm text-emerald-700 dark:text-emerald-400">{msg}</p>
-      ) : null}
+      {msg ? <p className="text-sm text-emerald-700 dark:text-emerald-400">{msg}</p> : null}
 
       <div>
         <Button type="submit" size="sm" disabled={saving}>
@@ -206,9 +204,7 @@ function OrgSettingsForm({
         />
       </div>
       {err ? <p className="text-sm text-destructive">{err}</p> : null}
-      {msg ? (
-        <p className="text-sm text-emerald-700 dark:text-emerald-400">{msg}</p>
-      ) : null}
+      {msg ? <p className="text-sm text-emerald-700 dark:text-emerald-400">{msg}</p> : null}
       <div>
         <Button type="submit" size="sm" variant="outline" disabled={saving || !orgName.trim()}>
           <Save className="size-3.5" />
@@ -265,12 +261,22 @@ function ExportSettingsCard({ accessToken }: { accessToken: string }) {
   );
 }
 
-function DeleteAccountCard({ accessToken, onDeleted }: { accessToken: string; onDeleted: () => void }) {
+function DeleteAccountCard({
+  accessToken,
+  onDeleted,
+}: {
+  accessToken: string;
+  onDeleted: () => void;
+}) {
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function handleDelete() {
-    if (!window.confirm("Are you absolutely sure you want to delete your account? All your data will be permanently removed. This cannot be undone.")) {
+    if (
+      !window.confirm(
+        "Are you absolutely sure you want to delete your account? All your data will be permanently removed. This cannot be undone.",
+      )
+    ) {
       return;
     }
     setDeleting(true);
@@ -288,9 +294,7 @@ function DeleteAccountCard({ accessToken, onDeleted }: { accessToken: string; on
     <Card className="shadow-sm border-destructive/20 mt-8">
       <CardHeader className="border-b border-destructive/10 pb-3!">
         <CardTitle className="text-destructive">Danger Zone</CardTitle>
-        <CardDescription>
-          Permanently delete your account and all associated data.
-        </CardDescription>
+        <CardDescription>Permanently delete your account and all associated data.</CardDescription>
       </CardHeader>
       <CardContent className="pt-4">
         {err ? <p className="mb-4 text-sm text-destructive">{err}</p> : null}
@@ -317,13 +321,17 @@ function PrivacyTermsDialog() {
         </DialogHeader>
         <div className="text-sm space-y-4 pt-4">
           <p>
-            <strong>1. Data Ownership:</strong> All financial data you enter belongs to you. Since this is a self-hosted instance, data is stored on the server where it is deployed.
+            <strong>1. Data Ownership:</strong> All financial data you enter belongs to you. Since
+            this is a self-hosted instance, data is stored on the server where it is deployed.
           </p>
           <p>
-            <strong>2. Data Deletion:</strong> You have the right to permanently delete your account at any time. Using the &quot;Delete Account&quot; button will erase all your profile, organization, transactions, and settings data from the database.
+            <strong>2. Data Deletion:</strong> You have the right to permanently delete your account
+            at any time. Using the &quot;Delete Account&quot; button will erase all your profile,
+            organization, transactions, and settings data from the database.
           </p>
           <p>
-            <strong>3. Security:</strong> Data is secured using Row Level Security (RLS) on Supabase.
+            <strong>3. Security:</strong> Data is secured using Row Level Security (RLS) on
+            Supabase.
           </p>
         </div>
       </DialogContent>
@@ -418,12 +426,12 @@ export default function SettingsPage() {
 
       <ExportSettingsCard accessToken={accessToken} />
 
-      <DeleteAccountCard 
-        accessToken={accessToken} 
+      <DeleteAccountCard
+        accessToken={accessToken}
         onDeleted={() => {
           signOut();
           router.replace("/login");
-        }} 
+        }}
       />
 
       <div className="mt-8 flex justify-center pb-8">

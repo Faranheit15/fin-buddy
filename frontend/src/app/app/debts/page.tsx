@@ -136,19 +136,29 @@ export default function DebtsPage() {
 
       <div className="flex gap-4 border-b">
         <button
-          onClick={() => { setActiveTab("receivable"); setShowForm(null); }}
+          onClick={() => {
+            setActiveTab("receivable");
+            setShowForm(null);
+          }}
           className={cn(
             "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
-            activeTab === "receivable" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+            activeTab === "receivable"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           Receivables ({snapshot.receivables.length})
         </button>
         <button
-          onClick={() => { setActiveTab("payable"); setShowForm(null); }}
+          onClick={() => {
+            setActiveTab("payable");
+            setShowForm(null);
+          }}
           className={cn(
             "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
-            activeTab === "payable" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+            activeTab === "payable"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           Payables ({snapshot.payables.length})
@@ -202,12 +212,19 @@ export default function DebtsPage() {
                         {formatInrFromPaise(obl.amount_paise)}
                       </td>
                       <td className="px-4 py-3 font-mono text-sm tabular-nums">
-                        <span className={remaining > 0 ? "font-medium text-foreground" : "text-muted-foreground"}>
+                        <span
+                          className={
+                            remaining > 0 ? "font-medium text-foreground" : "text-muted-foreground"
+                          }
+                        >
                           {formatInrFromPaise(remaining)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={obl.status === "active" ? "secondary" : "outline"} className="text-[10px] uppercase">
+                        <Badge
+                          variant={obl.status === "active" ? "secondary" : "outline"}
+                          className="text-[10px] uppercase"
+                        >
                           {obl.status}
                         </Badge>
                       </td>

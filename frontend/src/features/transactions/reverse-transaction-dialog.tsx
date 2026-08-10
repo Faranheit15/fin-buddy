@@ -13,10 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api/client";
-import {
-  reverseTransaction,
-  type Transaction,
-} from "@/lib/api/transactions";
+import { reverseTransaction, type Transaction } from "@/lib/api/transactions";
 import { formatInrFromPaise } from "@/lib/format";
 
 type ReverseTransactionDialogProps = {
@@ -65,9 +62,7 @@ export function ReverseTransactionDialog({
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "already_reversed") {
-          setError(
-            "This entry is already reversed. Refresh the list if it still shows Reverse.",
-          );
+          setError("This entry is already reversed. Refresh the list if it still shows Reverse.");
         } else if (err.code === "cannot_reverse") {
           setError(err.message || "This entry can’t be reversed.");
         } else if (err.code === "posted_immutable") {
@@ -98,8 +93,8 @@ export function ReverseTransactionDialog({
         <DialogHeader>
           <DialogTitle>Reverse transaction</DialogTitle>
           <DialogDescription>
-            Posts a linked reversing entry for the same amount. The original line stays on
-            the ledger.
+            Posts a linked reversing entry for the same amount. The original line stays on the
+            ledger.
           </DialogDescription>
         </DialogHeader>
 

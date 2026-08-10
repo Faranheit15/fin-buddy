@@ -202,7 +202,8 @@ export default function StatementsPage() {
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    For CSV/Excel, required columns: Date, Description, Amount. Leave empty for a FinBuddy sample.
+                    For CSV/Excel, required columns: Date, Description, Amount. Leave empty for a
+                    FinBuddy sample.
                   </p>
                 </div>
               </div>

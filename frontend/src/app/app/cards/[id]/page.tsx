@@ -12,12 +12,7 @@ import { getCard, updateCard, type CreditCard } from "@/lib/api/cards";
 import { listCardEmiPlans, type EmiPlan } from "@/lib/api/emis";
 import { ApiError } from "@/lib/api/client";
 import { CreateEmiDialog } from "@/features/cards/create-emi-dialog";
-import {
-  formatDateIst,
-  formatInrFromPaise,
-  formatPercent,
-  formatRelativeDue,
-} from "@/lib/format";
+import { formatDateIst, formatInrFromPaise, formatPercent, formatRelativeDue } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type CardSnapshot = {
@@ -51,7 +46,7 @@ export default function CardDetailPage() {
       try {
         const [card, emis] = await Promise.all([
           getCard(accessToken, params.id as string),
-          listCardEmiPlans(accessToken, params.id as string)
+          listCardEmiPlans(accessToken, params.id as string),
         ]);
         if (cancelled) return;
         setSnapshot({ card, emis, error: null, gen });
@@ -138,9 +133,7 @@ export default function CardDetailPage() {
             {card.issuer} · {card.network.toUpperCase()} · •••• {card.last_four}
           </p>
         </div>
-        <Badge variant={card.status === "active" ? "secondary" : "outline"}>
-          {card.status}
-        </Badge>
+        <Badge variant={card.status === "active" ? "secondary" : "outline"}>{card.status}</Badge>
       </div>
 
       {error && (
@@ -187,24 +180,40 @@ export default function CardDetailPage() {
             <div
               className={cn(
                 "h-full",
-                util >= 90 ? "bg-destructive" : util >= 80 ? "bg-amber-500" : "bg-primary"
+                util >= 90 ? "bg-destructive" : util >= 80 ? "bg-amber-500" : "bg-primary",
               )}
-              style={{ width: `${Math.min((card.spend_outstanding_paise ?? 0) / card.credit_limit_paise * 100, 100)}%` }}
+              style={{
+                width: `${Math.min(((card.spend_outstanding_paise ?? 0) / card.credit_limit_paise) * 100, 100)}%`,
+              }}
             />
             <div
               className="h-full bg-indigo-400"
-              style={{ width: `${Math.min((card.emi_principal_blocked_paise ?? 0) / card.credit_limit_paise * 100, 100)}%` }}
+              style={{
+                width: `${Math.min(((card.emi_principal_blocked_paise ?? 0) / card.credit_limit_paise) * 100, 100)}%`,
+              }}
             />
           </div>
           <div className="flex flex-wrap gap-4 pt-1 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <div className="size-2 rounded-full bg-primary" /> Spend (<span className="font-mono">{formatInrFromPaise(card.spend_outstanding_paise ?? 0)}</span>)
+              <div className="size-2 rounded-full bg-primary" /> Spend (
+              <span className="font-mono">
+                {formatInrFromPaise(card.spend_outstanding_paise ?? 0)}
+              </span>
+              )
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="size-2 rounded-full bg-indigo-400" /> EMI Block (<span className="font-mono">{formatInrFromPaise(card.emi_principal_blocked_paise ?? 0)}</span>)
+              <div className="size-2 rounded-full bg-indigo-400" /> EMI Block (
+              <span className="font-mono">
+                {formatInrFromPaise(card.emi_principal_blocked_paise ?? 0)}
+              </span>
+              )
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="size-2 rounded-full bg-muted" /> Available (<span className="font-mono">{formatInrFromPaise(card.available_credit_paise ?? 0)}</span>)
+              <div className="size-2 rounded-full bg-muted" /> Available (
+              <span className="font-mono">
+                {formatInrFromPaise(card.available_credit_paise ?? 0)}
+              </span>
+              )
             </div>
           </div>
           <p className="pt-2 text-xs text-muted-foreground">
@@ -212,29 +221,42 @@ export default function CardDetailPage() {
           </p>
         </CardContent>
       </Card>
-      
+
       <Card className="shadow-sm ring-1 ring-foreground/10">
         <CardHeader className="flex flex-row items-center justify-between border-b pb-3!">
           <CardTitle>Active EMI Plans</CardTitle>
-          <CreateEmiDialog cardId={card.id} onCreated={() => setReloadKey(k => k + 1)} />
+          <CreateEmiDialog cardId={card.id} onCreated={() => setReloadKey((k) => k + 1)} />
         </CardHeader>
         <CardContent className="p-0">
           {snapshot.emis.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">No active EMI plans on this card.</p>
           ) : (
             <div className="divide-y">
-              {snapshot.emis.map(plan => {
-                const paidCount = plan.installments.filter(i => i.status === "paid").length;
+              {snapshot.emis.map((plan) => {
+                const paidCount = plan.installments.filter((i) => i.status === "paid").length;
                 const total = plan.installments.length;
-                const nextPending = plan.installments.find(i => i.status === "pending");
+                const nextPending = plan.installments.find((i) => i.status === "pending");
                 return (
                   <div key={plan.id} className="flex items-center justify-between p-4 text-sm">
                     <div>
                       <div className="flex justify-between font-medium">
-                        <span>EMI Plan • <span className="font-mono">{formatInrFromPaise(plan.principal_paise)}</span></span>
+                        <span>
+                          EMI Plan •{" "}
+                          <span className="font-mono">
+                            {formatInrFromPaise(plan.principal_paise)}
+                          </span>
+                        </span>
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        Started <span className="font-mono tabular-nums">{formatDateIst(plan.created_at)}</span> • <span className="font-mono tabular-nums">{(plan.interest_rate_bps / 100).toFixed(2)}%</span> p.a.
+                        Started{" "}
+                        <span className="font-mono tabular-nums">
+                          {formatDateIst(plan.created_at)}
+                        </span>{" "}
+                        •{" "}
+                        <span className="font-mono tabular-nums">
+                          {(plan.interest_rate_bps / 100).toFixed(2)}%
+                        </span>{" "}
+                        p.a.
                       </div>
                       <div className="mt-1 text-xs font-mono tabular-nums text-muted-foreground">
                         {paidCount} / {total} Months Paid
@@ -251,9 +273,11 @@ export default function CardDetailPage() {
                           try {
                             const { payInstallment } = await import("@/lib/api/emis");
                             await payInstallment(accessToken, nextPending.id);
-                            setReloadKey(k => k + 1);
+                            setReloadKey((k) => k + 1);
                           } catch (err) {
-                            setActionError(err instanceof ApiError ? err.message : "Failed to pay installment");
+                            setActionError(
+                              err instanceof ApiError ? err.message : "Failed to pay installment",
+                            );
                           } finally {
                             setBusy(false);
                           }
@@ -317,10 +341,7 @@ export default function CardDetailPage() {
             Reopen card
           </Button>
         )}
-        <Button
-          variant="ghost"
-          onClick={() => router.push(`/app/transactions?card=${card.id}`)}
-        >
+        <Button variant="ghost" onClick={() => router.push(`/app/transactions?card=${card.id}`)}>
           View transactions
         </Button>
         <Button variant="ghost" size="sm" onClick={() => setReloadKey((k) => k + 1)}>

@@ -25,7 +25,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/app";
-  const { applyBackendSession, configured } = useAuth();
+  const { applyEstablishedSession } = useAuth();
 
   const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState("");
@@ -36,23 +36,8 @@ export function LoginForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!configured) {
-    return (
-      <p className="rounded-lg border border-dashed bg-muted/40 p-3 text-sm text-muted-foreground">
-        API URL is not configured. Set{" "}
-        <code className="font-mono text-xs">NEXT_PUBLIC_API_URL</code> in{" "}
-        <code className="font-mono text-xs">frontend/.env.local</code>.
-      </p>
-    );
-  }
-
-  async function finishAuth(session: {
-    access_token?: string | null;
-    refresh_token?: string | null;
-    expires_in?: number | null;
-    expires_at?: number | null;
-  }) {
-    await applyBackendSession(session);
+  async function finishAuth() {
+    await applyEstablishedSession();
     router.replace(next);
     router.refresh();
   }
@@ -64,12 +49,18 @@ export function LoginForm() {
     setMessage(null);
     try {
       const res = await loginWithPassword(email, password);
-      if (!res.session?.access_token) {
+      if (!res.session?.authenticated) {
         throw new Error(res.message || "No session returned from backend");
       }
-      await finishAuth(res.session);
+      await finishAuth();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Sign in failed");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Sign in failed",
+      );
     } finally {
       setLoading(false);
     }
@@ -87,10 +78,10 @@ export function LoginForm() {
           token: otp,
           type: "email",
         });
-        if (!res.session?.access_token) {
+        if (!res.session?.authenticated) {
           throw new Error(res.message || "Verification failed");
         }
-        await finishAuth(res.session);
+        await finishAuth();
         return;
       }
 
@@ -103,7 +94,13 @@ export function LoginForm() {
         "If the email is valid, a login code / magic link was sent. Enter the OTP below, or open the link in the email.",
       );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Request failed");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Request failed",
+      );
     } finally {
       setLoading(false);
     }
@@ -117,7 +114,13 @@ export function LoginForm() {
       const { url } = await getGoogleOAuthUrl(redirectTo);
       window.location.href = url;
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Google sign-in failed");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Google sign-in failed",
+      );
       setLoading(false);
     }
   }
@@ -128,10 +131,10 @@ export function LoginForm() {
     setMessage(null);
     try {
       const res = await demoLogin();
-      if (!res.session?.access_token) {
+      if (!res.session?.authenticated) {
         throw new Error(res.message || "Demo login failed");
       }
-      await finishAuth(res.session);
+      await finishAuth();
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -251,14 +254,10 @@ export function LoginForm() {
         )}
 
         {error && (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
+          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
         )}
         {message && (
-          <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-            {message}
-          </p>
+          <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>
         )}
 
         <Button type="submit" className="w-full" disabled={loading}>

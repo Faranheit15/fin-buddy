@@ -136,8 +136,7 @@ export default function ContactDetailPage() {
 
   const ledger: LedgerRow[] = [
     ...snapshot.transactions.map((t) => {
-      const sign =
-        t.type === "refund" ? -1 : t.type === "payment_to_issuer" ? 0 : 1;
+      const sign = t.type === "refund" ? -1 : t.type === "payment_to_issuer" ? 0 : 1;
       // payment_to_issuer shouldn't appear on contact ledger typically; still show if present
       return {
         kind: "tx" as const,
@@ -288,9 +287,15 @@ export default function ContactDetailPage() {
           <CardContent className="p-0">
             <ul className="divide-y">
               {snapshot.obligations.map((obl) => (
-                <li key={obl.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/30">
+                <li
+                  key={obl.id}
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/30"
+                >
                   <div className="min-w-0">
-                    <Link href={`/app/debts/${obl.id}`} className="truncate text-sm font-medium hover:underline">
+                    <Link
+                      href={`/app/debts/${obl.id}`}
+                      className="truncate text-sm font-medium hover:underline"
+                    >
                       {obl.type === "receivable" ? "Receivable" : "Payable"}
                     </Link>
                     <p className="font-mono text-[11px] text-muted-foreground">
@@ -301,7 +306,10 @@ export default function ContactDetailPage() {
                     <p className="font-mono text-sm tabular-nums text-foreground">
                       {formatInrFromPaise(obl.remaining_paise ?? 0)}
                     </p>
-                    <Badge variant={obl.status === "active" ? "secondary" : "outline"} className="mt-1 text-[9px] uppercase">
+                    <Badge
+                      variant={obl.status === "active" ? "secondary" : "outline"}
+                      className="mt-1 text-[9px] uppercase"
+                    >
                       {obl.status}
                     </Badge>
                   </div>

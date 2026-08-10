@@ -61,8 +61,7 @@ Target: **Vercel**. Project root: `frontend`.
 | Env | Example |
 |-----|---------|
 | `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app` |
-| `NEXT_PUBLIC_API_URL` | `https://your-api.example.com` |
-| `BACKEND_URL` | Same as API (server-side `/backend` rewrite) |
+| `BACKEND_URL` | Same as API (server-only BFF upstream) |
 
 With `bun.lock` present, Vercel should use Bun for installs. If needed, set install to `bun install` and build to `bun run build`.
 

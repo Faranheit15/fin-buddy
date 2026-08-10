@@ -2,12 +2,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  availablePaise,
-  DEMO_AS_OF,
-  type DemoCard,
-  utilization,
-} from "@/lib/demo-data";
+import { availablePaise, DEMO_AS_OF, type DemoCard, utilization } from "@/lib/demo-data";
 import {
   formatDateShortIst,
   formatInrFromPaise,
@@ -76,11 +71,7 @@ export function CardsTable({ cards }: CardsTableProps) {
                         <div
                           className={cn(
                             "h-full rounded-full transition-all",
-                            critical
-                              ? "bg-destructive"
-                              : warn
-                                ? "bg-amber-500"
-                                : "bg-primary",
+                            critical ? "bg-destructive" : warn ? "bg-amber-500" : "bg-primary",
                           )}
                           style={{ width: `${Math.min(util, 100)}%` }}
                         />
@@ -99,7 +90,9 @@ export function CardsTable({ cards }: CardsTableProps) {
                         variant={
                           dueLabel.includes("overdue") || dueLabel.includes("today")
                             ? "destructive"
-                            : dueLabel.includes("tomorrow") || dueLabel.includes("in 1") || dueLabel.includes("in 2")
+                            : dueLabel.includes("tomorrow") ||
+                                dueLabel.includes("in 1") ||
+                                dueLabel.includes("in 2")
                               ? "outline"
                               : "secondary"
                         }

@@ -41,12 +41,14 @@ services:
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       APP_NAME: ${APP_NAME:-Fin Buddy API}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       DATABASE_ECHO: ${DATABASE_ECHO:-false}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
       DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}
       SUPABASE_JWT_AUDIENCE: ${SUPABASE_JWT_AUDIENCE:-authenticated}
       PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+      JOB_RUNNER_SECRET: ${JOB_RUNNER_SECRET:-}
       # Migrations once via entrypoint; keep AUTO_MIGRATE off with multi-worker
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
       AUTO_MIGRATE: "false"
@@ -60,9 +62,7 @@ services:
       PORT: "8000"
     volumes:
       - statement_data:/data/statements
-    depends_on:
-      db:
-        condition: service_healthy
+
     networks:
       - fin-buddy
     healthcheck:
@@ -108,7 +108,6 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
         BACKEND_URL: ${BACKEND_INTERNAL_URL:-http://backend:8000}
     image: fin-buddy-web:${IMAGE_TAG:-latest}
     container_name: fin-buddy-web
@@ -152,23 +151,6 @@ services:
         max-size: "10m"
         max-file: "5"
 
-  db:
-    image: postgres:15-alpine
-    container_name: fin-buddy-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: finbuddy
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - fin-buddy
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d finbuddy"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
 networks:
   fin-buddy:
@@ -178,5 +160,3 @@ networks:
 volumes:
   statement_data:
     name: fin-buddy-statement-data
-  pgdata:
-    name: fin-buddy-pgdata

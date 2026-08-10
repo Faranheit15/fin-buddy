@@ -24,15 +24,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Public + rewrite targets are inlined at build time.
+# The public app URL is inlined at build time; BACKEND_URL is server-only.
 ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ARG BACKEND_URL=http://backend:8000
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NODE_ENV=production \
     NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL} \
-    NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
     BACKEND_URL=${BACKEND_URL} \
     SKIP_ENV_VALIDATION=1 \
     DOCKER_BUILD=1

@@ -165,11 +165,7 @@ export function reverseTransaction(
   );
 }
 
-export function updateTransaction(
-  accessToken: string,
-  id: string,
-  body: TransactionUpdate,
-) {
+export function updateTransaction(accessToken: string, id: string, body: TransactionUpdate) {
   return apiFetch<Transaction>(
     `/api/v1/transactions/${id}`,
     { method: "PATCH", body: JSON.stringify(body) },
@@ -192,4 +188,3 @@ export function replaceTransactionSplits(
     { accessToken },
   );
 }
-

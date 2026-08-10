@@ -65,7 +65,13 @@ export type Paginated<T> = {
 
 export function listObligations(
   accessToken: string,
-  opts: { page?: number; pageSize?: number; status?: ObligationStatus; type?: ObligationType; contactId?: string } = {},
+  opts: {
+    page?: number;
+    pageSize?: number;
+    status?: ObligationStatus;
+    type?: ObligationType;
+    contactId?: string;
+  } = {},
 ) {
   const q = new URLSearchParams({
     page: String(opts.page ?? 1),
@@ -74,7 +80,11 @@ export function listObligations(
   if (opts.status) q.set("status", opts.status);
   if (opts.type) q.set("type", opts.type);
   if (opts.contactId) q.set("contact_id", opts.contactId);
-  return apiFetch<Paginated<Obligation>>(`/api/v1/obligations?${q}`, { method: "GET" }, { accessToken });
+  return apiFetch<Paginated<Obligation>>(
+    `/api/v1/obligations?${q}`,
+    { method: "GET" },
+    { accessToken },
+  );
 }
 
 export function getObligation(accessToken: string, id: string) {
@@ -98,11 +108,7 @@ export function updateObligation(accessToken: string, id: string, body: Obligati
 }
 
 export function deleteObligation(accessToken: string, id: string) {
-  return apiFetch<void>(
-    `/api/v1/obligations/${id}`,
-    { method: "DELETE" },
-    { accessToken },
-  );
+  return apiFetch<void>(`/api/v1/obligations/${id}`, { method: "DELETE" }, { accessToken });
 }
 
 export function listObligationPayments(accessToken: string, obligationId: string) {
@@ -113,7 +119,11 @@ export function listObligationPayments(accessToken: string, obligationId: string
   );
 }
 
-export function addObligationPayment(accessToken: string, obligationId: string, body: ObligationPaymentCreate) {
+export function addObligationPayment(
+  accessToken: string,
+  obligationId: string,
+  body: ObligationPaymentCreate,
+) {
   return apiFetch<ObligationPayment>(
     `/api/v1/obligations/${obligationId}/payments`,
     { method: "POST", body: JSON.stringify(body) },

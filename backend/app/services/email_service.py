@@ -17,7 +17,9 @@ async def send_email(
 ) -> None:
     """Send an email using Resend API."""
     if not settings.resend_api_key:
-        logger.warning("RESEND_API_KEY not configured, skipping email", to=to_email, subject=subject)
+        logger.warning(
+            "RESEND_API_KEY not configured, skipping email", to=to_email, subject=subject
+        )
         return
 
     async with httpx.AsyncClient(timeout=30.0) as client:

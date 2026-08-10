@@ -45,7 +45,7 @@ async def list_card_emi_plans(
     org_ctx: OrgContext,
 ) -> list[EmiPlanResponse]:
     org, _ = org_ctx
-    
+
     result = await db.execute(
         select(EmiPlan)
         .options(selectinload(EmiPlan.installments))
@@ -55,11 +55,11 @@ async def list_card_emi_plans(
         )
         .order_by(EmiPlan.created_at.desc())
     )
-    
+
     plans = list(result.scalars().all())
     for plan in plans:
         plan.installments.sort(key=lambda x: x.sequence_number)
-        
+
     return [EmiPlanResponse.model_validate(p) for p in plans]
 
 

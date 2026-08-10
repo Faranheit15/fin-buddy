@@ -3,10 +3,11 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from app.api.deps import AppSettings, DbSession
+from app.core.security import require_job_runner
 from app.domain.billing import DueRuleType as DomainDueRuleType
 from app.domain.billing import next_due_date_for_card
 from app.models.credit_card import CreditCard
@@ -23,15 +24,19 @@ IST = ZoneInfo("Asia/Kolkata")
 
 
 @router.post("/send-reminders", response_model=MessageResponse)
-async def send_reminders(db: DbSession, settings: AppSettings) -> MessageResponse:
+async def send_reminders(
+    request: Request,
+    db: DbSession,
+    settings: AppSettings,
+) -> MessageResponse:
     """
     Trigger email reminders for all active profiles with reminders enabled.
     Typically called by a cron scheduler like GitHub Actions or a cloud scheduler.
     """
+    require_job_runner(request, settings)
     profiles_result = await db.execute(
         select(Profile).where(
-            Profile.is_active.is_(True),
-            Profile.email_reminders_enabled.is_(True)
+            Profile.is_active.is_(True), Profile.email_reminders_enabled.is_(True)
         )
     )
     profiles = profiles_result.scalars().all()
@@ -59,8 +64,7 @@ async def send_reminders(db: DbSession, settings: AppSettings) -> MessageRespons
             outstanding_map = await cards_outstanding_map(db, org_id)
             cards_result = await db.execute(
                 select(CreditCard).where(
-                    CreditCard.organization_id == org_id,
-                    CreditCard.status == CardStatus.ACTIVE
+                    CreditCard.organization_id == org_id, CreditCard.status == CardStatus.ACTIVE
                 )
             )
             for card in cards_result.scalars().all():
@@ -79,7 +83,11 @@ async def send_reminders(db: DbSession, settings: AppSettings) -> MessageRespons
                 days_to_due = (next_due - today).days
                 if days_to_due <= due_soon_days:
                     amt = f"₹{outstanding / 100:,.2f}"
-                    when = f"in {days_to_due} days" if days_to_due >= 0 else f"OVERDUE by {abs(days_to_due)} days"
+                    when = (
+                        f"in {days_to_due} days"
+                        if days_to_due >= 0
+                        else f"OVERDUE by {abs(days_to_due)} days"
+                    )
                     if days_to_due == 0:
                         when = "TODAY"
                     reminders.append(f"• {card.nickname} Card: {amt} due {when} ({next_due})")
@@ -99,10 +107,16 @@ async def send_reminders(db: DbSession, settings: AppSettings) -> MessageRespons
                 days_to_due = (inst.due_date - today).days
                 if days_to_due <= due_soon_days:
                     amt = f"₹{inst.total_paise / 100:,.2f}"
-                    when = f"in {days_to_due} days" if days_to_due >= 0 else f"OVERDUE by {abs(days_to_due)} days"
+                    when = (
+                        f"in {days_to_due} days"
+                        if days_to_due >= 0
+                        else f"OVERDUE by {abs(days_to_due)} days"
+                    )
                     if days_to_due == 0:
                         when = "TODAY"
-                    reminders.append(f"• {card.nickname} EMI ({inst.sequence_number}/{plan.tenure_months}): {amt} due {when} ({inst.due_date})")
+                    reminders.append(
+                        f"• {card.nickname} EMI ({inst.sequence_number}/{plan.tenure_months}): {amt} due {when} ({inst.due_date})"
+                    )
 
         if reminders:
             # Sort just for better presentation if desired, but good enough as is.

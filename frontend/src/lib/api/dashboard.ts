@@ -40,6 +40,18 @@ export type DashboardContactSummary = {
   updated_at: string;
 };
 
+export type DashboardCashFlowMonth = {
+  month: string;
+  income_paise: number;
+  expense_paise: number;
+};
+
+export type DashboardSpendCategory = {
+  name: string;
+  color: string | null;
+  amount_paise: number;
+};
+
 export type DashboardData = {
   total_credit_limit_paise: number;
   total_outstanding_paise: number;
@@ -57,6 +69,8 @@ export type DashboardData = {
   upcoming_items: UpcomingItem[];
   cards: DashboardCardSummary[];
   top_contacts: DashboardContactSummary[];
+  cash_flow_trend: DashboardCashFlowMonth[];
+  spending_categories: DashboardSpendCategory[];
 };
 
 export function fetchDashboard(accessToken: string) {

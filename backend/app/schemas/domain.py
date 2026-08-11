@@ -426,6 +426,18 @@ class UpcomingItem(BaseModel):
     href: str | None = None
 
 
+class DashboardCashFlowMonth(BaseModel):
+    month: date
+    income_paise: int
+    expense_paise: int
+
+
+class DashboardSpendCategory(BaseModel):
+    name: str
+    color: str | None = None
+    amount_paise: int
+
+
 class DashboardResponse(BaseModel):
     total_credit_limit_paise: int
     total_outstanding_paise: int
@@ -445,6 +457,8 @@ class DashboardResponse(BaseModel):
     upcoming_items: list[UpcomingItem] = Field(default_factory=list)
     cards: list[DashboardCardSummary] = Field(default_factory=list)
     top_contacts: list[DashboardContactSummary] = Field(default_factory=list)
+    cash_flow_trend: list[DashboardCashFlowMonth] = Field(default_factory=list)
+    spending_categories: list[DashboardSpendCategory] = Field(default_factory=list)
 
 
 # ---- Accounts ----

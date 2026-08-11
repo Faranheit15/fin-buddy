@@ -34,6 +34,7 @@ from app.schemas.domain import (
     DashboardResponse,
 )
 from app.services import obligation_service
+from app.services.dashboard_analytics import cash_flow_trend, spending_categories
 from app.services.emi_service import cards_emi_blocked_map
 from app.services.ledger_service import (
     accounts_balances_map,
@@ -136,6 +137,12 @@ async def dashboard(
     )
     period_income_paise = period_summary["income"]
     period_expense_paise = period_summary["expense"]
+    cash_flow = await cash_flow_trend(db, organization_id=org.id, today=today)
+    category_spend = await spending_categories(
+        db,
+        organization_id=org.id,
+        start_of_month=start_of_month_dt,
+    )
 
     result = await db.execute(
         select(CreditCard)
@@ -324,6 +331,8 @@ async def dashboard(
         upcoming_items=upcoming_items,
         cards=card_summaries,
         top_contacts=top_contacts,
+        cash_flow_trend=cash_flow,
+        spending_categories=category_spend,
     )
 
 

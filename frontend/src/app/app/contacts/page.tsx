@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Plus, Users } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageTableSkeleton, TableSkeleton } from "@/components/shared/page-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,7 +58,7 @@ export default function ContactsPage() {
   }, [ready, accessToken, reloadKey]);
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <PageTableSkeleton columns={4} titleWidth="w-24" />;
   }
 
   if (!accessToken) {
@@ -112,7 +113,7 @@ export default function ContactsPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading contacts…</p>
+        <TableSkeleton columns={4} label="Loading contacts" />
       ) : contacts.length === 0 ? (
         <EmptyState
           icon={Users}

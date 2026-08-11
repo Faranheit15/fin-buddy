@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { CreditCard as CreditCardIcon, Plus } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageTableSkeleton, TableSkeleton } from "@/components/shared/page-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,7 +64,7 @@ export default function CardsPage() {
   }, [ready, accessToken, reloadKey]);
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <PageTableSkeleton columns={6} titleWidth="w-16" />;
   }
 
   if (!accessToken) {
@@ -114,7 +115,7 @@ export default function CardsPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading cards…</p>
+        <TableSkeleton columns={6} label="Loading cards" />
       ) : cards.length === 0 ? (
         <EmptyState
           icon={CreditCardIcon}

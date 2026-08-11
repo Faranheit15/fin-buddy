@@ -63,15 +63,25 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
         <p className="truncate text-[11px] leading-snug text-muted-foreground">
           {workspace}
           {!ready ? (
-            <span className="mt-1 block font-mono text-[10px] tracking-wide">
-              Checking session…
+            <span className="mt-1 block" aria-busy="true">
+              <span className="sr-only">Checking session</span>
+              <span
+                className="block h-2.5 w-24 animate-pulse rounded bg-sidebar-accent"
+                aria-hidden="true"
+              />
             </span>
           ) : profile ? (
             <span className="mt-1 block truncate font-mono text-[10px] tracking-wide">
               {profile.email}
             </span>
           ) : accessToken ? (
-            <span className="mt-1 block font-mono text-[10px] tracking-wide">Loading profile…</span>
+            <span className="mt-1 block" aria-busy="true">
+              <span className="sr-only">Loading profile</span>
+              <span
+                className="block h-2.5 w-24 animate-pulse rounded bg-sidebar-accent"
+                aria-hidden="true"
+              />
+            </span>
           ) : (
             <span className="mt-1 block font-mono text-[10px] tracking-wide">
               Sign in to sync your workspace

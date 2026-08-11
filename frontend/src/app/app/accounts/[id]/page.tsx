@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { DetailPageSkeleton } from "@/components/shared/page-skeleton";
 import { useAuth } from "@/features/auth/auth-provider";
 import { CorrectBalanceDialog } from "@/features/accounts/correct-balance-dialog";
 import { getAccount, archiveAccount, type AccountResponse } from "@/lib/api/accounts";
@@ -80,7 +81,7 @@ export default function AccountDetailPage() {
   const loading = !ready || (Boolean(accessToken) && snapshot.gen !== reloadKey);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <DetailPageSkeleton />;
   }
 
   if (snapshot.error && !snapshot.account) {

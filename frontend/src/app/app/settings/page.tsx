@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SettingsPageSkeleton } from "@/components/shared/page-skeleton";
 import { useAuth } from "@/features/auth/auth-provider";
 import {
   updateOrganization,
@@ -345,7 +346,7 @@ export default function SettingsPage() {
   const primaryOrg = organizations[0] ?? null;
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <SettingsPageSkeleton />;
   }
 
   if (!accessToken || !profile) {

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 
 import { BrandMark } from "@/components/brand/mark";
+import { AuthFormSkeleton } from "@/components/shared/page-skeleton";
 import { LoginForm } from "@/features/auth/login-form";
 
 export const metadata = {
@@ -20,7 +21,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
+        <Suspense fallback={<AuthFormSkeleton />}>
           <LoginForm />
         </Suspense>
 

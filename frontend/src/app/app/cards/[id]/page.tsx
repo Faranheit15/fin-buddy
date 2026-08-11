@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DetailPageSkeleton } from "@/components/shared/page-skeleton";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getCard, updateCard, type CreditCard } from "@/lib/api/cards";
 import { listCardEmiPlans, type EmiPlan } from "@/lib/api/emis";
@@ -98,7 +99,7 @@ export default function CardDetailPage() {
   const loading = !ready || (Boolean(accessToken) && snapshot.gen !== reloadKey);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <DetailPageSkeleton />;
   }
 
   if (snapshot.error && !snapshot.card) {

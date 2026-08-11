@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { ListSkeleton, PageTableSkeleton } from "@/components/shared/page-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -77,7 +78,9 @@ export default function NotificationsPage() {
   }, [ready, accessToken, reloadKey]);
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return (
+      <PageTableSkeleton className="max-w-2xl" columns={2} showAction={false} titleWidth="w-28" />
+    );
   }
 
   if (!accessToken) {
@@ -147,7 +150,7 @@ export default function NotificationsPage() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading notifications…</p>
+        <ListSkeleton label="Loading notifications" />
       ) : items.length === 0 ? (
         <EmptyState
           icon={Bell}

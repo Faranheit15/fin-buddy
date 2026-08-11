@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Plus, Landmark } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageTableSkeleton, TableSkeleton } from "@/components/shared/page-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,7 +75,7 @@ export default function DebtsPage() {
   }, [ready, accessToken, reloadKey]);
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <PageTableSkeleton columns={4} titleWidth="w-32" />;
   }
   if (!accessToken) {
     return <p className="text-sm text-muted-foreground">Sign in to manage debts.</p>;
@@ -166,7 +167,7 @@ export default function DebtsPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading {activeTab}s…</p>
+        <TableSkeleton columns={4} label="Loading debts" />
       ) : items.length === 0 ? (
         <EmptyState
           icon={Landmark}

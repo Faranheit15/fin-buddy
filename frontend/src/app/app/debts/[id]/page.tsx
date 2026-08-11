@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DetailPageSkeleton } from "@/components/shared/page-skeleton";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ObligationPaymentForm } from "@/features/obligations/obligation-payment-form";
 import {
@@ -105,7 +106,7 @@ export default function DebtDetailPage() {
   const loading = !ready || (Boolean(accessToken) && snapshot.gen !== reloadKey);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <DetailPageSkeleton />;
   }
 
   if (snapshot.error && !snapshot.obligation) {

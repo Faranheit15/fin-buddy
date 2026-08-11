@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus, Tags } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageTableSkeleton, TableSkeleton } from "@/components/shared/page-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,7 +56,7 @@ export default function CategoriesPage() {
   }, [ready, accessToken, reloadKey]);
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <PageTableSkeleton columns={3} titleWidth="w-24" />;
   }
 
   if (!accessToken) {
@@ -104,7 +105,7 @@ export default function CategoriesPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading categories…</p>
+        <TableSkeleton columns={3} label="Loading categories" />
       ) : categories.length === 0 ? (
         <EmptyState
           icon={Tags}

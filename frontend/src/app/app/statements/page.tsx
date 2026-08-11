@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { FileText, FileUp, Plus } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageTableSkeleton, TableSkeleton } from "@/components/shared/page-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -135,7 +136,7 @@ export default function StatementsPage() {
   }
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <PageTableSkeleton columns={6} titleWidth="w-24" />;
   }
 
   if (!accessToken) {
@@ -239,7 +240,7 @@ export default function StatementsPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading statements…</p>
+        <TableSkeleton columns={6} label="Loading statements" />
       ) : statements.length === 0 ? (
         <EmptyState
           icon={FileText}

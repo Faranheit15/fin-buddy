@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight, Plus } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageTableSkeleton, TableSkeleton } from "@/components/shared/page-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -187,7 +188,7 @@ function TransactionsInner() {
   }
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <PageTableSkeleton columns={8} titleWidth="w-28" />;
   }
 
   if (!accessToken) {
@@ -382,9 +383,7 @@ function TransactionsInner() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground" aria-live="polite">
-          Loading transactions…
-        </p>
+        <TableSkeleton columns={8} label="Loading transactions" />
       ) : txs.length === 0 ? (
         <EmptyState
           icon={ArrowLeftRight}
@@ -590,7 +589,7 @@ function TransactionsInner() {
 
 export default function TransactionsPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
+    <Suspense fallback={<PageTableSkeleton columns={8} titleWidth="w-28" />}>
       <TransactionsInner />
     </Suspense>
   );

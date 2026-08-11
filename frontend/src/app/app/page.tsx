@@ -8,6 +8,7 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { AttentionStrip } from "@/components/dashboard/attention-strip";
 import { CardsTable } from "@/components/dashboard/cards-table";
 import { ContactsList } from "@/components/dashboard/contacts-list";
+import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { KpiRow } from "@/components/dashboard/kpi-row";
 import { NetWorthStrip } from "@/components/dashboard/net-worth-strip";
 import { IncomeExpenseStrip } from "@/components/dashboard/income-expense-strip";
@@ -39,11 +40,15 @@ import { cn } from "@/lib/utils";
 function DashboardLoading() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4" aria-busy="true">
-      <div className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2">
-        <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-wide">
-          Loading
-        </Badge>
-        <span className="text-xs text-muted-foreground">Loading your workspace…</span>
+      <div
+        className="flex items-center gap-3 rounded-xl border bg-muted/30 px-3 py-2"
+        aria-busy="true"
+      >
+        <span className="sr-only" role="status">
+          Loading workspace
+        </span>
+        <Skeleton className="h-5 w-11 rounded-full" aria-hidden="true" />
+        <Skeleton className="h-3 w-44" aria-hidden="true" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -93,6 +98,22 @@ function mapLiveContacts(items: DashboardContactSummary[]): DemoContact[] {
     lastActivity: c.updated_at,
   }));
 }
+
+const demoCashFlow = [
+  { month: "2026-03-01", income_paise: 8200000, expense_paise: 5175000 },
+  { month: "2026-04-01", income_paise: 8200000, expense_paise: 4610000 },
+  { month: "2026-05-01", income_paise: 9000000, expense_paise: 6240000 },
+  { month: "2026-06-01", income_paise: 8500000, expense_paise: 5760000 },
+  { month: "2026-07-01", income_paise: 8500000, expense_paise: 5380000 },
+  { month: "2026-08-01", income_paise: 9000000, expense_paise: 4820000 },
+];
+
+const demoSpendingCategories = [
+  { name: "Food & dining", color: null, amount_paise: 1275000 },
+  { name: "Shopping", color: null, amount_paise: 965000 },
+  { name: "Transport", color: null, amount_paise: 588000 },
+  { name: "Bills", color: null, amount_paise: 422000 },
+];
 
 type DashSnapshot = {
   live: DashboardData | null;
@@ -309,6 +330,12 @@ export default function DashboardPage() {
           <IncomeExpenseStrip
             incomePaise={kpis.periodIncomePaise}
             expensePaise={kpis.periodExpensePaise}
+          />
+
+          <DashboardCharts
+            cards={cards}
+            cashFlow={useLive ? live!.cash_flow_trend : demoCashFlow}
+            spendingCategories={useLive ? live!.spending_categories : demoSpendingCategories}
           />
 
           <div className="grid gap-4 xl:grid-cols-3">

@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Bklit is registry-vended source. Validate it with TypeScript/build; do not
+    // apply project-authored React Compiler lint rules to its generated internals.
+    "src/components/charts/**",
+    "src/components/shimmering-text.tsx",
   ]),
 ]);
 

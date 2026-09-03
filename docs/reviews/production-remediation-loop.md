@@ -2,7 +2,12 @@
 
 This is the repository-native Ralph-loop queue for the findings in the [2026-08-10 production readiness audit](2026-08-10-production-readiness-audit.md). It follows the existing Release 2 loop convention while keeping audit remediation separately tracked.
 
-> **Status:** Follow-up queue · **Last recorded:** 2026-08-11
+> **Status:** Historical follow-up queue · **Last recorded:** 2026-08-11
+>
+> The active one-story-per-loop source is now
+> [`docs/prd/productionization/README.md`](../prd/productionization/README.md).
+> Keep this file as historical evidence for the original remediation IDs; do
+> not select new work from two queues.
 >
 > This queue is separate from Release 2 feature completion. Rows marked
 > `todo` remain open until their acceptance evidence is recorded.

@@ -6,7 +6,12 @@ Personal daily driver first → wider public release later.
 
 ## Product docs
 
+- [Documentation home](docs/README.md) — release map, status, architecture, and runbooks
+- [Product requirements](PRODUCT.md)
+- [Design system](DESIGN.md)
+- [Release 1 baseline](docs/prd/release-1/README.md)
 - [PRD](docs/prd/2026-07-27-fin-buddy-prd.md)
+- [Release 2 status](docs/prd/release-2/README.md)
 
 ## Architecture
 
@@ -36,7 +41,7 @@ Personal daily driver first → wider public release later.
 
 ```text
 fin-buddy/
-├── docs/prd/          # Product requirements
+├── docs/              # Documentation home, release records, runbooks, reviews
 ├── frontend/          # Next.js app
 ├── backend/           # FastAPI app
 └── README.md
@@ -130,7 +135,7 @@ bun run typecheck
 bun run build
 ```
 
-## Phase roadmap
+## Phase roadmap (Release 1 baseline)
 
 | Phase | Scope |
 |-------|--------|
@@ -141,6 +146,16 @@ bun run build
 | **4** (done) | Statement PDF upload + review import |
 | **5** (done) | Polish, empty states, notifications, settings, deploy docs |
 | **Later** | Issuer-specific parsers, public packaging, external reminders |
+
+## Release 2 status
+
+Release 2 implementation is complete across R2A–R2H and user stories US-01–US-06.
+The project can enter the documented deployment sequence after the release owner
+completes the required Supabase migration and production environment setup.
+
+See the [Release 2 documentation index](docs/prd/release-2/README.md),
+[progress tracker](docs/prd/release-2/PROGRESS.md), and
+[release-readiness review](docs/reviews/2026-08-11-release-readiness.md).
 
 ## Statement sample format
 

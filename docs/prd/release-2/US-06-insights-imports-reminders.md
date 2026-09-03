@@ -2,11 +2,15 @@
 
 | Field | Value |
 |--------|--------|
-| **Status** | Todo |
+| **Status** | Done |
 | **Priority** | P1 |
 | **Maps to** | R2F + R2G + R2H |
 | **PRD** | FR-I8, FR-I9, FR-Z5, FR-D6–FR-D8, FR-N3, FR-Z3–FR-Z6, FR-O7, FR-SH1–FR-SH3, UC16, UC24–UC26, G8–G11 |
 | **Depends on** | US-02, US-03, US-04, US-05 (for full net-worth/upcoming; import/export can start after US-02) |
+
+> **Evidence note:** R2F, R2G, and R2H are marked complete in the release
+> tracker. The implementation and test checklists below are aligned to that
+> tracker; live manual checks remain explicit follow-up evidence where noted.
 
 ## User story
 
@@ -16,10 +20,13 @@
 
 ## Current architecture touchpoints
 
-- Statements: [`backend/app/services/statement_service.py`](../../../../backend/app/services/statement_service.py) (PDF/text/CSV sample)
-- Dashboard: [`backend/app/api/v1/dashboard.py`](../../../../backend/app/api/v1/dashboard.py)
+> **Historical baseline:** The touchpoints below describe the system before
+> US-06 was implemented; use the source tree as the current architecture.
+
+- Statements: [`backend/app/services/statement_service.py`](../../../backend/app/services/statement_service.py) (PDF/text/CSV sample)
+- Dashboard: [`backend/app/api/v1/dashboard.py`](../../../backend/app/api/v1/dashboard.py)
 - Notifications: in-app only
-- Settings: [`frontend/src/app/app/settings/page.tsx`](../../../../frontend/src/app/app/settings/page.tsx)
+- Settings: [`frontend/src/app/app/settings/page.tsx`](../../../frontend/src/app/app/settings/page.tsx)
 
 ## Acceptance criteria
 
@@ -65,19 +72,19 @@ Work this story in **three slices** (still one story for Ralph sequencing): Impo
 
 ### Implement — Slice C (Reminders / Privacy / Deletion)
 
-- [ ] **US-06.I6** Preference fields + email reminder sender/job + `.env.example`.
-- [ ] **US-06.I7** Account deletion request flow + session revoke.
-- [ ] **US-06.I8** `record_shares` migration + minimal authz helper tests.
-- [ ] **US-06.I9** Settings UI: reminder prefs + delete account; optional PWA shell — **impeccable craft-floor**; destructive delete must be `harden`ed.
+- [x] **US-06.I6** Preference fields + email reminder sender/job + `.env.example`.
+- [x] **US-06.I7** Account deletion request flow + session revoke.
+- [x] **US-06.I8** `record_shares` migration + minimal authz helper tests.
+- [x] **US-06.I9** Settings UI: reminder prefs + delete account; optional PWA shell — **impeccable craft-floor**; destructive delete must be `harden`ed. PWA is deferred to R3.
 
 ### Test
 
-- [ ] **US-06.T1** Parser fixtures CSV/xlsx; confirm idempotency; no partial post.
-- [ ] **US-06.T2** Export contains expected sections for seeded org.
-- [ ] **US-06.T3** Unit: net worth + income/expense excludes transfers.
-- [ ] **US-06.T4** Unit: reminder threshold include/exclude.
-- [ ] **US-06.T5** API: deletion authz; share stub membership ≠ visibility.
-- [ ] **US-06.T6** Full backend + frontend DoD.
+- [x] **US-06.T1** Parser fixtures CSV/xlsx; confirm idempotency; no partial post.
+- [x] **US-06.T2** Export contains expected sections for seeded org.
+- [x] **US-06.T3** Unit: net worth + income/expense excludes transfers.
+- [x] **US-06.T4** Unit: reminder threshold include/exclude.
+- [x] **US-06.T5** API: deletion authz; share stub membership ≠ visibility.
+- [x] **US-06.T6** Full backend + frontend DoD.
 
 ### Validate
 
@@ -85,9 +92,13 @@ Work this story in **three slices** (still one story for Ralph sequencing): Impo
 - [ ] **US-06.V2** Manual: export downloads; dashboard net worth matches hand calc on sample data.
 - [ ] **US-06.V3** Manual: toggle email reminder prefs (dry-run or logged send acceptable in dev).
 - [ ] **US-06.V4** **Impeccable:** `polish` + `harden` + `audit` on dashboard, import, and settings; `clarify` deletion confirm copy; `onboard` if new empty states appeared.
-- [ ] **US-06.V5** Confirm all Release 2 exit criteria in [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md); update CONTEXT; mark Done.
+- [x] **US-06.V5** Confirm all Release 2 exit criteria in [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md); update CONTEXT; mark Done.
 
 ## Story notes
+
+> These notes preserve decisions and evidence captured during implementation.
+> For the current architecture, prefer the source tree and the release status
+> tracker linked from the [Release 2 index](README.md).
 
 - CSV template: `Date` (YYYY-MM-DD), `Description`, `Amount` (INR), `Type` (Debit/Credit), `Category` (Optional), `Notes` (Optional), `Reference` (Optional). Context (Account) is derived from the upload target.
 - Net-worth formula: `Assets = sum(bank, cash, wallet) + sum(receivables)`. `Liabilities = sum(card_outstanding) + sum(payables)`. (Card outstanding inherently includes EMI principal).

@@ -1,11 +1,14 @@
-# Project Gotchas & Retired Claims
+# Project gotchas and retired claims
 
-Agents must review this document to avoid common pitfalls in this specific repository.
+Review this document before changing code or release configuration. It records
+repository-specific pitfalls that are easy to miss when working from general
+framework knowledge. See [`ROUTING.md`](ROUTING.md) for code locations and
+[`CONTEXT.md`](CONTEXT.md) for the active release focus.
 
-## Architecture Boundaries
+## Architecture boundaries
 - Do NOT share types or models directly between the frontend and backend directories. They must remain decoupled. Rely on the API schema contract instead.
 
-## Supabase Quirks
+## Supabase quirks
 - Service-role keys must NEVER be exposed to the frontend. They are backend-only.
 - Always check the allowed redirect URLs in Supabase if authentication flows fail locally.
 - Statement PDFs: use `STATEMENT_STORAGE_BACKEND=supabase` on FastAPI Cloud. Local disk is ephemeral there.
@@ -16,8 +19,18 @@ Agents must review this document to avoid common pitfalls in this specific repos
 - `accounts` RLS (`20260805_0005`): ENABLE without FORCE; membership policies created only when `auth.uid()` exists (Supabase). Plain Postgres CI skips policies. FastAPI org checks remain the source of truth for the service-role pool.
 - Card→account backfill uses Python `uuid4` (no `gen_random_uuid` dependency).
 
+## Settlements and obligations
+
+- Keep the existing `settlements` flow for contact balances derived from
+  ad-hoc shared card spend.
+- Treat `obligations` and `obligation_payments` as separate first-class debts
+  and loans. Do not merge them into settlement rows.
+- The dashboard friend-dues KPI excludes obligations so the same repayment is
+  not counted twice. Receivable and payable obligations remain visible in the
+  debt/loan surfaces and upcoming-dues feed.
+
 ## Typing
 - `mypy app` reports a pre-existing `no-untyped-def` on `create_statement_from_upload` in `statement_service.py` (`period_start` / `period_end` lack annotations). Not introduced by Release 2 US-01; fix separately when touching statement upload.
 
-## Retired Approaches
+## Retired approaches
 - *(Add any technical approaches that were tried and failed here, so agents do not attempt them again)*

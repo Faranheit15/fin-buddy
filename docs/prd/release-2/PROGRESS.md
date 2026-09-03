@@ -1,23 +1,45 @@
 # Release 2 — Progress
 
+> The status table below is the current implementation snapshot. The detailed
+> iteration log is historical and intentionally retains the sequence in which
+> the work was recorded.
+
 | Field | Value |
-|--------|--------|
-| **Updated** | 2026-08-05 |
-| **Current story** | US-06 |
-| **Current subtask** | US-06.I6 |
-| **Overall** | 5 / 6 stories done |
+| --- | --- |
+| **Release** | Fin Buddy Release 2 |
+| **Status** | Complete |
+| **Last progress entry** | 2026-08-06 |
+| **Last reviewed** | 2026-09-03 |
+| **Current story** | Complete — all six stories done |
+| **Current subtask** | None — next focus is Release 3 or polish |
 | **Overall** | 6 / 6 stories done |
 
 ## Story status
 
 | Story | Status | Notes |
 |-------|--------|-------|
-| US-01 Auditable ledger | Done | R2A complete; browser residuals for V1–V3 optional |
-| US-02 Multi-account balances | Done | R2B (Part 1) complete; account ledger working |
-| US-03 Categories / transfers / splits | Done | - [x] **US-03.V1-V3** Residuals documented.<br>- [x] **US-03.V4** Marked Done. |
-| US-04 Debts & loans | Done | Complete; ad-hoc debts & loans settled |
-| US-05 Card EMIs & GST | Done | Completed EMI block tracking and scheduling; UI residuals documented |
-| US-06 Insights / imports / reminders | Done | Completed parsing, export, and redesigned dashboard metrics. |
+| US-01 Auditable ledger | Done | R2A complete; browser residuals for V1–V3 optional. |
+| US-02 Multi-account balances | Done | R2B complete; account ledger working. |
+| US-03 Categories / transfers / splits | Done | R2C complete; V1–V3 residuals documented and V4 marked Done. |
+| US-04 Debts & loans | Done | Complete; ad-hoc debts and loans settled. |
+| US-05 Card EMIs & GST | Done | EMI block tracking and scheduling complete; UI residuals documented. |
+| US-06 Insights / imports / reminders | Done | Parsing, export, dashboard metrics, reminders, privacy, and deletion complete in the release tracker. |
+
+## Status history
+
+The earlier `5 / 6 stories done` value was a valid intermediate snapshot, not a
+second current total. It is retained here so the progression remains clear.
+
+| Snapshot | Meaning |
+| --- | --- |
+| 2026-08-05 | 5 / 6 stories done while US-06 was still in progress. |
+| 2026-08-06 | 6 / 6 stories done; Release 2 completion recorded. |
+
+## Evidence notes
+
+- The implementation tracker in [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md) is fully checked off.
+- Story files retain manual validation residuals where the original execution lacked a live browser or deployment environment.
+- Production hardening follow-ups remain separately tracked in [`../../reviews/production-remediation-loop.md`](../../reviews/production-remediation-loop.md).
 
 ## Iteration log
 

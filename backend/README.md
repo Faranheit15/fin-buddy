@@ -2,6 +2,9 @@
 
 Production-oriented FastAPI backend for Fin Buddy.
 
+For the project-wide product, release, architecture, and deployment map, see
+[`../docs/README.md`](../docs/README.md).
+
 ## Stack
 
 - FastAPI + Uvicorn

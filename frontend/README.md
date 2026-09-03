@@ -2,6 +2,9 @@
 
 Next.js App Router frontend for Fin Buddy.
 
+For the project-wide product, release, architecture, and deployment map, see
+[`../docs/README.md`](../docs/README.md).
+
 ## Stack
 
 - Next.js 16 + React 19 + TypeScript

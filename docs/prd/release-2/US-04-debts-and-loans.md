@@ -8,6 +8,10 @@
 | **PRD** | FR-OB1–FR-OB5, FR-S1–FR-S4, UC21, G5, §8.6 |
 | **Depends on** | US-02 (accounts optional for repayment source); settlements already exist |
 
+> **Evidence note:** R2D is marked complete in the release tracker. The manual
+> validation checklist below remains visible because it was not executed in a
+> live browser during the recorded implementation run.
+
 ## User story
 
 **As** a Fin Buddy owner  
@@ -16,7 +20,10 @@
 
 ## Current architecture touchpoints
 
-- [`backend/app/models/settlement.py`](../../../../backend/app/models/settlement.py) + contacts balances
+> **Historical baseline:** The touchpoints below describe the system before
+> US-04 was implemented; use the source tree as the current architecture.
+
+- [`backend/app/models/settlement.py`](../../../backend/app/models/settlement.py) + contacts balances
 - Contact detail UI for settlements
 - No `obligations` table
 
@@ -66,9 +73,13 @@
 - [ ] **US-04.V1** Manual: receivable + payable + two partial repayments.
 - [ ] **US-04.V2** Manual: existing settlement on a contact still correct.
 - [ ] **US-04.V3** **Impeccable:** `onboard` debts empty state; `polish` + `harden` + `audit` on `/app/debts`.
-- [ ] **US-04.V4** Publish GOTCHAS note; mark Done; update PROGRESS + R2D.
+- [x] **US-04.V4** Publish GOTCHAS note; mark Done; update PROGRESS + R2D.
 
 ## Story notes
+
+> These notes preserve decisions and evidence captured during implementation.
+> For the current architecture, prefer the source tree and the release status
+> tracker linked from the [Release 2 index](README.md).
 
 ### Gather Decisions
 - **US-04.G1 (Compat strategy):** Keep `settlements` as they are. Add `obligations` and `obligation_payments` separately.

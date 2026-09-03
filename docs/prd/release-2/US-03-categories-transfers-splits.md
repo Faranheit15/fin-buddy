@@ -2,11 +2,14 @@
 
 | Field | Value |
 |--------|--------|
-| **Status** | Todo |
+| **Status** | Done |
 | **Priority** | P1 |
 | **Maps to** | R2C |
 | **PRD** | FR-CAT1–FR-CAT3, FR-T10, FR-T12, UC19, UC20, G4, §8.9 |
 | **Depends on** | US-01, US-02 |
+
+> **Evidence note:** R2C is complete in the release tracker, with the manual
+> validation residuals recorded in the progress history.
 
 ## User story
 
@@ -15,6 +18,9 @@
 **So that** my income/expense reporting stays accurate and money movement between accounts is clear.
 
 ## Current architecture touchpoints
+
+> **Historical baseline:** The touchpoints below describe the system before
+> US-03 was implemented; use the source tree as the current architecture.
 
 - Free-text `category` on transactions only
 - No transfer pairing; no splits table
@@ -68,6 +74,10 @@
 - [x] **US-03.V4** Mark Done; update PROGRESS + R2C checklist.
 
 ## Story notes
+
+> These notes preserve decisions and evidence captured during implementation.
+> For the current architecture, prefer the source tree and the release status
+> tracker linked from the [Release 2 index](README.md).
 
 ### US-03.G1 — Default category list
 **Expense:** Food & Dining, Groceries, Shopping, Transport, Utilities, Housing, Entertainment, Health & Fitness, Travel, Subscriptions, Personal Care, Education, EMI/Debt, Miscellaneous.

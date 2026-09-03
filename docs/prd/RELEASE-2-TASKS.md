@@ -1,12 +1,18 @@
-# Fin Buddy — Release 2 Tasks
+# Fin Buddy — Release 2 tasks
 
 | Field | Value |
 |--------|--------|
 | **Status** | Complete |
 | **Date** | 2026-08-05 |
+| **Last reviewed** | 2026-09-03 |
 | **PRD** | [`2026-07-27-fin-buddy-prd.md`](2026-07-27-fin-buddy-prd.md) v2.0 |
 | **Baseline** | Phases 0–5 MVP shipped (cards, contacts, transactions, settlements, statement review, notifications, settings, deploy) |
 | **Stack** | Next.js (`frontend/`) + FastAPI (`backend/`) + Supabase — do not rewrite |
+
+> **Current status:** Complete. All R2A–R2H workstreams and Release 2 exit
+> criteria are marked complete. See the [story progress tracker](release-2/PROGRESS.md)
+> for the historical implementation log and the [release-readiness review](../reviews/2026-08-11-release-readiness.md)
+> for deployment evidence and owner actions.
 
 ---
 
@@ -25,16 +31,16 @@ Implement the Release 2 expansion: turn Fin Buddy from a card + friend-lending M
 ## Dependency graph
 
 ```text
-R2A LedgerFoundation
- ├──► R2B AccountsTransfers
- ├──► R2C CategoriesSplits
+ R2A Ledger foundation
+ ├──► R2B Accounts
+ ├──► R2C Categories / splits
  │
- R2B ──► R2D DebtsLoans
- R2B ──► R2E CardEMIsGST
- R2C ──► R2F ImportExport
+ R2B ──► R2D Debts / loans
+ R2B ──► R2E Card EMIs / GST
+ R2C ──► R2F Import / export
  │
- R2D + R2E + R2F ──► R2G NetWorthDashboard
- R2G ──► R2H RemindersPrivacyExport
+ R2D + R2E + R2F ──► R2G Net worth / dashboard
+ R2G ──► R2H Reminders / privacy / export
 ```
 
 Suggested order: **R2A → R2B ∥ R2C → R2D ∥ R2E → R2F → R2G → R2H**.
@@ -357,7 +363,9 @@ Mapped to PRD §15.2:
 10. [x] Email reminders with preference thresholds.
 11. [x] Domain tests for EMI block, transfer exclusion, adjustments.
 
-When all exit criteria pass, update [`docs/CONTEXT.md`](../CONTEXT.md) to the next focus and mark Release 2 complete in the PRD roadmap notes.
+The exit criteria are currently complete. When this backlog is reused for a
+future maintenance pass, update [`docs/CONTEXT.md`](../CONTEXT.md) to the next
+focus and record any roadmap change in the PRD notes.
 
 ---
 

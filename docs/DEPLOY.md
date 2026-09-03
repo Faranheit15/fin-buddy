@@ -1,6 +1,17 @@
 # Personal production deploy runbook
 
-This complements the root README. Follow in order for Vercel + FastAPI Cloud + Supabase.
+> **Status:** Operational runbook · **Last reviewed:** 2026-09-03
+
+This complements the [root README](../README.md). Follow the sections in order
+for Vercel + FastAPI Cloud + Supabase. The latest release-owner decision and
+validation evidence are in the [release-readiness review](reviews/2026-08-11-release-readiness.md).
+
+## Before you begin
+
+- Use a dedicated production Supabase project when the local database contains demo data.
+- Keep secrets in deployment configuration or local `.env` files; never commit them.
+- Apply the reviewed Alembic migration exactly once before serving production API traffic.
+- Use the [smoke checklist](reviews/2026-08-11-release-readiness.md#release-owner-checklist) after both services are deployed.
 
 ## 0. Prerequisites
 

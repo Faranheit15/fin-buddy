@@ -1,5 +1,9 @@
 # Ralph Loop Prompt — Fin Buddy Release 2
 
+> **Document status:** Historical implementation prompt. Release 2 is complete;
+> use the [progress tracker](PROGRESS.md) and [exit criteria](../RELEASE-2-TASKS.md#release-2-exit-criteria)
+> before starting any future maintenance loop.
+
 Copy the **Prompt body** below into a Ralph loop. State lives on disk in this folder; each iteration starts fresh and must re-read files.
 
 ## How to run

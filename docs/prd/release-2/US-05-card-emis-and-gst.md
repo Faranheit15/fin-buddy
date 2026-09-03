@@ -8,6 +8,9 @@
 | **PRD** | FR-E1–FR-E7, FR-C9, FR-C10, FR-T11, UC22, UC23, G6, G7, §8.1–§8.2 |
 | **Depends on** | US-01, US-02 |
 
+> **Evidence note:** R2E is complete in the release tracker. UI residuals are
+> retained under **Residuals (Manual Checks)** below.
+
 ## User story
 
 **As** a Fin Buddy owner with Indian credit cards  
@@ -16,9 +19,12 @@
 
 ## Current architecture touchpoints
 
+> **Historical baseline:** The touchpoints below describe the system before
+> US-05 was implemented; use the source tree as the current architecture.
+
 - Card utilization today = outstanding vs limit (no EMI block)
-- [`backend/app/api/v1/cards.py`](../../../../backend/app/api/v1/cards.py), dashboard card summaries
-- Card detail UI: [`frontend/src/app/app/cards/[id]/page.tsx`](../../../../frontend/src/app/app/cards/[id]/page.tsx)
+- [`backend/app/api/v1/cards.py`](../../../backend/app/api/v1/cards.py), dashboard card summaries
+- Card detail UI: [`frontend/src/app/app/cards/[id]/page.tsx`](../../../frontend/src/app/app/cards/[id]/page.tsx)
 
 ## Acceptance criteria
 
@@ -70,6 +76,10 @@
 - [x] **US-05.V5** Mark Done; update PROGRESS + R2E.
 
 ## Story notes
+
+> These notes preserve decisions and evidence captured during implementation.
+> For the current architecture, prefer the source tree and the release status
+> tracker linked from the [Release 2 index](README.md).
 
 - Rounding: Total principal is divided by tenure, rounded down to nearest paise. The final installment absorbs the remainder to ensure sum equals exact principal.
 - Interest posting policy: Adopting default — Scheduled posted typed lines with clear `emi_*` types (`emi_interest`, `emi_gst`), which are reversible under US-01.

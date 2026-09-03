@@ -4,10 +4,11 @@
 |--------|--------|
 | **Document version** | 2.0 |
 | **Date** | 2026-08-05 |
-| **Status** | Approved for Release 2 planning |
+| **Status** | Release 2 implementation complete; deployment sequence documented |
 | **Owner** | Product / Engineering |
 | **Audience** | Personal use first; public multi-user release later |
 | **Prior version** | 1.0 (2026-07-27) — Phases 0–5 MVP shipped |
+| **Last reviewed** | 2026-09-03 |
 
 ---
 
@@ -825,7 +826,22 @@ One git repository; two top-level apps without monorepo tooling. Do **not** rewr
 | Scope creep into salary/investments/AI | Delayed R2 | Hard non-goals; Release 3+ only |
 | Multi-tenant overbuild | Slow delivery | Simple personal UX; org + share schema under the hood |
 
-### 13.2 Open questions (resolve during R2 build)
+### 13.2 Open questions and R2 decisions
+
+The questions below were open when PRD v2.0 was authored. The implementation
+record now contains the following R2 decisions; the original wording is kept
+below as historical context.
+
+| Question | R2 decision / status |
+| --- | --- |
+| Settlements vs `obligation_payments` | Keep existing settlements for ad-hoc contact spend; keep obligations and obligation payments separate. |
+| EMI interest lines | Use scheduled posted typed lines, reversible through the auditable ledger. |
+| Receivables in net worth | Treat receivables as assets. |
+| First issuer-specific PDF parsers | Still open; generic review-based import remains the safe baseline. |
+| Email provider | Resend selected for Release 2. |
+| Contact overpayment | Warn and allow for Release 2. |
+
+#### Original open-question list
 
 1. Exact migration path: keep `settlements` table forever vs fold into `obligation_payments`.  
 2. Whether EMI interest lines auto-post on statement date or require confirmation.  
@@ -846,7 +862,7 @@ One git repository; two top-level apps without monorepo tooling. Do **not** rewr
 | **3** | Contacts + transactions + settlements | **Done** |
 | **4** | Statement PDF upload + review + first parsers | **Done** |
 | **5** | Polish, empty states, deploy personal prod | **Done** |
-| **Release 2** | Accounts, auditable ledger, categories/transfers/splits, debts/loans, card EMIs + GST tracking, CSV/Excel import, net-worth dashboard, export/deletion, email reminders, share schema readiness | Expanded personal finance daily driver |
+| **Release 2** | Accounts, auditable ledger, categories/transfers/splits, debts/loans, card EMIs + GST tracking, CSV/Excel import, net-worth dashboard, export/deletion, email reminders, share schema readiness | **Complete** — expanded personal finance daily driver |
 | **Release 3+** | Connected-user debt confirm, fine-grained share UX, PWA polish, salary/investments, Account Aggregators, AI review, commercial packaging | Wider audience |
 
 Detailed Release 2 implementation backlog: [`RELEASE-2-TASKS.md`](RELEASE-2-TASKS.md).  

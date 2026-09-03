@@ -2,11 +2,14 @@
 
 | Field | Value |
 |--------|--------|
-| **Status** | In progress |
+| **Status** | Done |
 | **Priority** | P0 |
 | **Maps to** | R2B |
 | **PRD** | FR-AC1–FR-AC6, UC17, UC18, G3, §5.7, §7.2 |
 | **Depends on** | US-01 (adjustments / posted ledger) |
+
+> **Evidence note:** R2B is complete in the release tracker. The manual
+> validation residuals are retained in the progress log and story notes.
 
 ## User story
 
@@ -16,10 +19,13 @@
 
 ## Current architecture touchpoints
 
-- Cards only: [`backend/app/models/credit_card.py`](../../../../backend/app/models/credit_card.py)
+> **Historical baseline:** The touchpoints below describe the system before
+> US-02 was implemented; use the source tree as the current architecture.
+
+- Cards only: [`backend/app/models/credit_card.py`](../../../backend/app/models/credit_card.py)
 - Transactions require `credit_card_id` today
 - No `accounts` table
-- UI nav: [`frontend/src/components/layout/app-sidebar.tsx`](../../../../frontend/src/components/layout/app-sidebar.tsx)
+- UI nav: [`frontend/src/components/layout/app-sidebar.tsx`](../../../frontend/src/components/layout/app-sidebar.tsx)
 - Routes under `frontend/src/app/app/cards/*`
 
 ## Acceptance criteria
@@ -54,7 +60,7 @@
 - [x] **US-02.I2** Account balance service + Correct Balance → adjustment (uses US-01).
 - [x] **US-02.I3** Accounts API + wire transactions to accept `account_id`.
 - [x] **US-02.I4** Frontend: accounts list/detail, nav, transaction account picker, Correct Balance — **impeccable craft-floor**; Operate density consistent with cards/contacts.
-- [ ] **US-02.I5** Update `.env.example` only if new config needed (usually none).
+- [x] **US-02.I5** Update `.env.example` only if new config needed (usually none; no new configuration was required).
 
 ### Test
 
@@ -73,6 +79,10 @@
 - [x] **US-02.V5** Mark Done; update PROGRESS + RELEASE-2-TASKS R2B.
 
 ## Story notes
+
+> These notes preserve decisions and evidence captured during implementation.
+> For the current architecture, prefer the source tree and the release status
+> tracker linked from the [Release 2 index](README.md).
 
 ### US-02.G1 — Card vs `account_id` invariant (2026-08-05)
 
@@ -548,7 +558,7 @@ Owner scanning liquid money + card liabilities in one place (Zerodha/Kite-like o
 - Card create inserts 1:1 `Account` before opening-balance tx
 - `TransactionResponse.account_id` + nullable `credit_card_id`
 
-**Next:** I2 account balance service + Correct Balance → adjustment
+**Historical next step:** I2 account balance service + Correct Balance → adjustment
 
 ### US-02.I2 — Account balance + Correct Balance (2026-08-05)
 
@@ -561,6 +571,4 @@ Owner scanning liquid money + card liabilities in one place (Zerodha/Kite-like o
 
 **Deferred to I3:** HTTP `/accounts` + `/correct-balance` routes.
 
-**Next:** I3 Accounts API + transaction `account_id` wiring
-
-
+**Historical next step:** I3 Accounts API + transaction `account_id` wiring

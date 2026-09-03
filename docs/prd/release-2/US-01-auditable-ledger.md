@@ -8,6 +8,9 @@
 | **PRD** | FR-T6, FR-T8, FR-T9, FR-AC3, FR-AC4, G2, §8.8 |
 | **Depends on** | None (MVP transactions exist) |
 
+> **Evidence note:** Implementation and automated verification are complete.
+> Browser validation residuals for V1–V3 are retained in the story notes.
+
 ## User story
 
 **As** a Fin Buddy owner  
@@ -16,11 +19,14 @@
 
 ## Current architecture touchpoints
 
-- Model: [`backend/app/models/transaction.py`](../../../../backend/app/models/transaction.py) — no `posting_status` today; edit/delete allowed
-- Enums: [`backend/app/models/enums.py`](../../../../backend/app/models/enums.py) — `TransactionType` lacks `adjustment` / `reversal`
-- API: [`backend/app/api/v1/transactions.py`](../../../../backend/app/api/v1/transactions.py)
+> **Historical baseline:** The touchpoints below describe the system before
+> US-01 was implemented; use the source tree as the current architecture.
+
+- Model: [`backend/app/models/transaction.py`](../../../backend/app/models/transaction.py) — no `posting_status` today; edit/delete allowed
+- Enums: [`backend/app/models/enums.py`](../../../backend/app/models/enums.py) — `TransactionType` lacks `adjustment` / `reversal`
+- API: [`backend/app/api/v1/transactions.py`](../../../backend/app/api/v1/transactions.py)
 - Services: balance math in card/contact/dashboard services
-- UI: [`frontend/src/app/app/transactions/page.tsx`](../../../../frontend/src/app/app/transactions/page.tsx)
+- UI: [`frontend/src/app/app/transactions/page.tsx`](../../../frontend/src/app/app/transactions/page.tsx)
 
 ## Acceptance criteria
 
@@ -73,6 +79,10 @@
 - [x] **US-01.V5** Mark story Status = Done; update [`PROGRESS.md`](PROGRESS.md); tick corresponding R2A items in [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md).
 
 ## Story notes
+
+> These notes preserve decisions and evidence captured during implementation.
+> For the current architecture, prefer the source tree and the release status
+> tracker linked from the [Release 2 index](README.md).
 
 _(Agent: record Gather decisions here.)_
 

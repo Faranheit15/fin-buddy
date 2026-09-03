@@ -1,12 +1,21 @@
-# Release 2 — User Stories
+# Release 2 — User stories
 
 | Field | Value |
 |--------|--------|
 | **Release** | Fin Buddy Release 2 |
+| **Last reviewed** | 2026-09-03 |
 | **PRD** | [`../2026-07-27-fin-buddy-prd.md`](../2026-07-27-fin-buddy-prd.md) v2.0 |
 | **Workstreams** | [`../RELEASE-2-TASKS.md`](../RELEASE-2-TASKS.md) |
 | **Progress** | [`PROGRESS.md`](PROGRESS.md) |
 | **Ralph prompt** | [`RALPH-LOOP-PROMPT.md`](RALPH-LOOP-PROMPT.md) |
+
+> **Current status:** 6 / 6 stories complete · R2A–R2H exit criteria marked
+> complete · PWA deferred to Release 3. Any remaining manual checks or
+> production-hardening follow-ups are called out in the story notes and
+> [`docs/reviews/production-remediation-loop.md`](../../reviews/production-remediation-loop.md).
+
+See the [documentation home](../../README.md) for the project-wide Release 1
+and Release 2 map.
 
 ## How to use
 
@@ -18,14 +27,14 @@
 
 ## Story map
 
-| ID | Story | Maps to | Depends on |
-|----|--------|---------|------------|
-| [US-01](US-01-auditable-ledger.md) | Auditable ledger foundation | R2A | — |
-| [US-02](US-02-multi-account-balances.md) | Multi-account balances | R2B | US-01 |
-| [US-03](US-03-categories-transfers-splits.md) | Categories, transfers & splits | R2C | US-01, US-02 |
-| [US-04](US-04-debts-and-loans.md) | Debts & loans | R2D | US-02 |
-| [US-05](US-05-card-emis-and-gst.md) | Card EMIs & GST tracking | R2E | US-01, US-02 |
-| [US-06](US-06-insights-imports-reminders.md) | Insights, imports/exports & reminders | R2F + R2G + R2H | US-02…US-05 |
+| ID | Story | Maps to | Depends on | Status |
+| --- | --- | --- | --- | --- |
+| [US-01](US-01-auditable-ledger.md) | Auditable ledger foundation | R2A | — | Done |
+| [US-02](US-02-multi-account-balances.md) | Multi-account balances | R2B | US-01 | Done |
+| [US-03](US-03-categories-transfers-splits.md) | Categories, transfers & splits | R2C | US-01, US-02 | Done |
+| [US-04](US-04-debts-and-loans.md) | Debts & loans | R2D | US-02 | Done |
+| [US-05](US-05-card-emis-and-gst.md) | Card EMIs & GST tracking | R2E | US-01, US-02 | Done |
+| [US-06](US-06-insights-imports-reminders.md) | Insights, imports/exports & reminders | R2F + R2G + R2H | US-02…US-05 | Done |
 
 ```text
 US-01 ──► US-02 ──► US-03 ──► US-06
@@ -71,3 +80,10 @@ bun run lint
 bun run typecheck
 bun run build
 ```
+
+## Related documentation
+
+- [Release 2 workstreams and exit criteria](../RELEASE-2-TASKS.md)
+- [Release 2 progress](PROGRESS.md)
+- [Main PRD](../2026-07-27-fin-buddy-prd.md)
+- [Active project context](../../CONTEXT.md)

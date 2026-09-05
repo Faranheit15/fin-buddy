@@ -6,8 +6,10 @@
 | **Status** | Active planning |
 | **Created** | 2026-09-03 |
 | **Source** | Live audit of the repository, Vercel deployment, FastAPI endpoint, and Supabase project |
-| **Progress** | [`PROGRESS.md`](PROGRESS.md) |
+| **Progress** | [`PROGRESS.md`](PROGRESS.md) — 1 / 15 stories complete |
 | **Loop contract** | [`RALPH-LOOP-PROMPT.md`](RALPH-LOOP-PROMPT.md) |
+| **Human handoff** | [`../../user-input-needed.md`](../../user-input-needed.md) |
+| **Agent tooling** | [`../../AGENT-TOOLING.md`](../../AGENT-TOOLING.md) |
 
 ## Objective
 
@@ -32,6 +34,25 @@ cycles, friend-attributed spending, settlements, EMIs, and informal debts. The
 work should make those existing capabilities coherent before adding salary,
 investments, Account Aggregators, AI, PWA, or commercial packaging.
 
+## $0 cost contract
+
+The target is `$0 billed cost` for personal, non-commercial, low-volume use
+while the current provider free-tier terms and quotas permit it. This is a
+budget constraint, not an uptime, backup, or billing guarantee. The plan uses
+Vercel Hobby, FastAPI Cloud Hobby, Supabase Free, existing free CI, local
+deterministic tooling, and no paid AI API. It must not introduce paid domains,
+paid plans, paid add-ons, hosted Redis/queues/vector stores, paid monitoring,
+paid email, or a paid model/provider.
+
+Every release gate must record plan labels and approximate database, storage,
+egress, function, and log usage. If a quota approaches a conservative stop
+threshold, disable optional analytics, email, reminders, and the keepalive
+before adding capacity. Free-tier facts were reviewed on 2026-09-05:
+[Supabase Free/project pausing](https://supabase.com/docs/guides/platform/free-project-pausing),
+[Vercel Hobby](https://vercel.com/docs/plans/hobby),
+[Vercel Cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing), and
+[FastAPI Cloud Hobby](https://fastapicloud.com/pricing/).
+
 ## Story map
 
 Sequence is the recommended dependency order, not a priority label. Each row is
@@ -40,7 +61,8 @@ story without starting the next story.
 
 | Sequence | Story | Outcome | Depends on | Status |
 | ---: | --- | --- | --- | --- |
-| 1 | [US-P01 — Production release gate](US-P01-production-release-gate.md) | The public deployment is explicitly production-safe and reproducible. | — | `todo` |
+| 0 | [US-P00 — Shared agent workflow and zero-cost guardrails](US-P00-agent-interoperability-and-cost-guardrails.md) | All three agent surfaces share instructions, safe hooks, human-input tracking, and free-only constraints. | — | `done` |
+| 1 | [US-P01 — Production release gate](US-P01-production-release-gate.md) | The public deployment is explicitly production-safe and reproducible. | US-P00 | `todo` |
 | 2 | [US-P02 — Google OAuth that completes](US-P02-google-oauth.md) | Users can sign in with Google through a secure, tested callback flow. | US-P01 | `todo` |
 | 3 | [US-P03 — Supabase security boundary](US-P03-supabase-security-boundary.md) | Database policies, grants, and security-definer functions are intentional and versioned. | US-P01 | `todo` |
 | 4 | [US-P04 — Tenant authorization and account lifecycle](US-P04-tenant-authorization-lifecycle.md) | Users cannot cross-link organizations or regain access after deletion. | US-P01, US-P03 | `todo` |
@@ -58,7 +80,7 @@ story without starting the next story.
 ## Dependency shape
 
 ```text
-US-P01 ──► US-P02
+US-P00 ──► US-P01 ──► US-P02
    ├─────► US-P03 ──► US-P04 ──► US-P05 ──► US-P08
    │          │                         └────► US-P09
    ├─────► US-P06 ───────────────────────────► US-P12
@@ -102,6 +124,11 @@ cockpit.
 - Do not cache authenticated financial responses at a shared CDN layer.
 - Treat Supabase RLS as defense in depth, but do not add permissive policies
   without testing the service-role API and direct Data API behavior.
+- Treat all free-tier availability and quota claims as conditional. A daily
+  readiness activity probe is best-effort only, and must never insert dummy
+  financial rows or promise that Supabase will never pause.
+- Treat `docs/user-input-needed.md` as the human handoff. Agents may update
+  statuses and evidence, but never store credential values in Git or chat.
 
 ## One-loop operating model
 

@@ -25,6 +25,8 @@ make implementation status easier to scan.
 - [`productionization/README.md`](productionization/README.md) — active user-story plan for production readiness and product polish.
 - [`productionization/PROGRESS.md`](productionization/PROGRESS.md) — current status and one-loop evidence for the active plan.
 - [`productionization/RALPH-LOOP-PROMPT.md`](productionization/RALPH-LOOP-PROMPT.md) — one-story-per-loop execution contract.
+- [`../user-input-needed.md`](../user-input-needed.md) — secure human decisions and credential destinations.
+- [`../AGENT-TOOLING.md`](../AGENT-TOOLING.md) — shared Codex, Claude Code, and Antigravity setup.
 
 ## Reading order
 

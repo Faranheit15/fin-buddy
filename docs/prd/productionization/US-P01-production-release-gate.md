@@ -4,7 +4,7 @@
 | --- | --- |
 | **Status** | `todo` |
 | **Sequence** | 1 |
-| **Depends on** | None |
+| **Depends on** | [US-P00](US-P00-agent-interoperability-and-cost-guardrails.md) |
 | **One-loop objective** | Make the live deployment explicitly production-safe and prove that the release contract works. |
 | **Primary boundaries** | FastAPI Cloud environment, Vercel project settings, Supabase target, Alembic, deployment runbook |
 
@@ -79,6 +79,10 @@ policies, and adding a second paid environment. Those belong to later stories.
   documentation. List every required secret and classify it as backend-only,
   server-only, or public. Confirm that no service-role key is required in
   Vercel.
+- [ ] **US-P01.G5 — Capture the zero-cost baseline.** Confirm the Vercel
+  project is Hobby, FastAPI Cloud is Hobby, Supabase is Free, no paid add-ons
+  or custom domain are enabled, and record approximate database/storage/egress
+  and function usage. Treat all values as time-sensitive provider facts.
 
 ### Plan
 
@@ -96,6 +100,10 @@ policies, and adding a second paid environment. Those belong to later stories.
   if the deployment is unhealthy, migration verification fails, statement
   storage is local, or demo/docs remain exposed. Include the exact URLs and
   expected status/body properties for post-deploy verification.
+- [ ] **US-P01.P4 — Define the budget stop rule.** Set a conservative quota
+  threshold at which optional keepalive, analytics, reminder, email, and other
+  non-essential jobs are disabled. Do not solve quota pressure by upgrading a
+  plan or adding a paid provider.
 
 ### Implement
 

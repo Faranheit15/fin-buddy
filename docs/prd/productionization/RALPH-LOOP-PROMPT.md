@@ -8,9 +8,11 @@ You are implementing Fin Buddy productionization and product polish.
 
 1. Treat the source tree and tests as the primary source of truth. Read the
    root AGENTS.md, docs/CONTEXT.md, docs/GOTCHAS.md, docs/ROUTING.md, this
-   plan's README.md and PROGRESS.md, and the selected story before changing
-   anything. Read frontend/AGENTS.md for frontend work and backend/AGENTS.md
-   for backend work.
+   plan's README.md and PROGRESS.md, docs/user-input-needed.md, and the
+   selected story before changing anything. Read frontend/AGENTS.md for
+   frontend work and backend/AGENTS.md for backend work. Load the
+   `.agents/skills/fin-buddy-production-loop` skill when the client supports
+   project skills.
 
 2. Select the first story in PROGRESS.md whose status is todo or in_progress.
    Work on only that story in this iteration. Do not start another story after
@@ -51,6 +53,11 @@ You are implementing Fin Buddy productionization and product polish.
    the selected story requires them. Do not claim Docker evidence if Docker is
    unavailable.
 
+   Keep the cost contract strict: no paid AI/API calls, paid plans, custom
+   domains, paid integrations, or always-on resources. A Supabase activity
+   probe is optional, once daily at most, bounded, secret-protected, and
+   best-effort; it cannot guarantee that a Free project never pauses.
+
 9. Re-read the selected story's acceptance criteria. If every criterion is
    met, mark only that story done, append the commands and results to its
    evidence section and PROGRESS.md, and commit with a short imperative subject.
@@ -64,7 +71,7 @@ You are implementing Fin Buddy productionization and product polish.
 
 ## Completion promise
 
-When all fourteen stories are `done`, run the full gates again, review
+When all fifteen stories are `done`, run the full gates again, review
 `git diff --check`, verify the live release checklist, update `PROGRESS.md`,
 and output:
 

@@ -6,9 +6,9 @@
 | Field | Value |
 | --- | --- |
 | **Plan** | Productionization & Product Polish |
-| **Status** | Not started — plan created |
-| **Last reviewed** | 2026-09-03 |
-| **Completed stories** | 0 / 14 |
+| **Status** | Active — shared agent workflow complete; application stories queued |
+| **Last reviewed** | 2026-09-05 |
+| **Completed stories** | 1 / 15 |
 | **Current story** | US-P01 — Production release gate |
 | **Loop prompt** | [`RALPH-LOOP-PROMPT.md`](RALPH-LOOP-PROMPT.md) |
 
@@ -16,6 +16,7 @@
 
 | Story | Status | One-loop objective | Evidence |
 | --- | --- | --- | --- |
+| [US-P00](US-P00-agent-interoperability-and-cost-guardrails.md) | `done` | Give Codex, Claude Code, and Antigravity one safe loop, user-input handoff, and cost guardrail. | Native manifests, shared skills, local hook scripts, and docs validated on 2026-09-05. |
 | [US-P01](US-P01-production-release-gate.md) | `todo` | Make the live deployment explicitly production-safe and verify the release gate. | — |
 | [US-P02](US-P02-google-oauth.md) | `todo` | Complete and test the Google OAuth redirect and session flow. | — |
 | [US-P03](US-P03-supabase-security-boundary.md) | `todo` | Reconcile RLS, grants, security-definer helpers, and Auth security settings. | — |
@@ -43,6 +44,12 @@
   by public roles.
 - The live Google provider is disabled, and the application rejects its current
   callback URL before reaching Google.
+- A 2026-09-05 redacted live probe reproduced the OAuth authorization failure:
+  the URL builder responded, but the Supabase authorize request returned HTTP
+  400. No key material was recorded.
+- One 2026-09-05 read-only `/api/v1/health` probe timed out after 15 seconds;
+  treat this as a cold-start/availability observation for US-P01 and US-P07,
+  not as a definitive uptime baseline.
 - Backend checks pass: `uv run pytest -q`, `uv run ruff check .`, and
   `uv run mypy app`.
 - Frontend checks pass: `bun run lint`, `bun run typecheck`, and `bun run build`.
@@ -50,6 +57,9 @@
 - No frontend browser or accessibility test suite exists yet.
 - FastAPI Cloud account-level environment and deployment state still needs
   verification because the local CLI is unauthenticated.
+- The shared agent configuration is present, but native client discovery still
+  needs to be checked locally with Claude `/memory`, `/skills`, `/hooks`, and
+  Antigravity `/skills`, `/hooks`, `/agents`.
 
 ## Blockers requiring a human decision or credential
 
@@ -60,9 +70,11 @@
 | Google OAuth | Create or select the Google Cloud Web OAuth client and enter its credentials in Supabase Auth. |
 | Supabase data target | Confirm that the active project and its current row counts are the intended production database before schema changes. |
 | Household roles | Decide whether every organization member may mutate finance records or whether capabilities need owner/member separation. |
+| Agent client verification | Open Claude Code and Antigravity locally to confirm native discovery; no cloud change is needed. |
 
 ## Iteration log
 
 | Date | Story | Result | Evidence / blocker |
 | --- | --- | --- | --- |
 | 2026-09-03 | Audit baseline | `fixed` | Six read-only specialist reviews completed; no files or cloud resources changed. This plan was created from the combined findings. |
+| 2026-09-05 | US-P00 | `done` | Parallel repository/tooling/cost/input research was reconciled into shared context adapters, skills, native hooks, local safety scripts, `docs/user-input-needed.md`, and a conditional $0 contract. No application code or cloud resources changed. |

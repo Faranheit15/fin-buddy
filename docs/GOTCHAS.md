@@ -12,6 +12,14 @@ framework knowledge. See [`ROUTING.md`](ROUTING.md) for code locations and
 - Service-role keys must NEVER be exposed to the frontend. They are backend-only.
 - Always check the allowed redirect URLs in Supabase if authentication flows fail locally.
 - Statement PDFs: use `STATEMENT_STORAGE_BACKEND=supabase` on FastAPI Cloud. Local disk is ephemeral there.
+- Supabase Free can pause low-activity projects after about a week. A daily
+  protected `/ready` request is only a best-effort activity experiment; it must
+  not write dummy financial data or be described as a no-sleep guarantee.
+
+## Free-tier and agent tooling
+- The $0 target is conditional on current provider terms, quotas, and personal/non-commercial use rules. Never upgrade a plan, attach billing, use paid AI, or add paid infrastructure without explicit owner approval.
+- The three agent surfaces use different hook schemas. Use the native manifests in `.agents/hooks.json` and `.claude/settings.json` around the shared local scripts in `tools/agent-hooks/`; do not copy one vendor's JSON into another.
+- Human decisions and credential destinations live in `user-input-needed.md`. Never record a credential value there or in an agent transcript.
 
 ## Alembic / Postgres enums
 - Extending `transaction_type` with `ALTER TYPE … ADD VALUE` is one-way: downgrade of `20260805_0003` drops ledger columns and `posting_status`, but **cannot** remove `'adjustment'` / `'reversal'` labels from `transaction_type`. Do not recreate that enum to “clean” labels — it is shared with `statement_line_candidates.proposed_type`.

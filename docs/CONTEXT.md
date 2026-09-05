@@ -2,7 +2,7 @@
 
 > **Feature focus:** Productionization and product polish — story plan active
 >
-> **Last recorded:** 2026-09-03 · **Last reviewed:** 2026-09-03
+> **Last recorded:** 2026-09-05 · **Last reviewed:** 2026-09-05
 
 ## Current release state
 
@@ -13,7 +13,9 @@ user stories in the
 [Productionization & Product Polish plan](prd/productionization/README.md).
 The plan covers the current deployment gate, security and reliability work,
 the $0 operating posture, and focused improvements to the daily finance
-workflow and UI.
+workflow and UI. The shared agent workflow and human-input handoff are now in
+place so Codex, Claude Code, and Google Antigravity can continue the same
+one-story loop without putting credentials in the repository.
 
 ## Deferred to Release 3+
 

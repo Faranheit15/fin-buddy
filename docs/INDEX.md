@@ -20,6 +20,8 @@ point, start with [`docs/README.md`](README.md).
 | [`prd/productionization/README.md`](prd/productionization/README.md) | Active productionization and product-polish user-story index. |
 | [`prd/productionization/PROGRESS.md`](prd/productionization/PROGRESS.md) | Active story status and one-loop evidence tracker. |
 | [`prd/productionization/RALPH-LOOP-PROMPT.md`](prd/productionization/RALPH-LOOP-PROMPT.md) | One-story-per-loop implementation prompt. |
+| [`user-input-needed.md`](user-input-needed.md) | Human decisions, credential destinations, and agent-updated blockers; never secret values. |
+| [`AGENT-TOOLING.md`](AGENT-TOOLING.md) | Codex, Claude Code, and Antigravity context, skills, hooks, and free-only guardrails. |
 
 ### Release 2 user stories
 
@@ -36,6 +38,7 @@ point, start with [`docs/README.md`](README.md).
 
 | Story | Scope |
 | --- | --- |
+| [`US-P00`](prd/productionization/US-P00-agent-interoperability-and-cost-guardrails.md) | Shared agent workflow and zero-cost guardrails. |
 | [`US-P01`](prd/productionization/US-P01-production-release-gate.md) | Production release gate. |
 | [`US-P02`](prd/productionization/US-P02-google-oauth.md) | Google OAuth that completes. |
 | [`US-P03`](prd/productionization/US-P03-supabase-security-boundary.md) | Supabase security boundary. |

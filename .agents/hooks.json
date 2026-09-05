@@ -1,0 +1,32 @@
+{
+  "fin-buddy-preflight": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command|write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./tools/agent-hooks/preflight.sh --antigravity",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "fin-buddy-post-task": {
+    "enabled": true,
+    "PostToolUse": [
+      {
+        "matcher": "run_command|write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./tools/agent-hooks/post-task.sh --antigravity",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

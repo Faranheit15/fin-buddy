@@ -13,9 +13,11 @@ guidance when changing code.
 | **Database schema/models** | [`backend/app/models`](../backend/app/models) and [`backend/alembic`](../backend/alembic) |
 | **Backend business logic** | [`backend/app/services`](../backend/app/services) and [`backend/app/domain`](../backend/app/domain) |
 | **Environment configuration** | [`backend/.env.example`](../backend/.env.example) and [`.env.example`](../.env.example) |
-| **Product requirements or release status** | [`prd/README.md`](prd/README.md), [`prd/release-2/PROGRESS.md`](prd/release-2/PROGRESS.md), and [`CONTEXT.md`](CONTEXT.md) |
+| **Product requirements or release status** | [`prd/README.md`](prd/README.md), [`prd/productionization/PROGRESS.md`](prd/productionization/PROGRESS.md), and [`CONTEXT.md`](CONTEXT.md) |
 | **Deployment or release evidence** | [`DEPLOY.md`](DEPLOY.md) and [`reviews/README.md`](reviews/README.md) |
 | **Project-specific traps** | [`GOTCHAS.md`](GOTCHAS.md) |
+| **Human decisions or credentials** | [`user-input-needed.md`](user-input-needed.md) — statuses and destinations only, never secret values |
+| **Agent interoperability and hooks** | [`AGENT-TOOLING.md`](AGENT-TOOLING.md), root `GEMINI.md`, `.agents/skills/`, `.agents/hooks.json`, and `.claude/settings.json` |
 
 ## Boundary reminder
 

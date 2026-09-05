@@ -26,6 +26,8 @@ runbooks without changing the location of any existing document.
 | Inspect Release 2 progress and evidence | [`prd/release-2/PROGRESS.md`](prd/release-2/PROGRESS.md) |
 | Start the active implementation loop | [`prd/productionization/README.md`](prd/productionization/README.md) and [`prd/productionization/RALPH-LOOP-PROMPT.md`](prd/productionization/RALPH-LOOP-PROMPT.md) |
 | Inspect active story progress | [`prd/productionization/PROGRESS.md`](prd/productionization/PROGRESS.md) |
+| Provide a missing decision or credential safely | [`user-input-needed.md`](user-input-needed.md) |
+| Understand Codex, Claude Code, and Antigravity setup | [`AGENT-TOOLING.md`](AGENT-TOOLING.md) |
 | Deploy the current system | [`DEPLOY.md`](DEPLOY.md) |
 | Understand the design language | [`DESIGN.md`](../DESIGN.md) and [`architecture/`](architecture/README.md) |
 
@@ -35,7 +37,7 @@ runbooks without changing the location of any existing document.
 | --- | --- | --- | --- |
 | **Release 1 — MVP** | Shipped | Phases 0–5: foundations, Supabase auth and organizations, cards and billing cycles, contacts and transactions, statement review/import, notifications, settings, and deployment documentation. | [Release 1 index](prd/release-1/README.md) · [Root roadmap](../README.md#phase-roadmap-release-1-baseline) · [PRD v2.0 baseline](prd/2026-07-27-fin-buddy-prd.md#15-acceptance-criteria) |
 | **Release 2** | Implementation complete | Auditable ledger, multi-account balances, categories/transfers/splits, debts and loans, card EMIs/GST, imports/exports, net worth and upcoming items, reminders, privacy, deletion, and share-schema readiness. | [Release 2 index](prd/release-2/README.md) · [Exit criteria](prd/RELEASE-2-TASKS.md#release-2-exit-criteria) · [Readiness review](reviews/2026-08-11-release-readiness.md) |
-| **Productionization & Product Polish** | Active plan | Production-safe deployment, auth, tenant isolation, free-tier reliability, upload correctness, performance, daily dues workflows, mobile accessibility, and release verification. | [Story index](prd/productionization/README.md) · [Progress](prd/productionization/PROGRESS.md) |
+| **Productionization & Product Polish** | Active plan | Shared agent workflow, production-safe deployment, auth, tenant isolation, free-tier reliability, upload correctness, performance, daily dues workflows, mobile accessibility, and release verification. | [Story index](prd/productionization/README.md) · [Progress](prd/productionization/PROGRESS.md) |
 | **Release 3+** | Planned / deferred | PWA work, connected-user debt confirmation, salary/PF/NPS, investments/XIRR, Account Aggregators/Open Banking, AI agents, native apps, SMS/WhatsApp, and commercial packaging. | [`CONTEXT.md`](CONTEXT.md) · [Release 2 out-of-scope list](prd/RELEASE-2-TASKS.md#explicitly-out-of-scope-release-3) |
 
 ## Documentation map
@@ -69,6 +71,8 @@ runbooks without changing the location of any existing document.
 - [`CONTEXT.md`](CONTEXT.md) — the active feature focus and deferred work.
 - [`ROUTING.md`](ROUTING.md) — where to look when changing a part of the system.
 - [`GOTCHAS.md`](GOTCHAS.md) — repository-specific traps, security rules, and retired approaches.
+- [`user-input-needed.md`](user-input-needed.md) — owner decisions and secure input destinations.
+- [`AGENT-TOOLING.md`](AGENT-TOOLING.md) — cross-agent skills, rules, hooks, and free-only guardrails.
 
 ## Source-of-truth order
 

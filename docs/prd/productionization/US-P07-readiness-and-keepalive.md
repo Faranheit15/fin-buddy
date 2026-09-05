@@ -11,7 +11,7 @@
 ## User story
 
 **As** the Fin Buddy owner
-**I want** health checks to distinguish a running API from a usable database and optionally keep the free database active
+**I want** health checks to distinguish a running API from a usable database and optionally perform a bounded free-tier activity probe
 **So that** deployment failures are visible without adding a paid monitoring or always-on service.
 
 ## Why this matters
@@ -44,12 +44,13 @@ warm, user reminders, or paid monitoring.
    ready; database failure/timeout returns HTTP 503 with a safe body.
 3. Health and readiness probes do not create `api_request_logs` rows or expose
    database/provider details.
-4. A protected Vercel Cron route can call `/ready` once daily and reports a
-   failed readiness result without exposing backend internals.
+4. A protected Vercel Cron route can call `/ready` at most once daily and
+   reports a failed readiness result without exposing backend internals.
 5. The probe cannot be invoked as an open relay, cannot carry user credentials,
    and does not write dummy application data.
-6. The documentation clearly states that the probe reduces inactivity risk but
-   cannot guarantee that Supabase Free never pauses or that FastAPI stays warm.
+6. The documentation clearly states that the probe is a best-effort experiment
+   that may reduce inactivity risk but cannot guarantee that Supabase Free never
+   pauses or that FastAPI stays warm.
 7. The feature remains within the selected free-tier quotas and can be disabled
    with one environment/configuration change.
 
@@ -80,8 +81,10 @@ warm, user reminders, or paid monitoring.
   success/failure status. Use a once-daily UTC schedule rather than every few
   seconds or an in-process loop.
 - [ ] **US-P07.P3 — Define cost and disable rules.** Record normal user traffic
-  behavior, probe frequency, function invocation budget, database log policy,
-  and the exact environment flag/schedule change that disables the experiment.
+  behavior, the once-daily Hobby schedule limit, approximate timing, function
+  invocation budget, database log policy, and the exact environment flag or
+  schedule change that disables the experiment. Treat a `SELECT 1` as an
+  inference that may not satisfy Supabase's activity classifier.
 
 ### Implement
 
@@ -92,7 +95,7 @@ warm, user reminders, or paid monitoring.
   internal Cron path from database request logging, or route them to a bounded
   platform log. Ensure errors and latency needed for operations remain visible.
 - [ ] **US-P07.I3 — Add the protected Cron route.** Add the Vercel route and
-  daily schedule. Use server-only `BACKEND_URL`, `CRON_SECRET`, fetch timeout,
+  once-daily schedule. Use server-only `BACKEND_URL`, `CRON_SECRET`, fetch timeout,
   `cache: no-store`, and no user/session cookies. Do not call the reminder POST
   endpoint.
 - [ ] **US-P07.I4 — Document the experiment.** Add setup, disable, expected

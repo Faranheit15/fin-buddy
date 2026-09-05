@@ -26,8 +26,8 @@ validation evidence are in the [release-readiness review](reviews/2026-08-11-rel
 1. Create private Storage bucket named `statements` (or match `STATEMENT_STORAGE_BUCKET`).
 2. No public read policies required — API uses the service role key.
 3. Auth → URL Configuration:
-   - Site URL: `https://<your-app>.vercel.app`
-   - Redirect URLs: `https://<your-app>.vercel.app/auth/callback`
+   - Site URL: `https://fin-buddy-dev.vercel.app`
+   - Redirect URLs: `https://fin-buddy-dev.vercel.app/auth/callback`
 4. Enable Email (+ Google if needed) under Authentication → Providers.
 5. Copy pooler `DATABASE_URL`, project URL, anon key, service role key, JWT secret.
 

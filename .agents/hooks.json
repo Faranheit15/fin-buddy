@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./tools/agent-hooks/preflight.sh --antigravity",
+            "command": "bash -c 'f=\"./tools/agent-hooks/preflight.sh\"; [ -f \"$f\" ] || f=\"/home/faran/Workspace/fin-buddy/tools/agent-hooks/preflight.sh\"; exec \"$f\" --antigravity'",
             "timeout": 5
           }
         ]
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./tools/agent-hooks/post-task.sh --antigravity",
+            "command": "bash -c 'f=\"./tools/agent-hooks/post-task.sh\"; [ -f \"$f\" ] || f=\"/home/faran/Workspace/fin-buddy/tools/agent-hooks/post-task.sh\"; exec \"$f\" --antigravity'",
             "timeout": 5
           }
         ]

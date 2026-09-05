@@ -89,12 +89,14 @@ def create_app() -> FastAPI:
 
     @application.get("/", include_in_schema=False)
     async def root() -> dict[str, str]:
-        return {
+        payload: dict[str, str] = {
             "name": settings.app_name,
             "version": __version__,
-            "docs": "/docs",
             "health": f"{settings.api_v1_prefix}/health",
         }
+        if not settings.is_production:
+            payload["docs"] = "/docs"
+        return payload
 
     return application
 

@@ -21,4 +21,6 @@ def test_ready_ok(client: TestClient) -> None:
 def test_root(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
-    assert "health" in response.json()
+    data = response.json()
+    assert "health" in data
+    assert data.get("docs") == "/docs"

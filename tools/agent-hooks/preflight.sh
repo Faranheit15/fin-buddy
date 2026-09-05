@@ -9,6 +9,8 @@ root="${CLAUDE_PROJECT_DIR:-${PWD}}"
 
 if git_root="$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)"; then
   root="$git_root"
+elif git_root="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null)"; then
+  root="$git_root"
 fi
 
 hook_input=""

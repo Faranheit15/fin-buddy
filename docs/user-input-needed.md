@@ -26,15 +26,19 @@ human input, add a row with a stable ID rather than burying it in a story note.
 
 | ID | Input or decision | Status | Where the owner provides it | What the agent records |
 | --- | --- | --- | --- | --- |
-| `UI-01` | Release surface: production or staging | `needed` | State the decision in the next task message and then record the chosen hostname in the `Notes` column here. | Chosen surface and date; no secret. |
+| `UI-01` | Release surface: production or staging | `provided` | State the decision in the next task message and then record the chosen hostname in the `Notes` column here. | 2026-09-05: Confirmed `https://fin-buddy-dev.vercel.app` is the production surface. |
 | `UI-02` | Google OAuth Web client | `needed` | Follow the exact Google OAuth steps below. The client ID and client secret go into Supabase Auth, not this repo. | Provider enabled/disabled, client label, redirect test result, and date. |
-| `UI-03` | Intended Supabase project/data target | `needed` | Confirm the project name/ref in Supabase Dashboard before any migration or policy change. | Project ref, environment label, row-count/migration evidence; never keys. |
-| `UI-04` | FastAPI Cloud access and free-plan confirmation | `needed` | Log in through the FastAPI Cloud CLI or dashboard on the owner’s machine. Do not paste the token. | App name, plan label, deployment/environment identifiers, and date. |
-| `UI-05` | Vercel project access and Hobby-plan confirmation | `needed` | Log in through Vercel CLI/dashboard on the owner’s machine. Do not paste a token. | Project name, team type, plan label, and quota snapshot. |
+| `UI-03` | Intended Supabase project/data target | `provided` | Confirm the project name/ref in Supabase Dashboard before any migration or policy change. | 2026-09-05: Confirmed target `https://jklurueadteccrdycyiz.supabase.co` (`jklurueadteccrdycyiz`). |
+| `UI-04` | FastAPI Cloud access and free-plan confirmation | `provided` | Log in through the FastAPI Cloud CLI or dashboard on the owner’s machine. Do not paste the token. | 2026-09-05: Authenticated CLI (`ffaranm15@gmail.com`), linked app `fin-buddy` (`db8c5e53-0f3a-4315-8b14-ee86b13ca2df`). |
+| `UI-05` | Vercel project access and Hobby-plan confirmation | `provided` | Log in through Vercel CLI/dashboard on the owner’s machine. Do not paste a token. | 2026-09-05: Authenticated CLI (`faranheit15`), project `fin-buddy` confirmed Hobby tier. |
 | `UI-06` | Household mutation policy | `needed` | Choose in the task message: all organization members may mutate, or owner/member capabilities are required. | Decision and affected stories; no personal financial data. |
-| `UI-07` | Keepalive experiment approval | `needed` | Confirm whether one protected daily Vercel Cron probe may be enabled. | Enabled/disabled decision, route, schedule, and quota caveat. |
+| `UI-07` | Keepalive experiment approval | `provided` | Confirm whether one protected daily Vercel Cron probe may be enabled. | 2026-09-05: Approved by owner. Daily probe `/api/v1/ready` authorized. |
 | `UI-08` | Custom domain | `not applicable` | Keep the free Vercel and FastAPI Cloud hostnames unless the owner explicitly accepts domain cost. | Domain decision only. |
 | `UI-09` | Disposable browser test identity | `needed` | Use a test Google account or local synthetic account in the owner’s password manager/local secret store; do not paste credentials. | Test identity label and browser result only. |
+| `UI-10` | Rotate `DATABASE_URL` | `provided` | Reset DB password in Supabase: Project Settings → Database. Set new secret in FastAPI Cloud via `fastapi cloud env set --secret DATABASE_URL ...`. Do not paste into chat. | 2026-09-05: Owner confirmed Supabase password rotation. Stale plain-text variable deleted from FastAPI Cloud; awaiting `fastapi cloud env set --secret`. |
+| `UI-11` | Rotate `SUPABASE_JWT_SECRET` | `provided` | Generate new JWT secret in Supabase: Project Settings → API → JWT Settings. Set in FastAPI Cloud via `fastapi cloud env set --secret SUPABASE_JWT_SECRET ...`. | 2026-09-05: Owner confirmed Supabase JWT secret generation. Stale plain-text variable deleted from FastAPI Cloud; awaiting `fastapi cloud env set --secret`. |
+| `UI-12` | Rotate `SUPABASE_SERVICE_ROLE_KEY` | `provided` | Roll service_role key in Supabase: Project Settings → API. Set in FastAPI Cloud via `fastapi cloud env set --secret SUPABASE_SERVICE_ROLE_KEY ...`. | 2026-09-05: Owner confirmed Supabase service_role key rolled. Stale plain-text variable deleted from FastAPI Cloud; awaiting `fastapi cloud env set --secret`. |
+| `UI-13` | Confirm replacement secrets in FastAPI Cloud | `needed` | Stale non-secret variables deleted from cloud to resolve CLI/UI duplicate name collision. Run `fastapi cloud env set --secret` for each variable; agent verifies presence before deploy. | Deployment locked until `is_secret: true` verified for all 3 credentials. |
 
 ## Google OAuth — exact setup
 
@@ -157,9 +161,47 @@ scales to zero. A daily `/ready` probe is an optional, bounded, best-effort
 activity experiment. It must not write dummy financial data and it cannot
 guarantee that Supabase stays active.
 
+## Compromised credential rotation instructions (UI-10, UI-11, UI-12, UI-13)
+
+Per security incident procedure, `DATABASE_URL`, `SUPABASE_JWT_SECRET`, and `SUPABASE_SERVICE_ROLE_KEY` are treated as compromised. No new deployment will be triggered until the replacement secrets are confirmed in FastAPI Cloud.
+
+Never print, inspect, or paste these secrets into chat, Git, or agent context.
+
+### 1. Rotate Database Password (UI-10)
+1. Open Supabase Dashboard: `https://supabase.com/dashboard/project/jklurueadteccrdycyiz/settings/database`.
+2. Scroll to **Database password** and click **Reset database password**. Generate a secure random password and save.
+3. In **Connection string**, select **URI** and copy the pooler connection string with the new password.
+4. Set the new connection URI in FastAPI Cloud:
+   ```bash
+   fastapi cloud env set --secret DATABASE_URL "<NEW_POSTGRES_POOLER_URI>"
+   ```
+
+### 2. Rotate JWT Secret (UI-11)
+1. Open Supabase Dashboard: `https://supabase.com/dashboard/project/jklurueadteccrdycyiz/settings/api`.
+2. Under **JWT Settings**, locate **JWT Secret** and click **Generate a new secret** (32+ character high-entropy secret).
+   *Note: This will invalidate all existing sessions and issued access tokens.*
+3. Set the new secret in FastAPI Cloud:
+   ```bash
+   fastapi cloud env set --secret SUPABASE_JWT_SECRET "<NEW_JWT_SECRET>"
+   ```
+
+### 3. Rotate Service Role Key (UI-12)
+1. Open Supabase Dashboard: `https://supabase.com/dashboard/project/jklurueadteccrdycyiz/settings/api`.
+2. Under **Project API keys**, locate the `service_role` key and roll/regenerate the key.
+3. Set the new key in FastAPI Cloud:
+   ```bash
+   fastapi cloud env set --secret SUPABASE_SERVICE_ROLE_KEY "<NEW_SERVICE_ROLE_KEY>"
+   ```
+
+### 4. Confirm Replacement Secrets (UI-13)
+* Inform the agent once all three secrets have been rotated in Supabase and set in FastAPI Cloud. The agent will verify metadata presence (`has_value: true`, `is_secret: true`) without printing values before clearing deployment.
+
 ## Agent update log
 
 | Date | Agent/task | Change | Evidence or blocker |
 | --- | --- | --- | --- |
 | 2026-09-05 | Productionization planning | Created this handoff and documented the current Google OAuth blocker. | Provider credentials and deployment-plan confirmations are still needed. |
 | 2026-09-05 | Read-only live OAuth probe | Rechecked the deployed Google authorization path without exposing the returned public key material. | OAuth URL builder returned successfully; the Supabase authorize request returned HTTP 400. Confirm the Google provider status and exact callback in Supabase before US-P02. |
+| 2026-09-05 | US-P01 Production release gate | Owner confirmed UI-01 (prod URL), UI-03 (Supabase project), UI-04 (FastAPI Cloud login), UI-05 (Vercel login), and UI-07 (Keepalive probe). FastAPI Cloud env set to production matrix (`ENVIRONMENT=production`, `DEBUG=false`, etc.). Code fail-closed guards and unit tests implemented. | Remote FastAPI Cloud image build failed during `fastapi deploy` with `Installing Python interpreter (os error 2)` (deployment `8b4d5e61-5e7e-45b4-8248-c5c3e8d4f3d4`). Story left in_progress awaiting cloud deploy fix. |
+| 2026-09-05 | US-P01 Security remediation | DATABASE_URL, SUPABASE_JWT_SECRET, and SUPABASE_SERVICE_ROLE_KEY treated as compromised. Added UI-10 through UI-13 for owner rotation. Deployment locked until confirmed. | Required rotation actions documented. No secrets printed or inspected. |
+| 2026-09-05 | US-P01 Secret verification | Safe CLI check revealed FastAPI Cloud rejects `env set --secret` when variable already exists. Deleted the 3 stale non-secret variables from cloud to clear collision. Awaiting `fastapi cloud env set --secret` from owner. | `is_secret: true` verification pending. |

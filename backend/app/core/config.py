@@ -134,6 +134,38 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def validate_production_invariants(self) -> Settings:
+        if self.is_production:
+            if self.debug:
+                raise ValueError("Production mode requires DEBUG=false")
+            if self.demo_auth_enabled is True:
+                raise ValueError("Production mode requires DEMO_AUTH_ENABLED=false")
+            if self.auto_migrate:
+                raise ValueError(
+                    "Production mode requires AUTO_MIGRATE=false (run migrations via explicit release gate)"
+                )
+            if self.auto_seed:
+                raise ValueError("Production mode requires AUTO_SEED=false")
+            if self.statement_storage_backend != "supabase":
+                raise ValueError("Production mode requires STATEMENT_STORAGE_BACKEND=supabase")
+            if not self.statement_storage_bucket:
+                raise ValueError("Production mode requires STATEMENT_STORAGE_BUCKET to be configured")
+            if not self.database_url:
+                raise ValueError("Production mode requires DATABASE_URL to be set")
+            if not self.supabase_url:
+                raise ValueError("Production mode requires SUPABASE_URL to be set")
+            if not self.supabase_service_role_key:
+                raise ValueError("Production mode requires SUPABASE_SERVICE_ROLE_KEY to be set")
+            if not self.supabase_jwt_secret:
+                raise ValueError("Production mode requires SUPABASE_JWT_SECRET to be set")
+            if (
+                self.supabase_jwt_secret == "fin-buddy-demo-dev-secret-change-me"
+                or len(self.supabase_jwt_secret.strip()) < 16
+            ):
+                raise ValueError("Production mode requires a strong, non-default SUPABASE_JWT_SECRET")
+        return self
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
@@ -148,9 +180,9 @@ class Settings(BaseSettings):
 
     @property
     def demo_login_allowed(self) -> bool:
-        """Demo auth: on in development/test by default; off in production unless DEMO_AUTH_ENABLED=true."""
+        """Demo auth: on in development/test by default; strictly disabled in production."""
         if self.is_production:
-            return self.demo_auth_enabled is True
+            return False
         return self.demo_auth_enabled is not False
 
     @property

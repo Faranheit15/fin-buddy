@@ -11,6 +11,7 @@ import httpx
 from app.core.config import Settings, get_settings
 from app.core.exceptions import AppError
 from app.core.logging import get_logger
+from app.core.security import is_opaque_supabase_key
 
 logger = get_logger(__name__)
 
@@ -78,10 +79,10 @@ def _supabase_headers(settings: Settings) -> dict[str, str]:
             code="storage_not_configured",
             status_code=503,
         )
-    return {
-        "apikey": key,
-        "Authorization": f"Bearer {key}",
-    }
+    headers = {"apikey": key}
+    if not is_opaque_supabase_key(key):
+        headers["Authorization"] = f"Bearer {key}"
+    return headers
 
 
 async def save_bytes(

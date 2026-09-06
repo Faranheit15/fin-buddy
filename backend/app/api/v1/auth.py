@@ -391,9 +391,10 @@ async def google_oauth(
     await _auth_rate_limit(request)
     url = auth_service.google_oauth_url(settings, redirect_to=redirect_to)
     # Append apikey is handled by Supabase hosted authorize page
-    if settings.supabase_anon_key:
+    client_key = settings.effective_supabase_publishable_key
+    if client_key:
         sep = "&" if "?" in url else "?"
-        url = f"{url}{sep}apikey={settings.supabase_anon_key}"
+        url = f"{url}{sep}apikey={client_key}"
     return GoogleOAuthResponse(url=url)
 
 

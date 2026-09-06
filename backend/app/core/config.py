@@ -81,10 +81,15 @@ class Settings(BaseSettings):
 
     # Supabase Auth
     supabase_url: str | None = None
+    # Modern publishable API key (sb_publishable_...)
+    supabase_publishable_key: str | None = None
+    # Compatibility alias: legacy anon key (supports legacy anon JWT or alias for publishable key)
     supabase_anon_key: str | None = None
     supabase_service_role_key: str | None = None
-    # JWT secret from Project Settings → API → JWT Secret
+    # JWT secret from Project Settings → API → JWT Secret (used only in hybrid/HS256 mode)
     supabase_jwt_secret: str | None = None
+    # JWT verification mode: "hybrid" (dev/test default) or "jwks_only" (required in prod)
+    jwt_verification_mode: Literal["jwks_only", "hybrid"] = "hybrid"
     supabase_jwt_audience: str = "authenticated"
     supabase_jwt_issuer: str | None = None  # defaults to {supabase_url}/auth/v1
 
@@ -135,8 +140,19 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def reconcile_supabase_client_keys(self) -> Settings:
+        # Guarantee bidirectional compatibility between modern SUPABASE_PUBLISHABLE_KEY and legacy SUPABASE_ANON_KEY
+        if self.supabase_publishable_key and not self.supabase_anon_key:
+            object.__setattr__(self, "supabase_anon_key", self.supabase_publishable_key)
+        elif self.supabase_anon_key and not self.supabase_publishable_key:
+            object.__setattr__(self, "supabase_publishable_key", self.supabase_anon_key)
+        return self
+
+    @model_validator(mode="after")
     def validate_production_invariants(self) -> Settings:
         if self.is_production:
+            if self.jwt_verification_mode != "jwks_only":
+                raise ValueError("Production mode requires jwt_verification_mode='jwks_only'")
             if self.debug:
                 raise ValueError("Production mode requires DEBUG=false")
             if self.demo_auth_enabled is True:
@@ -155,20 +171,39 @@ class Settings(BaseSettings):
                 raise ValueError("Production mode requires DATABASE_URL to be set")
             if not self.supabase_url:
                 raise ValueError("Production mode requires SUPABASE_URL to be set")
+            if not (self.supabase_publishable_key or self.supabase_anon_key):
+                raise ValueError(
+                    "Production mode requires SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY compatibility alias) to be set"
+                )
             if not self.supabase_service_role_key:
                 raise ValueError("Production mode requires SUPABASE_SERVICE_ROLE_KEY to be set")
-            if not self.supabase_jwt_secret:
-                raise ValueError("Production mode requires SUPABASE_JWT_SECRET to be set")
-            if (
+            if self.supabase_jwt_secret and (
                 self.supabase_jwt_secret == "fin-buddy-demo-dev-secret-change-me"
                 or len(self.supabase_jwt_secret.strip()) < 16
             ):
-                raise ValueError("Production mode requires a strong, non-default SUPABASE_JWT_SECRET")
+                raise ValueError(
+                    "Production mode requires a strong, non-default SUPABASE_JWT_SECRET if configured"
+                )
         return self
+
+    @property
+    def supabase_jwks_url(self) -> str | None:
+        if self.supabase_url:
+            return f"{self.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        return None
+
+    @property
+    def effective_supabase_publishable_key(self) -> str | None:
+        """Return SUPABASE_PUBLISHABLE_KEY if set, falling back to legacy SUPABASE_ANON_KEY alias."""
+        return self.supabase_publishable_key or self.supabase_anon_key
 
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def is_development(self) -> bool:
+        return self.environment == "development"
 
     @property
     def is_test(self) -> bool:
@@ -176,7 +211,10 @@ class Settings(BaseSettings):
 
     @property
     def auth_configured(self) -> bool:
-        return bool(self.supabase_url and self.supabase_jwt_secret and self.supabase_anon_key)
+        client_key = self.effective_supabase_publishable_key
+        if self.jwt_verification_mode == "jwks_only":
+            return bool(self.supabase_url and client_key)
+        return bool(self.supabase_url and self.supabase_jwt_secret and client_key)
 
     @property
     def demo_login_allowed(self) -> bool:

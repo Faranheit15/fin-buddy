@@ -182,57 +182,76 @@ browser variables, or story notes.
    - `UI-07`: Approved single daily Vercel Cron keepalive probe (`/api/v1/ready`).
 
 2. **Code-Level Fail-Closed Guards Implemented (US-P01.I1):**
-   - Added `validate_production_invariants` to [`backend/app/core/config.py`](../../../backend/app/core/config.py):
-     - Enforces `DEBUG=false` in production.
-     - Enforces `DEMO_AUTH_ENABLED=false` in production (rejects demo auth).
-     - Enforces `AUTO_MIGRATE=false` in production (migrations must be run through release gate).
-     - Enforces `AUTO_SEED=false` in production.
-     - Enforces `STATEMENT_STORAGE_BACKEND=supabase` and valid `STATEMENT_STORAGE_BUCKET`.
-     - Enforces presence of `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and a strong non-default `SUPABASE_JWT_SECRET`.
-   - Updated root endpoint in [`backend/app/main.py`](../../../backend/app/main.py) to omit `"docs"` in production.
+    - Added `validate_production_invariants` to [`backend/app/core/config.py`](../../../backend/app/core/config.py):
+      - Enforces `DEBUG=false` in production.
+      - Enforces `DEMO_AUTH_ENABLED=false` in production (rejects demo auth).
+      - Enforces `AUTO_MIGRATE=false` in production (migrations must be run through release gate).
+      - Enforces `AUTO_SEED=false` in production.
+      - Enforces `STATEMENT_STORAGE_BACKEND=supabase` and valid `STATEMENT_STORAGE_BUCKET`.
+      - Enforces `JWT_VERIFICATION_MODE=jwks_only` in production (strictly isolates ES256 verification via Supabase JWKS).
+      - Enforces presence of `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (or `SUPABASE_ANON_KEY` compatibility alias), and `SUPABASE_SERVICE_ROLE_KEY`. `SUPABASE_JWT_SECRET` is optional in production; if configured, it must be strong and non-default.
+    - Updated root endpoint in [`backend/app/main.py`](../../../backend/app/main.py) to omit `"docs"` in production.
 
 3. **Automated Testing & Local Quality Gates (US-P01.T1, US-P01.T2):**
-   - Added comprehensive fail-closed unit tests to [`backend/tests/test_config.py`](../../../backend/tests/test_config.py) and [`backend/tests/test_health.py`](../../../backend/tests/test_health.py).
-   - Backend checks: `uv run pytest -q` passed (137 passed in 1.24s).
-   - Code standards: `uv run ruff check .` passed (all checks clean).
-   - Typing: `uv run mypy app` passed (success across 96 source files).
-   - Frontend checks: `bun run lint`, `bun run typecheck`, and `bun run build` passed with zero errors.
-   - Docker config: `docker compose config --quiet` passed with exit code 0.
+    - Added comprehensive fail-closed unit tests to [`backend/tests/test_config.py`](../../../backend/tests/test_config.py) and [`backend/tests/test_health.py`](../../../backend/tests/test_health.py).
+    - Backend checks: `uv run pytest -q` passed (151 passed).
+    - Code standards: `uv run ruff check .` passed (all checks clean).
+    - Typing: `uv run mypy app` passed (success across 96 source files).
+    - Frontend checks: `bun run lint`, `bun run typecheck`, and `bun run build` passed with zero errors.
+    - Docker config: `docker compose config --quiet` passed with exit code 0.
 
 4. **FastAPI Cloud Environment Contract Applied (US-P01.I2):**
-   - Configured production matrix variables for app `db8c5e53-0f3a-4315-8b14-ee86b13ca2df`:
-     - `ENVIRONMENT=production`
-     - `DEBUG=false`
-     - `DEMO_AUTH_ENABLED=false`
-     - `AUTO_MIGRATE=false`
-     - `AUTO_SEED=false`
-     - `CORS_ORIGINS=https://fin-buddy-dev.vercel.app`
-     - `FRONTEND_APP_URL=https://fin-buddy-dev.vercel.app`
-     - `STATEMENT_STORAGE_BACKEND=supabase`
-     - `STATEMENT_STORAGE_BUCKET=statements`
+    - Configured production matrix variables for app `db8c5e53-0f3a-4315-8b14-ee86b13ca2df`:
+      - `ENVIRONMENT=production`
+      - `DEBUG=false`
+      - `DEMO_AUTH_ENABLED=false`
+      - `AUTO_MIGRATE=false`
+      - `AUTO_SEED=false`
+      - `CORS_ORIGINS=https://fin-buddy-dev.vercel.app`
+      - `FRONTEND_APP_URL=https://fin-buddy-dev.vercel.app`
+      - `STATEMENT_STORAGE_BACKEND=supabase`
+      - `STATEMENT_STORAGE_BUCKET=statements`
+      - `JWT_VERIFICATION_MODE=jwks_only`
 
 5. **FastAPI Cloud Build Failure Root Cause Diagnosis:**
-   - **Configuration Inspection:**
-     - `pyproject.toml` specifies `requires-python = "==3.12.*"`, which is fully compliant with FastAPI Cloud's official documentation and Astral `uv` standards.
-     - `uv.lock` is current (82 packages, Python 3.12 locked).
-     - Local Dockerfile and docker compose configs are healthy and passing.
-     - FastAPI Cloud app `db8c5e53-0f3a-4315-8b14-ee86b13ca2df` has application setting `directory = "backend"`.
-   - **Root Cause Identified:**
-     - The successful cloud deployments (`457b9530`, `d2f58b76`, `b57cb1b6`) were automated **GitHub Push Deployments** triggered via FastAPI Cloud's GitHub integration. In those builds, FastAPI Cloud clones the entire repository root into `/app`, and navigates into `/app/backend` per the `directory = "backend"` setting.
-     - When running `fastapi deploy` manually from inside `backend/`, the CLI archives only the contents of `backend/` at the root of the tarball (without the `backend/` folder prefix). When unpacked into `/app`, there is no `backend` subdirectory.
-     - FastAPI Cloud's builder invokes `uv python install --directory backend 3.12` (or sets workdir to `/app/backend`). Because `/app/backend` does not exist, `uv` fails immediately with `error: No such file or directory (os error 2)`.
-   - **Remediation Options:**
-     - Option A (Recommended): Commit and push the code changes to GitHub `origin/develop`, allowing FastAPI Cloud's connected GitHub integration to clone the full repository and build from `backend/` as it successfully did previously.
-     - Option B: If deploying via CLI, update the app directory setting on FastAPI Cloud (`fastapi cloud apps update --directory ""`) or deploy from the root workspace with an archive containing `backend/`.
+    - **Configuration Inspection:**
+      - `pyproject.toml` specifies `requires-python = "==3.12.*"`, which is fully compliant with FastAPI Cloud's official documentation and Astral `uv` standards.
+      - `uv.lock` is current (82 packages, Python 3.12 locked).
+      - Local Dockerfile and docker compose configs are healthy and passing.
+      - FastAPI Cloud app `db8c5e53-0f3a-4315-8b14-ee86b13ca2df` has application setting `directory = "backend"`.
+    - **Root Cause Identified:**
+      - The successful cloud deployments (`457b9530`, `d2f58b76`, `b57cb1b6`) were automated **GitHub Push Deployments** triggered via FastAPI Cloud's GitHub integration. In those builds, FastAPI Cloud clones the entire repository root into `/app`, and navigates into `/app/backend` per the `directory = "backend"` setting.
+      - When running `fastapi deploy` manually from inside `backend/`, the CLI archives only the contents of `backend/` at the root of the tarball (without the `backend/` folder prefix). When unpacked into `/app`, there is no `backend` subdirectory.
+      - FastAPI Cloud's builder invokes `uv python install --directory backend 3.12` (or sets workdir to `/app/backend`). Because `/app/backend` does not exist, `uv` fails immediately with `error: No such file or directory (os error 2)`.
+    - **Remediation Options:**
+      - Option A (Recommended): Commit and push the code changes to GitHub `origin/develop`, allowing FastAPI Cloud's connected GitHub integration to clone the full repository and build from `backend/` as it successfully did previously.
+      - Option B: If deploying via CLI, update the app directory setting on FastAPI Cloud (`fastapi cloud apps update --directory ""`) or deploy from the root workspace with an archive containing `backend/`.
 
 6. **Security Blocker & Rotation Lock (UI-10 .. UI-13):**
-   - In accordance with security protocol, `DATABASE_URL`, `SUPABASE_JWT_SECRET`, and `SUPABASE_SERVICE_ROLE_KEY` are treated as compromised.
-   - Owner rotation instructions have been added to [`docs/user-input-needed.md`](../../user-input-needed.md) (UI-10, UI-11, UI-12, UI-13).
-   - Story remains `in_progress` pending owner rotation and deployment clearance.
+    - In accordance with security protocol, `DATABASE_URL`, `SUPABASE_JWT_SECRET`, and `SUPABASE_SERVICE_ROLE_KEY` are treated as compromised.
+    - Owner rotation instructions have been added to [`docs/user-input-needed.md`](../../user-input-needed.md) (UI-10, UI-11, UI-12, UI-13).
+    - Story remains `in_progress` pending owner rotation and deployment clearance.
 
 7. **FastAPI Cloud Secret Verification & Collision Remediation:**
-   - Owner reported UI-10..UI-13 complete with Option A approved.
-   - Observable verification (`fastapi cloud env list --app-id db8c5e53-0f3a-4315-8b14-ee86b13ca2df --json`) revealed zero secret variables (`is_secret: true` count was 0) and the 3 variables still had old timestamps from August 2026.
-   - Diagnosed CLI behavior: FastAPI Cloud returns `✗ An environment variable with the provided name already exists` when attempting `env set --secret` on a pre-existing plain variable.
-   - Executed safe deletion of the 3 stale plain-text variables from FastAPI Cloud to clear name collision.
-   - Awaiting owner setting the replacement secrets via `uv run fastapi cloud env set --secret`. Once metadata confirms presence, push to `origin/develop` will proceed immediately.
+    - Owner reported UI-10..UI-13 complete with Option A approved.
+    - Observable verification (`fastapi cloud env list --app-id db8c5e53-0f3a-4315-8b14-ee86b13ca2df --json`) revealed zero secret variables (`is_secret: true` count was 0) and the 3 variables still had old timestamps from August 2026.
+    - Diagnosed CLI behavior: FastAPI Cloud returns `✗ An environment variable with the provided name already exists` when attempting `env set --secret` on a pre-existing plain variable.
+    - Executed safe deletion of the 3 stale plain-text variables from FastAPI Cloud to clear name collision.
+    - Awaiting owner setting the replacement secrets via `printf '%s' "<SECRET>" | uv run fastapi cloud env set <NAME> --value-stdin --secret --path .`. Once metadata confirms presence, push to `origin/develop` will proceed immediately.
+
+8. **JWKS/ES256 Verification & Opaque Key Modernization:**
+    - **Algorithm Isolation:**
+      - In production (`jwt_verification_mode="jwks_only"`), incoming tokens are verified strictly against the Supabase JWKS endpoint (`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`) with algorithm `ES256`.
+      - Legacy `HS256` tokens are strictly rejected in production. `hybrid` verification mode is allowed only for local development/test/demo environments.
+      - Hermetic tests in `backend/tests/test_security_boundaries.py` verify ES256 signature, expired tokens, wrong audience, wrong issuer, unknown `kid`, algorithm confusion (`HS256` with public key), and unsupported algorithms (`none`, etc.).
+    - **Opaque Key Compatibility:**
+      - Official Supabase API keys with documented prefixes `sb_publishable_` and `sb_secret_` are recognized as opaque keys (with `sbp_` and `sbs_` supported as compatibility-only aliases) via `is_opaque_supabase_key()`.
+      - Updated `SupabaseAuthClient._headers()` and `storage._supabase_headers()` to send opaque keys exclusively via the `apikey` header, omitting `Authorization: Bearer <key>`. `Authorization: Bearer` is reserved exclusively for user session access tokens.
+      - Hermetic unit tests added in `backend/tests/test_storage.py` and `backend/tests/test_supabase_auth.py`.
+    - **Frontend & Backend Contract:**
+      - Modernized frontend and backend contracts to support `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`, with `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_ANON_KEY` retained as documented compatibility aliases.
+      - Updated `backend/docker-entrypoint.sh` so `SUPABASE_JWT_SECRET` is required only for hybrid/HS256 mode.
+    - **Safe Integration-Verification Instructions:**
+      - Auth probe: `curl -s -o /dev/null -w "%{http_code}\n" -H "apikey: $PUBLISHABLE_OR_ANON_KEY" "$SUPABASE_URL/auth/v1/settings"` (expects `200 OK`).
+      - JWKS probe: `curl -s "$SUPABASE_URL/auth/v1/.well-known/jwks.json" | jq .keys[0].kty` (expects `"EC"` for ES256).
+      - Storage probe: `curl -s -o /dev/null -w "%{http_code}\n" -H "apikey: $SECRET_OR_SERVICE_KEY" "$SUPABASE_URL/storage/v1/bucket"` (expects `200 OK`).

@@ -49,23 +49,30 @@ fastapi deploy
 Set env (use `--secret` for secrets):
 
 ```bash
-fastapi cloud env set ENVIRONMENT production
-fastapi cloud env set DEBUG false
+# Non-secret environment variables (run from backend/ directory)
+uv run fastapi cloud env set ENVIRONMENT production --path .
+uv run fastapi cloud env set DEBUG false --path .
 # Run Alembic as a one-off release step; never let every application replica
 # compete to migrate during startup.
-fastapi cloud env set AUTO_MIGRATE false
-fastapi cloud env set AUTO_SEED false
-fastapi cloud env set DEMO_AUTH_ENABLED false
-fastapi cloud env set STATEMENT_STORAGE_BACKEND supabase
-fastapi cloud env set STATEMENT_STORAGE_BUCKET statements
-fastapi cloud env set CORS_ORIGINS ""
-fastapi cloud env set PLATFORM_ADMIN_EMAILS "you@example.com"
-fastapi cloud env set --secret JOB_RUNNER_SECRET "generate-a-long-random-value"
-fastapi cloud env set --secret DATABASE_URL "postgresql://..."
-fastapi cloud env set --secret SUPABASE_URL "https://....supabase.co"
-fastapi cloud env set --secret SUPABASE_ANON_KEY "..."
-fastapi cloud env set --secret SUPABASE_SERVICE_ROLE_KEY "..."
-fastapi cloud env set --secret SUPABASE_JWT_SECRET "..."
+uv run fastapi cloud env set AUTO_MIGRATE false --path .
+uv run fastapi cloud env set AUTO_SEED false --path .
+uv run fastapi cloud env set DEMO_AUTH_ENABLED false --path .
+uv run fastapi cloud env set STATEMENT_STORAGE_BACKEND supabase --path .
+uv run fastapi cloud env set STATEMENT_STORAGE_BUCKET statements --path .
+uv run fastapi cloud env set CORS_ORIGINS "" --path .
+uv run fastapi cloud env set PLATFORM_ADMIN_EMAILS "you@example.com" --path .
+uv run fastapi cloud env set JWT_VERIFICATION_MODE jwks_only --path .
+uv run fastapi cloud env set SUPABASE_URL "https://<project-ref>.supabase.co" --path .
+
+# Secret variables (use --value-stdin --secret --path . to prevent secrets from appearing in shell history)
+printf '%s' "<JOB_RUNNER_SECRET>" | uv run fastapi cloud env set JOB_RUNNER_SECRET --value-stdin --secret --path .
+printf '%s' "<DATABASE_POOLER_URI>" | uv run fastapi cloud env set DATABASE_URL --value-stdin --secret --path .
+printf '%s' "<SUPABASE_PUBLISHABLE_KEY>" | uv run fastapi cloud env set SUPABASE_PUBLISHABLE_KEY --value-stdin --secret --path .
+printf '%s' "<SUPABASE_SERVICE_ROLE_KEY>" | uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --path .
+
+# SUPABASE_JWT_SECRET is optional in production when JWT_VERIFICATION_MODE=jwks_only.
+# If configured for hybrid/HS256 local compatibility:
+printf '%s' "<SUPABASE_JWT_SECRET>" | uv run fastapi cloud env set SUPABASE_JWT_SECRET --value-stdin --secret --path .
 ```
 
 Run the migration exactly once against the target Supabase database before scaling or serving API traffic:

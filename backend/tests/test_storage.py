@@ -36,3 +36,25 @@ def test_statement_relative_path_shape() -> None:
     stmt = uuid4()
     path = storage.statement_relative_path(org, stmt, "pdf")
     assert path == f"{org}/{stmt}.pdf"
+
+
+def test_supabase_headers_opaque_secret_key() -> None:
+    settings = Settings(
+        supabase_url="https://test.supabase.co",
+        supabase_service_role_key="sb_secret_abcdef1234567890",
+    )
+    headers = storage._supabase_headers(settings)
+    assert headers["apikey"] == "sb_secret_abcdef1234567890"
+    # Opaque keys must NEVER be sent as Authorization: Bearer
+    assert "Authorization" not in headers
+
+
+def test_supabase_headers_legacy_jwt_key() -> None:
+    legacy_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.fake_signature"
+    settings = Settings(
+        supabase_url="https://test.supabase.co",
+        supabase_service_role_key=legacy_jwt,
+    )
+    headers = storage._supabase_headers(settings)
+    assert headers["apikey"] == legacy_jwt
+    assert headers["Authorization"] == f"Bearer {legacy_jwt}"

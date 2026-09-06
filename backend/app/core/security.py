@@ -1,6 +1,7 @@
 """JWT verification and auth dependencies."""
 
 from dataclasses import dataclass
+from functools import lru_cache
 from secrets import compare_digest
 from typing import Annotated, Any
 from uuid import UUID
@@ -9,6 +10,7 @@ import jwt
 from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWTError
+from jwt.jwks_client import PyJWKClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +22,52 @@ from app.models.organization import OrganizationMember
 from app.models.profile import Profile
 
 _bearer = HTTPBearer(auto_error=False)
+
+
+# Documented official Supabase key prefixes
+OFFICIAL_OPAQUE_KEY_PREFIXES: tuple[str, ...] = (
+    "sb_publishable_",  # Official Supabase publishable client API key
+    "sb_secret_",  # Official Supabase secret / service-role API key
+)
+
+# Compatibility-only aliases
+COMPATIBILITY_OPAQUE_KEY_PREFIXES: tuple[str, ...] = (
+    "sbp_",  # Compatibility alias for publishable key
+    "sbs_",  # Compatibility alias for secret key
+)
+
+
+def is_opaque_supabase_key(key: str | None) -> bool:
+    """Return True if key uses Supabase opaque API key formats.
+
+    Documented official prefixes:
+      - sb_publishable_ (publishable client API key)
+      - sb_secret_ (secret / service API key)
+
+    Compatibility-only aliases:
+      - sbp_ (short publishable alias)
+      - sbs_ (short secret alias)
+
+    Also returns True for arbitrary non-JWT opaque keys (not a 3-part base64url token).
+    """
+    if not key:
+        return False
+    if key.startswith(OFFICIAL_OPAQUE_KEY_PREFIXES):
+        return True
+    if key.startswith(COMPATIBILITY_OPAQUE_KEY_PREFIXES):
+        return True
+    return not (key.startswith("ey") and len(key.split(".")) == 3)
+
+
+@lru_cache(maxsize=4)
+def get_jwks_client(jwks_url: str) -> PyJWKClient:
+    return PyJWKClient(
+        jwks_url,
+        cache_jwk_set=True,
+        cache_keys=True,
+        lifespan=300,
+        timeout=10,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,23 +82,59 @@ class AuthUser:
 
 
 def decode_supabase_jwt(token: str, settings: Settings) -> dict[str, Any]:
-    secret = settings.supabase_jwt_secret
-    if not secret:
-        if settings.demo_login_allowed:
-            secret = "fin-buddy-demo-dev-secret-change-me"
-        else:
-            raise UnauthorizedError("JWT secret is not configured")
-
     try:
-        payload = jwt.decode(
-            token,
-            secret,
-            algorithms=["HS256"],
-            audience=settings.supabase_jwt_audience,
-            options={"require": ["exp", "sub"]},
-        )
+        header = jwt.get_unverified_header(token)
     except PyJWTError as exc:
-        raise UnauthorizedError(f"Invalid token: {exc}") from exc
+        raise UnauthorizedError(f"Invalid token header: {exc}") from exc
+
+    alg = header.get("alg")
+
+    if alg == "ES256":
+        jwks_url = settings.supabase_jwks_url
+        if not jwks_url:
+            raise UnauthorizedError("Supabase URL is not configured for JWKS verification")
+        try:
+            jwks_client = get_jwks_client(jwks_url)
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["ES256"],
+                audience=settings.supabase_jwt_audience,
+                options={"require": ["exp", "sub"]},
+            )
+        except PyJWTError as exc:
+            raise UnauthorizedError(f"Invalid ES256 token: {exc}") from exc
+
+    elif alg == "HS256":
+        if settings.is_production or settings.jwt_verification_mode == "jwks_only":
+            raise UnauthorizedError(
+                "HS256 tokens are rejected in production (verification is JWKS-only)"
+            )
+
+        if not (settings.demo_login_allowed or settings.is_test or settings.is_development):
+            raise UnauthorizedError("HS256 tokens are not permitted in this environment")
+
+        secret = settings.supabase_jwt_secret
+        if not secret:
+            if settings.demo_login_allowed or settings.is_test:
+                secret = "fin-buddy-demo-dev-secret-change-me"
+            else:
+                raise UnauthorizedError("JWT secret is not configured for HS256 verification")
+
+        try:
+            payload = jwt.decode(
+                token,
+                secret,
+                algorithms=["HS256"],
+                audience=settings.supabase_jwt_audience,
+                options={"require": ["exp", "sub"]},
+            )
+        except PyJWTError as exc:
+            raise UnauthorizedError(f"Invalid HS256 token: {exc}") from exc
+
+    else:
+        raise UnauthorizedError(f"Unsupported token algorithm: {alg}")
 
     # Demo tokens use our issuer; Supabase tokens use project issuer — accept either.
     if settings.supabase_jwt_issuer:

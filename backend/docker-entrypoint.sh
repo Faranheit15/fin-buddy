@@ -26,9 +26,17 @@ if [ -z "${DATABASE_URL:-}" ]; then
   echo "  Compose does not require root .env if backend/.env already has DATABASE_URL." >&2
   exit 1
 fi
-if [ -z "${SUPABASE_JWT_SECRET:-}" ] || [ -z "${SUPABASE_URL:-}" ]; then
-  echo "ERROR: Supabase auth is not fully configured (SUPABASE_URL / SUPABASE_JWT_SECRET)." >&2
-  echo "  Check backend/.env or root .env." >&2
+if [ -z "${SUPABASE_URL:-}" ]; then
+  echo "ERROR: SUPABASE_URL is not set." >&2
+  echo "  Provide Supabase project URL via backend/.env or environment variables." >&2
+  exit 1
+fi
+
+# SUPABASE_JWT_SECRET is required only for hybrid/HS256 mode.
+# In jwks_only mode, ES256 tokens are verified directly via Supabase JWKS.
+if [ "${JWT_VERIFICATION_MODE:-hybrid}" != "jwks_only" ] && [ -z "${SUPABASE_JWT_SECRET:-}" ]; then
+  echo "ERROR: SUPABASE_JWT_SECRET is required when JWT_VERIFICATION_MODE is hybrid or HS256." >&2
+  echo "  Set SUPABASE_JWT_SECRET or use JWT_VERIFICATION_MODE=jwks_only in production." >&2
   exit 1
 fi
 

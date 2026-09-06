@@ -7,20 +7,22 @@ import httpx
 
 from app.core.config import Settings
 from app.core.exceptions import AppError, UnauthorizedError
+from app.core.security import is_opaque_supabase_key
 
 
 class SupabaseAuthClient:
     """Thin wrapper around Supabase Auth REST API."""
 
     def __init__(self, settings: Settings) -> None:
-        if not settings.supabase_url or not settings.supabase_anon_key:
+        client_key = settings.effective_supabase_publishable_key
+        if not settings.supabase_url or not client_key:
             raise AppError(
                 "Supabase Auth is not configured",
                 code="auth_not_configured",
                 status_code=503,
             )
         self._base = settings.supabase_url.rstrip("/") + "/auth/v1"
-        self._anon_key = settings.supabase_anon_key
+        self._anon_key = client_key
         self._service_key = settings.supabase_service_role_key
         self._timeout = httpx.Timeout(30.0)
 
@@ -32,10 +34,8 @@ class SupabaseAuthClient:
         }
         if access_token:
             headers["Authorization"] = f"Bearer {access_token}"
-        elif service and self._service_key:
-            headers["Authorization"] = f"Bearer {self._service_key}"
-        else:
-            headers["Authorization"] = f"Bearer {self._anon_key}"
+        elif not is_opaque_supabase_key(key):
+            headers["Authorization"] = f"Bearer {key}"
         return headers
 
     async def sign_up_email(

@@ -35,10 +35,10 @@ human input, add a row with a stable ID rather than burying it in a story note.
 | `UI-07` | Keepalive experiment approval | `provided` | Confirm whether one protected daily Vercel Cron probe may be enabled. | 2026-09-05: Approved by owner. Daily probe `/api/v1/ready` authorized. |
 | `UI-08` | Custom domain | `not applicable` | Keep the free Vercel and FastAPI Cloud hostnames unless the owner explicitly accepts domain cost. | Domain decision only. |
 | `UI-09` | Disposable browser test identity | `needed` | Use a test Google account or local synthetic account in the owner’s password manager/local secret store; do not paste credentials. | Test identity label and browser result only. |
-| `UI-10` | Rotate `DATABASE_URL` | `provided` | Reset DB password in Supabase: Project Settings → Database. Set new secret in FastAPI Cloud via `fastapi cloud env set --secret DATABASE_URL ...`. Do not paste into chat. | 2026-09-05: Owner confirmed Supabase password rotation. Stale plain-text variable deleted from FastAPI Cloud; awaiting `fastapi cloud env set --secret`. |
-| `UI-11` | Rotate `SUPABASE_JWT_SECRET` | `provided` | Generate new JWT secret in Supabase: Project Settings → API → JWT Settings. Set in FastAPI Cloud via `fastapi cloud env set --secret SUPABASE_JWT_SECRET ...`. | 2026-09-05: Owner confirmed Supabase JWT secret generation. Stale plain-text variable deleted from FastAPI Cloud; awaiting `fastapi cloud env set --secret`. |
-| `UI-12` | Rotate `SUPABASE_SERVICE_ROLE_KEY` | `provided` | Roll service_role key in Supabase: Project Settings → API. Set in FastAPI Cloud via `fastapi cloud env set --secret SUPABASE_SERVICE_ROLE_KEY ...`. | 2026-09-05: Owner confirmed Supabase service_role key rolled. Stale plain-text variable deleted from FastAPI Cloud; awaiting `fastapi cloud env set --secret`. |
-| `UI-13` | Confirm replacement secrets in FastAPI Cloud | `needed` | Stale non-secret variables deleted from cloud to resolve CLI/UI duplicate name collision. Run `fastapi cloud env set --secret` for each variable; agent verifies presence before deploy. | Deployment locked until `is_secret: true` verified for all 3 credentials. |
+| `UI-10` | Rotate `DATABASE_URL` | `provided` | Reset DB password in Supabase: Project Settings → Database. Set new secret in FastAPI Cloud via `printf '%s' "..." \| uv run fastapi cloud env set DATABASE_URL --value-stdin --secret --path .`. Do not paste into chat. | 2026-09-05: Owner confirmed Supabase password rotation. Stale plain-text variable deleted from FastAPI Cloud; awaiting setting via `--value-stdin --secret --path .`. |
+| `UI-11` | Rotate `SUPABASE_JWT_SECRET` | `provided` | Generate new JWT secret in Supabase: Project Settings → API → JWT Settings. In production `JWT_VERIFICATION_MODE=jwks_only`, ES256 tokens verify via Supabase JWKS, making this secret optional in production. If set for hybrid compatibility, pass via `printf '%s' "..." \| uv run fastapi cloud env set SUPABASE_JWT_SECRET --value-stdin --secret --path .`. | 2026-09-05: Owner confirmed Supabase JWT secret generation. Optional in production when `jwks_only` is active. |
+| `UI-12` | Rotate `SUPABASE_SERVICE_ROLE_KEY` | `provided` | Roll service_role key in Supabase: Project Settings → API. Set in FastAPI Cloud via `printf '%s' "..." \| uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --path .`. | 2026-09-05: Owner confirmed Supabase service_role key rolled. Stale plain-text variable deleted from FastAPI Cloud; awaiting setting via `--value-stdin --secret --path .`. |
+| `UI-13` | Confirm replacement secrets in FastAPI Cloud | `needed` | Stale non-secret variables deleted from cloud to resolve CLI/UI duplicate name collision. Run `uv run fastapi cloud env set <NAME> --value-stdin --secret --path .` for each variable; agent verifies presence before deploy. | Deployment locked until `is_secret: true` verified for required credentials (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) and `JWT_VERIFICATION_MODE=jwks_only` is active. |
 
 ## Google OAuth — exact setup
 
@@ -171,30 +171,30 @@ Never print, inspect, or paste these secrets into chat, Git, or agent context.
 1. Open Supabase Dashboard: `https://supabase.com/dashboard/project/jklurueadteccrdycyiz/settings/database`.
 2. Scroll to **Database password** and click **Reset database password**. Generate a secure random password and save.
 3. In **Connection string**, select **URI** and copy the pooler connection string with the new password.
-4. Set the new connection URI in FastAPI Cloud:
+4. Set the new connection URI in FastAPI Cloud from `backend/`:
    ```bash
-   fastapi cloud env set --secret DATABASE_URL "<NEW_POSTGRES_POOLER_URI>"
+   printf '%s' "<NEW_POSTGRES_POOLER_URI>" | uv run fastapi cloud env set DATABASE_URL --value-stdin --secret --path .
    ```
 
 ### 2. Rotate JWT Secret (UI-11)
 1. Open Supabase Dashboard: `https://supabase.com/dashboard/project/jklurueadteccrdycyiz/settings/api`.
 2. Under **JWT Settings**, locate **JWT Secret** and click **Generate a new secret** (32+ character high-entropy secret).
-   *Note: This will invalidate all existing sessions and issued access tokens.*
-3. Set the new secret in FastAPI Cloud:
+   *Note: In production `JWT_VERIFICATION_MODE=jwks_only`, tokens verify via Supabase JWKS (ES256), making `SUPABASE_JWT_SECRET` optional in production. If configuring for local hybrid compatibility:*
+3. Set the new secret in FastAPI Cloud from `backend/`:
    ```bash
-   fastapi cloud env set --secret SUPABASE_JWT_SECRET "<NEW_JWT_SECRET>"
+   printf '%s' "<NEW_JWT_SECRET>" | uv run fastapi cloud env set SUPABASE_JWT_SECRET --value-stdin --secret --path .
    ```
 
 ### 3. Rotate Service Role Key (UI-12)
 1. Open Supabase Dashboard: `https://supabase.com/dashboard/project/jklurueadteccrdycyiz/settings/api`.
 2. Under **Project API keys**, locate the `service_role` key and roll/regenerate the key.
-3. Set the new key in FastAPI Cloud:
+3. Set the new key in FastAPI Cloud from `backend/`:
    ```bash
-   fastapi cloud env set --secret SUPABASE_SERVICE_ROLE_KEY "<NEW_SERVICE_ROLE_KEY>"
+   printf '%s' "<NEW_SERVICE_ROLE_KEY>" | uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --path .
    ```
 
 ### 4. Confirm Replacement Secrets (UI-13)
-* Inform the agent once all three secrets have been rotated in Supabase and set in FastAPI Cloud. The agent will verify metadata presence (`has_value: true`, `is_secret: true`) without printing values before clearing deployment.
+* Inform the agent once the secrets have been set in FastAPI Cloud. The agent will verify metadata presence (`has_value: true`, `is_secret: true`) and `JWT_VERIFICATION_MODE=jwks_only` without printing values before clearing deployment.
 
 ## Agent update log
 

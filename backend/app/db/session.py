@@ -29,13 +29,19 @@ def init_db(settings: Settings | None = None) -> None:
         return
 
     if _async_engine is None:
+        db_url = settings.async_database_url()
+        connect_args: dict[str, object] = {}
+        if "pooler.supabase.com" in db_url or ":6543" in db_url:
+            connect_args["statement_cache_size"] = 0
+
         _async_engine = create_async_engine(
-            settings.async_database_url(),
+            db_url,
             echo=settings.database_echo,
             pool_size=settings.db_pool_size,
             max_overflow=settings.db_max_overflow,
             pool_timeout=settings.db_pool_timeout,
             pool_pre_ping=True,
+            connect_args=connect_args,
         )
         _async_session_factory = async_sessionmaker(
             _async_engine,

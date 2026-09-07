@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | `in_progress` |
+| **Status** | `done` |
 | **Sequence** | 2 |
 | **Depends on** | [US-P01](US-P01-production-release-gate.md) |
 | **One-loop objective** | Make Google sign-in complete a secure browser-to-Supabase-to-Fin-Buddy session flow. |
@@ -116,7 +116,7 @@ tests. Out of scope: replacing Supabase Auth or adding other social providers.
   cookie creation, refresh, logout, expired token, and a user opening `/app`
   before authentication. Use fake provider responses; do not use a real user
   token in fixtures.
-- [ ] **US-P02.T3 — Run a real browser flow.** With a test Google account,
+- [x] **US-P02.T3 — Run a real browser flow.** With a test Google account,
   complete login through the deployed frontend and confirm the final URL,
   session endpoint, profile bootstrap, and logout. Record the provider and
   hostname used.
@@ -126,12 +126,12 @@ tests. Out of scope: replacing Supabase Auth or adding other social providers.
 - [x] **US-P02.V1 — Verify the provider.** Supabase Auth reports Google enabled,
   Google Cloud uses the exact Supabase callback, and the app allow-list contains
   only intended callback URLs.
-- [ ] **US-P02.V2 — Verify the browser.** Google login completes from `/login`,
+- [x] **US-P02.V2 — Verify the browser.** Google login completes from `/login`,
   returns to `/app`, survives a refresh, and does not expose tokens in the URL
   after callback processing.
 - [x] **US-P02.V3 — Verify recovery.** Disablement/provider errors and invalid
   destinations produce a useful retry path without leaking upstream details.
-- [ ] **US-P02.V4 — Close the story.** Record the flow decision, URLs (not
+- [x] **US-P02.V4 — Close the story.** Record the flow decision, URLs (not
   secrets), test commands, browser evidence, and any provider residual in this
   file and [`PROGRESS.md`](PROGRESS.md).
 
@@ -158,17 +158,17 @@ redirect validation to make the current error disappear.
 2. **Token Flow Decision (PKCE S256)**:
    - Standardized strictly on **PKCE flow** (RFC 7636).
    - `code_challenge` generated using SHA-256 over a 43-character base64url random verifier and sent with `code_challenge_method=s256`.
-   - Frontend callback receives `?code=...` and `&state=...`.
+   - Frontend callback receives `?code=...` (without exposing tokens or secrets).
    - Implicit tokens in URL hash (`#access_token=...`) are explicitly rejected by the callback handler.
    - Code exchange occurs server-side via `POST /api/v1/auth/session` calling Supabase Auth `POST /auth/v1/token?grant_type=pkce`.
    - Next.js BFF sets HttpOnly `SameSite=Strict` cookies (`fb_access_token`, `fb_refresh_token`, `fb_expires_at`).
    - No access tokens or authorization codes leak into browser history, URL, address bar, or logs. `window.history.replaceState` clears parameters immediately upon mount.
 3. **State Management & Multi-tab Safety**:
    - Cryptographic state generated via `crypto.getRandomValues`.
-   - Flow record `{ state, codeVerifier, next, createdAt }` stored keyed by state in `sessionStorage` and SameSite=Lax cookie (`fb_oauth_${state}`).
-   - Concurrent tabs do not collide or overwrite each other because keys are state-specific.
+   - Flow record `{ state, codeVerifier, next, createdAt }` stored keyed in `sessionStorage` (per-tab isolation) and SameSite=Lax cookie (`fb_oauth_flow`).
    - Single-use: state is immediately deleted from storage upon consumption. Replays return `null` and are rejected.
    - Lifetime: 10 minutes maximum age.
+   - Omitted custom state from Supabase `/auth/v1/authorize`: Supabase Auth manages its own internal CSRF state token for Google; custom state was conflicting and causing `bad_oauth_state`.
 4. **Safe Destination Validation**:
    - `sanitizeAppPath` (frontend) and `validate_safe_destination` (backend) enforce same-origin relative app paths starting with `/app`.
    - Rejects external schemes/origins, protocol-relative (`//`), backslashes (`\`), URL fragments (`#`), path traversal (`/../`, `/./`, `%2e%2e`), control characters, and non-app paths, safely falling back to `/app`.
@@ -178,9 +178,18 @@ redirect validation to make the current error disappear.
 6. **Automated Verification Evidence**:
    - Backend pytest: 206 passed (`uv run pytest -q`).
    - Backend typing & lint: passed (`uv run ruff check .`, `uv run mypy app`).
-   - Frontend tests: 16 passed (`bun test`).
+   - Frontend tests: 18 passed (`bun test`).
    - Frontend lint, typecheck, build: passed (`bun run lint`, `bun run typecheck`, `bun run build`).
    - Agent hooks: `preflight.sh` and `post-task.sh` passed.
    - Whitespace: `git diff --check` passed cleanly.
-7. **Remaining Blocker**:
-   - Live interactive sign-in through a real browser using a disposable test Google account (UI-09) to confirm final profile bootstrap on production before marking story `done`.
+7. **Production Browser Verification (`UI-09`)**:
+   - Live interactive sign-in conducted on `https://fin-buddy-dev.vercel.app/login?next=/app/cards` with disposable test Google account.
+   - Diagnosed Next.js App Router bug where `window.history.replaceState` re-triggered `useSearchParams` and caused effect cancellation; resolved by guarding callback execution with `useRef`.
+   - Verified end-to-end:
+     1. User clicks "Continue with Google" -> Google consent opens.
+     2. Google consents -> redirects to Supabase -> redirects to `/auth/callback?code=...`.
+     3. Backend PKCE exchange succeeds (`POST /api/v1/auth/session` 200 OK, `GET /api/v1/auth/me` 200 OK).
+     4. Browser lands on `/app/cards` with address bar cleaned of all codes/tokens.
+     5. Session persists across page reload.
+     6. Logout safely clears session.
+   - Story US-P02 is complete and all acceptance criteria are satisfied.

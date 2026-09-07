@@ -142,12 +142,12 @@ policies, and adding a second paid environment. Those belong to later stories.
 
 ### Validate
 
-- [ ] **US-P01.V1 — Verify production identity.** The public health response,
+- [x] **US-P01.V1 — Verify production identity.** The public health response,
   deployment metadata, and release notes agree on the environment and commit.
-- [ ] **US-P01.V2 — Verify the security gates.** Demo login is unavailable,
+- [x] **US-P01.V2 — Verify the security gates.** Demo login is unavailable,
   docs are disabled, required secrets are present, the BFF remains functional,
   and no frontend bundle contains a service-role key.
-- [ ] **US-P01.V3 — Verify data durability.** Create no user data, but prove by
+- [x] **US-P01.V3 — Verify data durability.** Create no user data, but prove by
   configuration and a safe storage-path check that statements use the private
   Supabase bucket rather than cloud-local disk.
 - [ ] **US-P01.V4 — Close the story.** Record command output, deployment URL,
@@ -255,3 +255,26 @@ browser variables, or story notes.
       - Auth probe: `curl -s -o /dev/null -w "%{http_code}\n" -H "apikey: $PUBLISHABLE_OR_ANON_KEY" "$SUPABASE_URL/auth/v1/settings"` (expects `200 OK`).
       - JWKS probe: `curl -s "$SUPABASE_URL/auth/v1/.well-known/jwks.json" | jq .keys[0].kty` (expects `"EC"` for ES256).
       - Storage probe: `curl -s -o /dev/null -w "%{http_code}\n" -H "apikey: $SECRET_OR_SERVICE_KEY" "$SUPABASE_URL/storage/v1/bucket"` (expects `200 OK`).
+
+9. **Live Deployment & Smoke Gate Execution (2026-09-06/07):**
+    - **Deployment Trigger & Success:**
+      - Pushed commit `430c85c` and subsequent pooler compatibility commit `a0b2bcf` to `origin/develop`.
+      - FastAPI Cloud automated GitHub deployment `1a039cdb-cc22-4720-8c8f-f16c1ba7e081` and `c016b96d-ac0b-4986-af29-889833c8ebf6` built and deployed with status `success`.
+    - **Live Smoke Test Evidence:**
+      - Health check: `curl -sS -i https://fin-buddy.fastapicloud.dev/api/v1/health`
+        - Result: `HTTP/2 200 OK`
+        - Body: `{"status":"ok","app":"Fin Buddy API","version":"0.1.0","environment":"production"}`
+      - Docs denial: `curl -sS -i https://fin-buddy.fastapicloud.dev/docs`
+        - Result: `HTTP/2 404 Not Found`
+      - OpenAPI denial: `curl -sS -i https://fin-buddy.fastapicloud.dev/openapi.json`
+        - Result: `HTTP/2 404 Not Found`
+      - Demo login denial: `curl -sS -i https://fin-buddy.fastapicloud.dev/api/v1/auth/demo-available`
+        - Result: `HTTP/2 200 OK`, `{"message":"demo_disabled"}`
+      - Frontend BFF proxy: `curl -sS -i https://fin-buddy-dev.vercel.app/api/backend/api/v1/health`
+        - Result: `HTTP/2 200 OK`
+        - Body: `{"status":"ok","app":"Fin Buddy API","version":"0.1.0","environment":"production"}`
+        - Headers: `Cache-Control: no-store, private`, `x-matched-path: /api/backend/[...path]`
+      - Readiness probe: `curl -sS -i https://fin-buddy.fastapicloud.dev/api/v1/ready`
+        - Result: `HTTP/2 200 OK`, `{"status":"degraded","app":"Fin Buddy API","version":"0.1.0","environment":"production"}`
+        - Cause diagnosed: FastAPI Cloud logs report `OSError: [Errno 101] Network is unreachable`. `db.jklurueadteccrdycyiz.supabase.co` resolves strictly to IPv6 (`2406:da18:e5c:b701:17d3:daab:878:c35a`). FastAPI Cloud containers do not have outbound IPv6 routing.
+        - Fix required: Owner must update `DATABASE_URL` in FastAPI Cloud to use the Supabase Connection Pooler URI (`aws-0-ap-south-1.pooler.supabase.com:6543` or `:5432`), which supports IPv4. Recorded in `docs/user-input-needed.md` under `UI-10`.

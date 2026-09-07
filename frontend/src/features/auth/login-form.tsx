@@ -16,6 +16,12 @@ import {
   verifyOtp,
 } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
+import {
+  generateOAuthState,
+  generatePKCEPair,
+  sanitizeAppPath,
+  storeOAuthFlow,
+} from "@/lib/auth/oauth";
 import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
@@ -85,10 +91,7 @@ export function LoginForm() {
         return;
       }
 
-      await requestMagicLink(
-        email,
-        `${env.NEXT_PUBLIC_APP_URL}/auth/callback?next=${encodeURIComponent(next)}`,
-      );
+      await requestMagicLink(email, `${env.NEXT_PUBLIC_APP_URL}/auth/callback`);
       setOtpSent(true);
       setMessage(
         "If the email is valid, a login code / magic link was sent. Enter the OTP below, or open the link in the email.",
@@ -110,8 +113,22 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
     try {
-      const redirectTo = `${env.NEXT_PUBLIC_APP_URL}/auth/callback?next=${encodeURIComponent(next)}`;
-      const { url } = await getGoogleOAuthUrl(redirectTo);
+      const safeNext = sanitizeAppPath(next);
+      const { codeVerifier, codeChallenge } = await generatePKCEPair();
+      const state = generateOAuthState();
+      storeOAuthFlow({
+        state,
+        codeVerifier,
+        next: safeNext,
+        createdAt: Date.now(),
+      });
+
+      const callbackUrl = `${env.NEXT_PUBLIC_APP_URL}/auth/callback`;
+      const { url } = await getGoogleOAuthUrl({
+        redirectTo: callbackUrl,
+        codeChallenge,
+        state,
+      });
       window.location.href = url;
     } catch (err) {
       setError(

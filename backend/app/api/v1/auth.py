@@ -25,7 +25,7 @@ from app.schemas.auth import (
     ProfileResponse,
     ProfileUpdate,
     RefreshRequest,
-    SessionFromTokensRequest,
+    SessionFromCodeRequest,
     SignUpRequest,
     TokenPair,
     VerifyOtpRequest,
@@ -228,24 +228,22 @@ async def refresh(
 
 @router.post("/session", response_model=AuthResponse)
 async def establish_session(
-    body: SessionFromTokensRequest,
+    body: SessionFromCodeRequest,
     request: Request,
     db: DbSession,
     settings: AppSettings,
 ) -> AuthResponse:
     """
-    Establish app profile/org from tokens already issued by Supabase
-    (OAuth / magic-link redirect completion). Auth verification is server-side.
+    Establish app profile/org from a PKCE authorization code exchange with Supabase Auth.
+    Enforces PKCE flow; implicit token parameters are rejected.
     """
     await _auth_rate_limit(request)
     ip, ua = client_meta(request)
-    profile, org, tokens = await auth_service.session_from_tokens(
+    profile, org, tokens = await auth_service.session_from_code(
         db,
         settings,
-        access_token=body.access_token,
-        refresh_token=body.refresh_token,
-        expires_in=body.expires_in,
-        expires_at=body.expires_at,
+        code=body.code,
+        code_verifier=body.code_verifier,
         ip_address=ip,
         user_agent=ua,
     )
@@ -386,11 +384,19 @@ async def update_organization(
 async def google_oauth(
     request: Request,
     settings: AppSettings,
-    redirect_to: str = Query(..., description="Frontend callback URL"),
+    redirect_to: str | None = Query(None, description="Frontend callback URL"),
+    code_challenge: str | None = Query(None, description="PKCE code challenge (s256)"),
+    code_challenge_method: str | None = Query(None, description="PKCE code challenge method (s256)"),
+    state: str | None = Query(None, description="Cryptographic OAuth state parameter"),
 ) -> GoogleOAuthResponse:
     await _auth_rate_limit(request)
-    url = auth_service.google_oauth_url(settings, redirect_to=redirect_to)
-    # Append apikey is handled by Supabase hosted authorize page
+    url = auth_service.google_oauth_url(
+        settings,
+        redirect_to=redirect_to,
+        code_challenge=code_challenge,
+        code_challenge_method=code_challenge_method,
+        state=state,
+    )
     client_key = settings.effective_supabase_publishable_key
     if client_key:
         sep = "&" if "?" in url else "?"

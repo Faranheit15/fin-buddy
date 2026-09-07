@@ -1,32 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { useAuth } from "@/features/auth/auth-provider";
-import { establishSessionFromTokens } from "@/lib/api/auth";
-
-/**
- * OAuth / magic-link return page.
- * Tokens arrive in the URL (query or hash) from Supabase Hosted Auth.
- * We immediately hand them to the FastAPI backend to validate + bootstrap profile,
- * then store cookies on this origin. No browser Supabase client is used.
- */
-function safeAppPath(value: string | null, origin: string): string {
-  if (!value) return "/app";
-  try {
-    const destination = new URL(value, origin);
-    if (
-      destination.origin === origin &&
-      (destination.pathname === "/app" || destination.pathname.startsWith("/app/"))
-    ) {
-      return `${destination.pathname}${destination.search}${destination.hash}`;
-    }
-  } catch {
-    // Invalid or external destinations intentionally fall back to the dashboard.
-  }
-  return "/app";
-}
+import { exchangeOAuthCode } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
+import { consumeOAuthFlow, sanitizeAppPath } from "@/lib/auth/oauth";
 
 function CallbackInner() {
   const router = useRouter();
@@ -39,50 +20,79 @@ function CallbackInner() {
 
     void (async () => {
       try {
-        const next = safeAppPath(searchParams.get("next"), window.location.origin);
-
-        // Hash tokens: #access_token=...&refresh_token=...
+        // 1. Explicitly reject implicit flow tokens in hash
         const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
-        const hashParams = new URLSearchParams(hash);
-        const queryAccess = searchParams.get("access_token");
-        const accessToken =
-          hashParams.get("access_token") || queryAccess || searchParams.get("token");
-        const refreshToken = hashParams.get("refresh_token") || searchParams.get("refresh_token");
-        const expiresIn = hashParams.get("expires_in") || searchParams.get("expires_in");
-        const expiresAt = hashParams.get("expires_at") || searchParams.get("expires_at");
-
-        if (!accessToken) {
-          // Authorization code without tokens — cannot complete without client PKCE.
-          // Ask user to use password/OTP instead, or configure implicit redirect.
+        if (hash.includes("access_token") || hash.includes("token=")) {
+          window.history.replaceState({}, "", "/auth/callback");
           throw new Error(
-            "No access token in callback URL. Use email/password or OTP, or ensure the OAuth redirect includes tokens.",
+            "Implicit token flow is not supported. Please sign in again using secure sign-in.",
           );
         }
 
-        // Remove hosted-auth credentials from the address bar before any asynchronous work.
+        // 2. Check for provider-reported errors
+        const errorParam = searchParams.get("error");
+        const errorDescription = searchParams.get("error_description");
+        if (errorParam) {
+          window.history.replaceState({}, "", "/auth/callback");
+          if (errorParam === "access_denied") {
+            throw new Error("Google sign-in was cancelled. Please try again.");
+          }
+          throw new Error(
+            errorDescription ||
+              "Google sign-in is currently unavailable. Please try again or use another login method.",
+          );
+        }
+
+        // 3. Inspect authorization code and cryptographic state
+        const code = searchParams.get("code");
+        const state = searchParams.get("state");
+
+        if (!code || !state) {
+          window.history.replaceState({}, "", "/auth/callback");
+          throw new Error(
+            "Authorization code or session state is missing. Please start sign-in again.",
+          );
+        }
+
+        // 4. Consume origin-bound OAuth flow record (single-use, validated, and expired check)
+        const flow = consumeOAuthFlow(state);
+        if (!flow) {
+          window.history.replaceState({}, "", "/auth/callback");
+          throw new Error(
+            "Sign-in session expired, was invalid, or was already completed. Please start sign-in again.",
+          );
+        }
+
+        // 5. Remove credentials from the address bar immediately before network operations
         window.history.replaceState({}, "", "/auth/callback");
 
-        const backend = await establishSessionFromTokens({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          expires_in: expiresIn ? Number(expiresIn) : null,
-          expires_at: expiresAt ? Number(expiresAt) : null,
+        // 6. Complete PKCE code exchange with backend
+        const backend = await exchangeOAuthCode({
+          code,
+          code_verifier: flow.codeVerifier,
         });
 
         if (!backend.session?.authenticated) {
-          throw new Error(backend.message || "Backend rejected session tokens");
+          throw new Error(backend.message || "Failed to establish authenticated session");
         }
 
+        // 7. Apply the BFF-managed HttpOnly cookie session and redirect
         await applyEstablishedSession();
+
         if (!cancelled) {
-          // Clear tokens from the address bar
-          window.history.replaceState({}, "", "/auth/callback");
-          router.replace(next.startsWith("/") ? next : "/app");
+          const destination = sanitizeAppPath(flow.next);
+          router.replace(destination);
           router.refresh();
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Auth callback failed");
+          setError(
+            err instanceof ApiError
+              ? err.message
+              : err instanceof Error
+                ? err.message
+                : "Authentication callback failed",
+          );
         }
       }
     })();
@@ -94,18 +104,24 @@ function CallbackInner() {
 
   if (error) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16">
-        <p className="max-w-md text-center text-sm text-destructive">{error}</p>
-        <a href="/login" className="text-sm font-medium underline-offset-4 hover:underline">
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+        <div className="max-w-md space-y-2">
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">Sign-in failed</h1>
+          <p className="text-sm text-muted-foreground">{error}</p>
+        </div>
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+        >
           Back to sign in
-        </a>
+        </Link>
       </main>
     );
   }
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <p className="text-sm text-muted-foreground">Completing sign-in…</p>
+      <p className="text-sm text-muted-foreground">Completing secure sign-in…</p>
     </main>
   );
 }
@@ -115,7 +131,7 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <main className="flex flex-1 items-center justify-center px-6 py-16">
-          <p className="text-sm text-muted-foreground">Completing sign-in…</p>
+          <p className="text-sm text-muted-foreground">Completing secure sign-in…</p>
         </main>
       }
     >

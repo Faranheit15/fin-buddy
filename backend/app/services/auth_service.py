@@ -1,7 +1,8 @@
 """Authentication orchestration over Supabase Auth + local bootstrap."""
 
+import re
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import unquote, urlencode, urlsplit, urlunsplit
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,79 @@ from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
 from app.services.logging_service import log_activity
 from app.services.user_service import ensure_profile_and_org
+
+_SAFE_STATE_RE = re.compile(r"^[A-Za-z0-9_-]{8,256}$")
+_SAFE_CHALLENGE_RE = re.compile(r"^[A-Za-z0-9_-]{43,128}$")
+
+
+def validate_safe_destination(destination: str | None) -> str:
+    """
+    Validate that destination is a safe, same-origin relative app path.
+    Rejects external URLs, protocol-relative URLs (//), backslashes, fragments (#),
+    path traversal (/../), control characters, and non-app paths.
+    Always falls back safely to '/app'.
+    """
+    if not destination or not isinstance(destination, str):
+        return "/app"
+    clean = destination.strip()
+    if not clean:
+        return "/app"
+    # Reject protocol-relative, backslashes, or fragments
+    if clean.startswith("//") or "\\" in clean or "#" in clean:
+        return "/app"
+    # Reject CRLF or control characters
+    if any(ord(c) < 32 or ord(c) == 127 for c in clean):
+        return "/app"
+    # Must start with single /
+    if not clean.startswith("/"):
+        return "/app"
+    try:
+        parsed = urlsplit(clean)
+    except ValueError:
+        return "/app"
+    # Reject if scheme or netloc is present
+    if parsed.scheme or parsed.netloc:
+        return "/app"
+    # Check for traversal in path segments
+    path = parsed.path
+    unquoted = unquote(path)
+    if any(s in ("..", ".") for s in [seg for seg in unquoted.split("/") if seg]):
+        return "/app"
+    segments = [s for s in path.split("/") if s]
+    if any(s in ("..", ".") for s in segments):
+        return "/app"
+    # Must be /app or /app/...
+    if path != "/app" and not path.startswith("/app/"):
+        return "/app"
+    # Reconstruct clean path + search
+    reconstructed = path
+    if parsed.query:
+        reconstructed += f"?{parsed.query}"
+    return reconstructed
+
+
+def _validate_code_challenge(code_challenge: str, method: str | None) -> None:
+    if not _SAFE_CHALLENGE_RE.match(code_challenge):
+        raise AppError(
+            "Invalid code_challenge: must be base64url string between 43 and 128 characters",
+            code="invalid_code_challenge",
+            status_code=400,
+        )
+    if method and method.lower() not in {"s256", "sha256"}:
+        raise AppError(
+            "code_challenge_method must be s256",
+            code="invalid_code_challenge_method",
+            status_code=400,
+        )
+
+
+def _validate_oauth_state(state: str) -> None:
+    if not _SAFE_STATE_RE.match(state):
+        raise AppError(
+            "Invalid OAuth state: must be urlsafe string between 8 and 256 characters",
+            code="invalid_oauth_state",
+            status_code=400,
+        )
 
 
 def _frontend_callback_url(settings: Settings, requested: str | None) -> str:
@@ -44,6 +118,9 @@ def _frontend_callback_url(settings: Settings, requested: str | None) -> str:
     if (
         candidate.query
         or candidate.fragment
+        or candidate.scheme != frontend.scheme
+        or candidate.netloc != frontend.netloc
+        or candidate.path != "/auth/callback"
         or urlunsplit((candidate.scheme, candidate.netloc, candidate.path, "", "")) != callback
     ):
         raise AppError("Invalid authentication redirect URL", code="invalid_redirect")
@@ -254,6 +331,32 @@ async def me_bootstrap(
     )
 
 
+async def session_from_code(
+    session: AsyncSession,
+    settings: Settings,
+    *,
+    code: str,
+    code_verifier: str,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> tuple[Profile, Organization, dict[str, Any]]:
+    """
+    Exchange a PKCE authorization code with Supabase Auth for session tokens,
+    bootstrap local profile/org, and return a session payload.
+    """
+    client = SupabaseAuthClient(settings)
+    auth_response = await client.exchange_pkce_code(code, code_verifier)
+    profile, org, tokens = await _bootstrap_from_auth_response(
+        session,
+        auth_response,
+        settings,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        action=ActivityAction.LOGIN,
+    )
+    return profile, org, tokens
+
+
 async def session_from_tokens(
     session: AsyncSession,
     settings: Settings,
@@ -286,14 +389,33 @@ async def session_from_tokens(
     )
 
 
-def google_oauth_url(settings: Settings, *, redirect_to: str) -> str:
+def google_oauth_url(
+    settings: Settings,
+    *,
+    redirect_to: str | None = None,
+    code_challenge: str | None = None,
+    code_challenge_method: str | None = None,
+    state: str | None = None,
+) -> str:
     if not settings.supabase_url:
         raise AppError("Supabase URL not configured", code="auth_not_configured", status_code=503)
-    from urllib.parse import quote
 
     base = settings.supabase_url.rstrip("/")
     callback = _frontend_callback_url(settings, redirect_to)
-    return f"{base}/auth/v1/authorize?provider=google&redirect_to={quote(callback, safe='')}"
+    params: list[tuple[str, str]] = [
+        ("provider", "google"),
+        ("redirect_to", callback),
+    ]
+    if code_challenge:
+        _validate_code_challenge(code_challenge, code_challenge_method)
+        params.append(("code_challenge", code_challenge))
+        params.append(("code_challenge_method", (code_challenge_method or "s256").lower()))
+    if state:
+        _validate_oauth_state(state)
+        params.append(("state", state))
+
+    query = urlencode(params)
+    return f"{base}/auth/v1/authorize?{query}"
 
 
 async def delete_account(

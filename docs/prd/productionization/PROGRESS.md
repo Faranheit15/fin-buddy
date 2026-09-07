@@ -9,7 +9,7 @@
 | **Status** | Active — shared agent workflow complete; application stories queued |
 | **Last reviewed** | 2026-09-07 |
 | **Completed stories** | 2 / 15 |
-| **Current story** | US-P02 — Google OAuth redirect & session flow (queued) |
+| **Current story** | US-P02 — Google OAuth redirect & session flow (in_progress) |
 | **Loop prompt** | [`RALPH-LOOP-PROMPT.md`](RALPH-LOOP-PROMPT.md) |
 
 ## Story status
@@ -18,7 +18,7 @@
 | --- | --- | --- | --- |
 | [US-P00](US-P00-agent-interoperability-and-cost-guardrails.md) | `done` | Give Codex, Claude Code, and Antigravity one safe loop, user-input handoff, and cost guardrail. | Native manifests, shared skills, local hook scripts, and docs validated on 2026-09-05. |
 | [US-P01](US-P01-production-release-gate.md) | `done` | Make the live deployment explicitly production-safe and verify the release gate. | Deployed to FastAPI Cloud (commit a0b2bcf, deployment c016b96d); health & readiness HTTP 200 OK; docs/OpenAPI disabled; demo auth disabled; frontend BFF verified; Supabase Session Pooler DATABASE_URL verified. |
-| [US-P02](US-P02-google-oauth.md) | `todo` | Complete and test the Google OAuth redirect and session flow. | — |
+| [US-P02](US-P02-google-oauth.md) | `in_progress` | Complete and test the Google OAuth redirect and session flow. | Live Google provider verified enabled with client ID `1017490367160-eja7fk6vt7m9fioh0lj9rhfoha46b2uv.apps.googleusercontent.com`; fixed callback contract enforced; PKCE S256 code exchange implemented; origin-bound single-use state management implemented; safe relative path validator enforced; backend tests (206 passed) and frontend tests (16 passed) verified; awaiting UI-09 disposable test account for real browser verification. |
 | [US-P03](US-P03-supabase-security-boundary.md) | `todo` | Reconcile RLS, grants, security-definer helpers, and Auth security settings. | — |
 | [US-P04](US-P04-tenant-authorization-lifecycle.md) | `todo` | Close cross-organization references, role escalation, and deletion-session gaps. | — |
 | [US-P05](US-P05-safe-financial-mutations.md) | `todo` | Make financial writes idempotent and concurrency-safe. | — |
@@ -65,7 +65,7 @@
 
 | Blocker | Required decision or input |
 | --- | --- |
-| Google OAuth | Create or select the Google Cloud Web OAuth client and enter its credentials in Supabase Auth (UI-02). |
+| Disposable test account | Provide or perform real browser login with a disposable test Google account (UI-09) to verify the live production flow. |
 | Household roles | Decide whether every organization member may mutate finance records or whether capabilities need owner/member separation (UI-06). |
 
 ## Iteration log
@@ -76,3 +76,4 @@
 | 2026-09-05 | US-P00 | `done` | Parallel repository/tooling/cost/input research was reconciled into shared context adapters, skills, native hooks, local safety scripts, `docs/user-input-needed.md`, and a conditional $0 contract. No application code or cloud resources changed. |
 | 2026-09-05 | US-P01 | `in_progress` | Owner confirmed UI-01, 03, 04, 05, 07. Production matrix applied to cloud env. Fail-closed guards and unit tests implemented & passing. Diagnosed cloud build failure (resolved via Option A: GitHub push). Stale plain credentials deleted from cloud; awaiting owner setting secrets (UI-13) before push to `origin/develop`. |
 | 2026-09-07 | US-P01 | `done` | Enforced JWKS ES256 verification and opaque Supabase keys; verified secret metadata in FastAPI Cloud; deployed via GitHub integration (commit a0b2bcf, deployment c016b96d); verified HTTP 200 health & readiness, docs/OpenAPI 404, demo-disabled, BFF proxying, and Supabase Session Pooler URI. Story US-P01 complete; US-P02 queued. |
+| 2026-09-07 | US-P02 | `in_progress` | Verified UI-02 live (Google client ID active, Supabase returns HTTP 302 to accounts.google.com). Replaced query-string callback with fixed `/auth/callback` contract; implemented PKCE S256 code exchange; implemented single-use origin-bound state management; implemented safe relative app destination validator; added full backend and frontend unit tests (206 backend tests passed, 16 frontend unit tests passed). Story left in_progress awaiting UI-09 real browser verification. |

@@ -95,6 +95,14 @@ export function verifyOtp(input: { email?: string; phone?: string; token: string
   });
 }
 
+/** Complete PKCE OAuth code exchange without exposing credentials in the response. */
+export function exchangeOAuthCode(payload: { code: string; code_verifier: string }) {
+  return apiFetch<AuthResponse>("/api/v1/auth/session", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 /** Complete an OAuth or magic-link return without exposing backend credentials in the response. */
 export function establishSessionFromTokens(session: {
   access_token: string;
@@ -108,9 +116,28 @@ export function establishSessionFromTokens(session: {
   });
 }
 
-export function getGoogleOAuthUrl(redirectTo: string) {
-  const q = new URLSearchParams({ redirect_to: redirectTo });
-  return apiFetch<{ url: string; note: string }>(`/api/v1/auth/oauth/google?${q.toString()}`, {
+export function getGoogleOAuthUrl(
+  options?:
+    | {
+        redirectTo?: string;
+        codeChallenge?: string;
+        state?: string;
+      }
+    | string,
+) {
+  const params = new URLSearchParams();
+  if (typeof options === "string") {
+    params.set("redirect_to", options);
+  } else if (options) {
+    if (options.redirectTo) params.set("redirect_to", options.redirectTo);
+    if (options.codeChallenge) {
+      params.set("code_challenge", options.codeChallenge);
+      params.set("code_challenge_method", "s256");
+    }
+    if (options.state) params.set("state", options.state);
+  }
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return apiFetch<{ url: string; note: string }>(`/api/v1/auth/oauth/google${query}`, {
     method: "GET",
   });
 }

@@ -95,6 +95,12 @@ class SupabaseAuthClient:
             {"refresh_token": refresh_token},
         )
 
+    async def exchange_pkce_code(self, auth_code: str, code_verifier: str) -> dict[str, Any]:
+        return await self._post(
+            "/token?grant_type=pkce",
+            {"auth_code": auth_code, "code_verifier": code_verifier},
+        )
+
     async def logout(self, access_token: str) -> None:
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(

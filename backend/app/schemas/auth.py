@@ -52,13 +52,14 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-class SessionFromTokensRequest(BaseModel):
-    """Establish app session from tokens (e.g. after OAuth redirect)."""
+class SessionFromCodeRequest(BaseModel):
+    """Establish app session from PKCE authorization code."""
 
-    access_token: str = Field(min_length=20)
-    refresh_token: str | None = None
-    expires_in: int | None = None
-    expires_at: int | None = None
+    code: str = Field(min_length=1, max_length=512, description="Supabase authorization code")
+    code_verifier: str = Field(min_length=43, max_length=128, description="PKCE code verifier")
+
+
+SessionFromTokensRequest = SessionFromCodeRequest
 
 
 class TokenPair(BaseModel):

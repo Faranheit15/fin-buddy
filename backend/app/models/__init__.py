@@ -12,6 +12,7 @@ from app.models.obligation_payment import ObligationPayment
 from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
 from app.models.rate_limit import RateLimitWindow
+from app.models.record_share import RecordShare
 from app.models.settlement import Settlement
 from app.models.statement import Statement, StatementLineCandidate
 from app.models.transaction import Transaction
@@ -33,6 +34,7 @@ __all__ = [
     "Settlement",
     "Obligation",
     "ObligationPayment",
+    "RecordShare",
     "Statement",
     "StatementLineCandidate",
     "InAppNotification",

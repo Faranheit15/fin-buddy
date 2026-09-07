@@ -43,15 +43,13 @@ function CallbackInner() {
           );
         }
 
-        // 3. Inspect authorization code and cryptographic state
+        // 3. Inspect authorization code
         const code = searchParams.get("code");
         const state = searchParams.get("state");
 
-        if (!code || !state) {
+        if (!code) {
           window.history.replaceState({}, "", "/auth/callback");
-          throw new Error(
-            "Authorization code or session state is missing. Please start sign-in again.",
-          );
+          throw new Error("Authorization code is missing. Please start sign-in again.");
         }
 
         // 4. Consume origin-bound OAuth flow record (single-use, validated, and expired check)

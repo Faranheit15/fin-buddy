@@ -3,7 +3,7 @@
  */
 
 export type OAuthFlowRecord = {
-  state: string;
+  state?: string;
   codeVerifier: string;
   next: string;
   createdAt: number;
@@ -164,66 +164,90 @@ function deleteCookie(name: string): void {
   document.cookie = `${encodeURIComponent(name)}=; Path=/auth/callback; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
+const PENDING_STORAGE_KEY = "fb_oauth_pending_flow";
+const PENDING_COOKIE_NAME = "fb_oauth_flow";
+
 export function storeOAuthFlow(record: OAuthFlowRecord): void {
   const payload = JSON.stringify(record);
 
   // 1. Store in sessionStorage (per-tab storage)
   if (typeof window !== "undefined" && window.sessionStorage) {
     try {
-      window.sessionStorage.setItem(`${STATE_STORAGE_PREFIX}${record.state}`, payload);
+      window.sessionStorage.setItem(PENDING_STORAGE_KEY, payload);
+      if (record.state) {
+        window.sessionStorage.setItem(`${STATE_STORAGE_PREFIX}${record.state}`, payload);
+      }
     } catch {
       // Quota or private mode fallback
     }
   }
 
   // 2. Store in cookie (works across tab transitions if needed, 10 min expiry)
-  setCookie(`${STATE_COOKIE_PREFIX}${record.state}`, payload, 600);
+  setCookie(PENDING_COOKIE_NAME, payload, 600);
+  if (record.state) {
+    setCookie(`${STATE_COOKIE_PREFIX}${record.state}`, payload, 600);
+  }
 
   // 3. Store in memory fallback (for test runners / headless runtime)
-  inMemoryStore.set(`${STATE_STORAGE_PREFIX}${record.state}`, payload);
+  inMemoryStore.set(PENDING_STORAGE_KEY, payload);
+  if (record.state) {
+    inMemoryStore.set(`${STATE_STORAGE_PREFIX}${record.state}`, payload);
+  }
 }
 
 /**
  * Retrieve and immediately delete (consume) the stored OAuth flow state.
+ * Supports both state-keyed lookup and single-flight pending flow lookup.
  * Returns null if missing, expired, or invalid.
  */
-export function consumeOAuthFlow(state: string | null | undefined): OAuthFlowRecord | null {
-  if (!state || typeof state !== "string") return null;
-
+export function consumeOAuthFlow(state?: string | null | undefined): OAuthFlowRecord | null {
   let raw: string | null = null;
-  const storageKey = `${STATE_STORAGE_PREFIX}${state}`;
-  const cookieKey = `${STATE_COOKIE_PREFIX}${state}`;
+  const storageKey = state ? `${STATE_STORAGE_PREFIX}${state}` : null;
+  const cookieKey = state ? `${STATE_COOKIE_PREFIX}${state}` : null;
 
   // 1. Try sessionStorage first
   if (typeof window !== "undefined" && window.sessionStorage) {
     try {
-      raw = window.sessionStorage.getItem(storageKey);
-      window.sessionStorage.removeItem(storageKey);
+      if (storageKey) {
+        raw = window.sessionStorage.getItem(storageKey);
+        window.sessionStorage.removeItem(storageKey);
+      }
+      if (!raw) {
+        raw = window.sessionStorage.getItem(PENDING_STORAGE_KEY);
+      }
+      window.sessionStorage.removeItem(PENDING_STORAGE_KEY);
     } catch {
       // Session storage unavailable
     }
   }
 
   // 2. Check cookie if not in sessionStorage
-  if (!raw) {
+  if (!raw && cookieKey) {
     raw = getCookie(cookieKey);
+  }
+  if (!raw) {
+    raw = getCookie(PENDING_COOKIE_NAME);
   }
 
   // 3. Check memory fallback if not in cookie/sessionStorage
-  if (!raw) {
+  if (!raw && storageKey) {
     raw = inMemoryStore.get(storageKey) ?? null;
   }
+  if (!raw) {
+    raw = inMemoryStore.get(PENDING_STORAGE_KEY) ?? null;
+  }
 
-  // Always delete from all storage mechanisms
-  deleteCookie(cookieKey);
-  inMemoryStore.delete(storageKey);
+  // Always delete from all storage mechanisms (single-use replay protection)
+  if (cookieKey) deleteCookie(cookieKey);
+  deleteCookie(PENDING_COOKIE_NAME);
+  if (storageKey) inMemoryStore.delete(storageKey);
+  inMemoryStore.delete(PENDING_STORAGE_KEY);
 
   if (!raw) return null;
 
   try {
     const record = JSON.parse(raw) as OAuthFlowRecord;
     if (typeof record !== "object" || record === null) return null;
-    if (record.state !== state) return null;
     if (typeof record.codeVerifier !== "string" || !record.codeVerifier) return null;
     if (typeof record.createdAt !== "number") return null;
 

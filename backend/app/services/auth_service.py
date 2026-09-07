@@ -411,8 +411,10 @@ def google_oauth_url(
         params.append(("code_challenge", code_challenge))
         params.append(("code_challenge_method", (code_challenge_method or "s256").lower()))
     if state:
+        # Validate client-supplied state format if provided, but do NOT append it to Supabase /authorize.
+        # Supabase Auth generates its own cryptographic CSRF state for the Google provider flow.
+        # Overwriting it causes Google callback verification in Supabase to fail with bad_oauth_state.
         _validate_oauth_state(state)
-        params.append(("state", state))
 
     query = urlencode(params)
     return f"{base}/auth/v1/authorize?{query}"

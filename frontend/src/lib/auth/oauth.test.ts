@@ -133,7 +133,35 @@ describe("storeOAuthFlow and consumeOAuthFlow", () => {
     expect(secondConsume).toBeNull();
   });
 
-  it("rejects unknown or invalid state", () => {
+  it("stores and consumes pending flow without state parameter", () => {
+    storeOAuthFlow({
+      codeVerifier: "test-code-verifier-without-state-43-chars-xx",
+      next: "/app/cards",
+      createdAt: Date.now(),
+    });
+
+    const flow = consumeOAuthFlow();
+    expect(flow).not.toBeNull();
+    expect(flow?.codeVerifier).toBe("test-code-verifier-without-state-43-chars-xx");
+    expect(flow?.next).toBe("/app/cards");
+
+    // Single use
+    expect(consumeOAuthFlow()).toBeNull();
+  });
+
+  it("rejects empty store or expired pending flow", () => {
+    expect(consumeOAuthFlow()).toBeNull();
+
+    const elevenMinutesAgo = Date.now() - 11 * 60 * 1000;
+    storeOAuthFlow({
+      codeVerifier: "expired-verifier-43-chars-long-1234567890123",
+      next: "/app",
+      createdAt: elevenMinutesAgo,
+    });
+    expect(consumeOAuthFlow()).toBeNull();
+  });
+
+  it("rejects unknown or invalid state when store is empty", () => {
     expect(consumeOAuthFlow("non-existent-state")).toBeNull();
     expect(consumeOAuthFlow(null)).toBeNull();
     expect(consumeOAuthFlow(undefined)).toBeNull();

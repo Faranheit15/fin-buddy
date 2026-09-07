@@ -71,7 +71,7 @@ def test_google_oauth_url_builder() -> None:
     assert "redirect_to=https%3A%2F%2Ffin-buddy-dev.vercel.app%2Fauth%2Fcallback" in url
     assert "code_challenge=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk" in url
     assert "code_challenge_method=s256" in url
-    assert "state=safe-state-12345678" in url
+    assert "state=" not in url
 
 
 @pytest.mark.parametrize(
@@ -172,7 +172,8 @@ def test_oauth_google_api_endpoint_success(client: TestClient, monkeypatch: pyte
     assert "apikey=sb_publishable_test123456" in data["url"]
     assert "provider=google" in data["url"]
     assert "code_challenge=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk" in data["url"]
-    assert "state=random_test_state_12345" in data["url"]
+    # State must NOT be in Supabase authorize URL to prevent bad_oauth_state
+    assert "state=" not in data["url"]
 
 
 def test_oauth_google_api_endpoint_rejects_query_regression(

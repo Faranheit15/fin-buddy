@@ -127,7 +127,6 @@ export function LoginForm() {
       const { url } = await getGoogleOAuthUrl({
         redirectTo: callbackUrl,
         codeChallenge,
-        state,
       });
       window.location.href = url;
     } catch (err) {

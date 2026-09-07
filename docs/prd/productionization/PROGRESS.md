@@ -7,9 +7,9 @@
 | --- | --- |
 | **Plan** | Productionization & Product Polish |
 | **Status** | Active — shared agent workflow complete; application stories queued |
-| **Last reviewed** | 2026-09-05 |
-| **Completed stories** | 1 / 15 |
-| **Current story** | US-P01 — Production release gate |
+| **Last reviewed** | 2026-09-07 |
+| **Completed stories** | 2 / 15 |
+| **Current story** | US-P02 — Google OAuth redirect & session flow (queued) |
 | **Loop prompt** | [`RALPH-LOOP-PROMPT.md`](RALPH-LOOP-PROMPT.md) |
 
 ## Story status
@@ -17,7 +17,7 @@
 | Story | Status | One-loop objective | Evidence |
 | --- | --- | --- | --- |
 | [US-P00](US-P00-agent-interoperability-and-cost-guardrails.md) | `done` | Give Codex, Claude Code, and Antigravity one safe loop, user-input handoff, and cost guardrail. | Native manifests, shared skills, local hook scripts, and docs validated on 2026-09-05. |
-| [US-P01](US-P01-production-release-gate.md) | `in_progress` | Make the live deployment explicitly production-safe and verify the release gate. | Owner confirmed UI-01, 03, 04, 05, 07; FastAPI Cloud env updated; fail-closed guards & tests passing; deploy blocked by FastAPI Cloud builder error. |
+| [US-P01](US-P01-production-release-gate.md) | `done` | Make the live deployment explicitly production-safe and verify the release gate. | Deployed to FastAPI Cloud (commit a0b2bcf, deployment c016b96d); health & readiness HTTP 200 OK; docs/OpenAPI disabled; demo auth disabled; frontend BFF verified; Supabase Session Pooler DATABASE_URL verified. |
 | [US-P02](US-P02-google-oauth.md) | `todo` | Complete and test the Google OAuth redirect and session flow. | — |
 | [US-P03](US-P03-supabase-security-boundary.md) | `todo` | Reconcile RLS, grants, security-definer helpers, and Auth security settings. | — |
 | [US-P04](US-P04-tenant-authorization-lifecycle.md) | `todo` | Close cross-organization references, role escalation, and deletion-session gaps. | — |
@@ -67,7 +67,6 @@
 | --- | --- |
 | Google OAuth | Create or select the Google Cloud Web OAuth client and enter its credentials in Supabase Auth (UI-02). |
 | Household roles | Decide whether every organization member may mutate finance records or whether capabilities need owner/member separation (UI-06). |
-| Credential rotation | DATABASE_URL, SUPABASE_JWT_SECRET, and SUPABASE_SERVICE_ROLE_KEY treated as compromised. Stale plain variables cleared from cloud. Awaiting owner setting secrets via `fastapi cloud env set --secret` (UI-13). Deployment locked. |
 
 ## Iteration log
 
@@ -76,3 +75,4 @@
 | 2026-09-03 | Audit baseline | `fixed` | Six read-only specialist reviews completed; no files or cloud resources changed. This plan was created from the combined findings. |
 | 2026-09-05 | US-P00 | `done` | Parallel repository/tooling/cost/input research was reconciled into shared context adapters, skills, native hooks, local safety scripts, `docs/user-input-needed.md`, and a conditional $0 contract. No application code or cloud resources changed. |
 | 2026-09-05 | US-P01 | `in_progress` | Owner confirmed UI-01, 03, 04, 05, 07. Production matrix applied to cloud env. Fail-closed guards and unit tests implemented & passing. Diagnosed cloud build failure (resolved via Option A: GitHub push). Stale plain credentials deleted from cloud; awaiting owner setting secrets (UI-13) before push to `origin/develop`. |
+| 2026-09-07 | US-P01 | `done` | Enforced JWKS ES256 verification and opaque Supabase keys; verified secret metadata in FastAPI Cloud; deployed via GitHub integration (commit a0b2bcf, deployment c016b96d); verified HTTP 200 health & readiness, docs/OpenAPI 404, demo-disabled, BFF proxying, and Supabase Session Pooler URI. Story US-P01 complete; US-P02 queued. |

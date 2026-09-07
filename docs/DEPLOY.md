@@ -28,8 +28,8 @@ validation evidence are in the [release-readiness review](reviews/2026-08-11-rel
 3. Auth → URL Configuration:
    - Site URL: `https://fin-buddy-dev.vercel.app`
    - Redirect URLs: `https://fin-buddy-dev.vercel.app/auth/callback`
-4. Enable Email (+ Google if needed) under Authentication → Providers.
-5. Copy pooler `DATABASE_URL`, project URL, anon key, service role key, JWT secret.
+3. Enable Email (+ Google if needed) under Authentication → Providers.
+4. Copy Session Pooler `DATABASE_URL` (Project Settings → Database → Connection string → URI → Mode: Session), project URL, publishable/anon key, service role key, JWT secret.
 
 ## 2. Backend → FastAPI Cloud
 
@@ -64,15 +64,15 @@ uv run fastapi cloud env set PLATFORM_ADMIN_EMAILS "you@example.com" --path .
 uv run fastapi cloud env set JWT_VERIFICATION_MODE jwks_only --path .
 uv run fastapi cloud env set SUPABASE_URL "https://<project-ref>.supabase.co" --path .
 
-# Secret variables (use --value-stdin --secret --path . to prevent secrets from appearing in shell history)
-printf '%s' "<JOB_RUNNER_SECRET>" | uv run fastapi cloud env set JOB_RUNNER_SECRET --value-stdin --secret --path .
-printf '%s' "<DATABASE_POOLER_URI>" | uv run fastapi cloud env set DATABASE_URL --value-stdin --secret --path .
-printf '%s' "<SUPABASE_PUBLISHABLE_KEY>" | uv run fastapi cloud env set SUPABASE_PUBLISHABLE_KEY --value-stdin --secret --path .
-printf '%s' "<SUPABASE_SERVICE_ROLE_KEY>" | uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --path .
+# Secret variables (enter secret via stdin to prevent credentials from appearing in shell history)
+uv run fastapi cloud env set JOB_RUNNER_SECRET --value-stdin --secret --path .
+uv run fastapi cloud env set DATABASE_URL --value-stdin --secret --path .
+uv run fastapi cloud env set SUPABASE_PUBLISHABLE_KEY --value-stdin --secret --path .
+uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --path .
 
 # SUPABASE_JWT_SECRET is optional in production when JWT_VERIFICATION_MODE=jwks_only.
 # If configured for hybrid/HS256 local compatibility:
-printf '%s' "<SUPABASE_JWT_SECRET>" | uv run fastapi cloud env set SUPABASE_JWT_SECRET --value-stdin --secret --path .
+uv run fastapi cloud env set SUPABASE_JWT_SECRET --value-stdin --secret --path .
 ```
 
 Run the migration exactly once against the target Supabase database before scaling or serving API traffic:

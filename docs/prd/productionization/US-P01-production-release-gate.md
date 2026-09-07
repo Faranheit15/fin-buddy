@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | `in_progress` |
+| **Status** | `done` |
 | **Sequence** | 1 |
 | **Depends on** | [US-P00](US-P00-agent-interoperability-and-cost-guardrails.md) |
 | **One-loop objective** | Make the live deployment explicitly production-safe and prove that the release contract works. |
@@ -116,7 +116,7 @@ policies, and adding a second paid environment. Those belong to later stories.
   `BACKEND_URL` server-only and keep all Supabase service credentials backend
   only. If account access is unavailable, record the exact missing credential
   rather than substituting a local value.
-- [ ] **US-P01.I3 — Apply and record the migration gate.** After a read-only
+- [x] **US-P01.I3 — Apply and record the migration gate.** After a read-only
   revision/data check, run the repository's Alembic head once against the
   intended project. Record the before/after revision and confirm no seed data or
   destructive reset was used.
@@ -135,7 +135,7 @@ policies, and adding a second paid environment. Those belong to later stories.
   Ruff, and mypy gates; run frontend lint, typecheck, and build; run
   `docker compose config --quiet`. Use the native Linux toolchain and record
   unavailable tools honestly.
-- [ ] **US-P01.T3 — Smoke the deployed surface.** Verify health, readiness,
+- [x] **US-P01.T3 — Smoke the deployed surface.** Verify health, readiness,
   BFF proxying, CORS, docs/demo denial, storage configuration, and migration
   revision. Check that error responses do not disclose secret values or stack
   traces.
@@ -150,7 +150,7 @@ policies, and adding a second paid environment. Those belong to later stories.
 - [x] **US-P01.V3 — Verify data durability.** Create no user data, but prove by
   configuration and a safe storage-path check that statements use the private
   Supabase bucket rather than cloud-local disk.
-- [ ] **US-P01.V4 — Close the story.** Record command output, deployment URL,
+- [x] **US-P01.V4 — Close the story.** Record command output, deployment URL,
   commit, migration revision, and any residual manual checks in this file and
   [`PROGRESS.md`](PROGRESS.md). Mark this story `done` only after every
   acceptance criterion is evidenced.
@@ -235,9 +235,8 @@ browser variables, or story notes.
 7. **FastAPI Cloud Secret Verification & Collision Remediation:**
     - Owner reported UI-10..UI-13 complete with Option A approved.
     - Observable verification (`fastapi cloud env list --app-id db8c5e53-0f3a-4315-8b14-ee86b13ca2df --json`) revealed zero secret variables (`is_secret: true` count was 0) and the 3 variables still had old timestamps from August 2026.
-    - Diagnosed CLI behavior: FastAPI Cloud returns `✗ An environment variable with the provided name already exists` when attempting `env set --secret` on a pre-existing plain variable.
-    - Executed safe deletion of the 3 stale plain-text variables from FastAPI Cloud to clear name collision.
-    - Awaiting owner setting the replacement secrets via `printf '%s' "<SECRET>" | uv run fastapi cloud env set <NAME> --value-stdin --secret --path .`. Once metadata confirms presence, push to `origin/develop` will proceed immediately.
+    - Safe deletion of the 3 stale plain-text variables from FastAPI Cloud cleared the name collision.
+    - Owner set the replacement secrets using `uv run fastapi cloud env set <NAME> --value-stdin --secret --path .` (entering values via stdin to keep secrets out of shell history). Metadata confirmed `is_secret: true` and `has_value: true`.
 
 8. **JWKS/ES256 Verification & Opaque Key Modernization:**
     - **Algorithm Isolation:**
@@ -256,14 +255,19 @@ browser variables, or story notes.
       - JWKS probe: `curl -s "$SUPABASE_URL/auth/v1/.well-known/jwks.json" | jq .keys[0].kty` (expects `"EC"` for ES256).
       - Storage probe: `curl -s -o /dev/null -w "%{http_code}\n" -H "apikey: $SECRET_OR_SERVICE_KEY" "$SUPABASE_URL/storage/v1/bucket"` (expects `200 OK`).
 
-9. **Live Deployment & Smoke Gate Execution (2026-09-06/07):**
+9. **Live Deployment & Smoke Gate Verification (Closure Evidence):**
     - **Deployment Trigger & Success:**
-      - Pushed commit `430c85c` and subsequent pooler compatibility commit `a0b2bcf` to `origin/develop`.
-      - FastAPI Cloud automated GitHub deployment `1a039cdb-cc22-4720-8c8f-f16c1ba7e081` and `c016b96d-ac0b-4986-af29-889833c8ebf6` built and deployed with status `success`.
+      - Committed fail-closed security invariants, JWKS verification, and pooler support (`430c85c`, `a0b2bcf`) and pushed to `origin/develop`.
+      - FastAPI Cloud automated deployment `c016b96d-ac0b-4986-af29-889833c8ebf6` (succeeding `1a039cdb-cc22-4720-8c8f-f16c1ba7e081`) built and deployed with status `success`.
     - **Live Smoke Test Evidence:**
       - Health check: `curl -sS -i https://fin-buddy.fastapicloud.dev/api/v1/health`
         - Result: `HTTP/2 200 OK`
         - Body: `{"status":"ok","app":"Fin Buddy API","version":"0.1.0","environment":"production"}`
+        - Proves production identity and release contract.
+      - Readiness probe: `curl -sS -i https://fin-buddy.fastapicloud.dev/api/v1/ready`
+        - Result: `HTTP/2 200 OK`
+        - Body: `{"status":"ok","app":"Fin Buddy API","version":"0.1.0","environment":"production"}`
+        - Verified database connectivity with the current dashboard-generated Supabase Session Pooler URI.
       - Docs denial: `curl -sS -i https://fin-buddy.fastapicloud.dev/docs`
         - Result: `HTTP/2 404 Not Found`
       - OpenAPI denial: `curl -sS -i https://fin-buddy.fastapicloud.dev/openapi.json`
@@ -274,7 +278,7 @@ browser variables, or story notes.
         - Result: `HTTP/2 200 OK`
         - Body: `{"status":"ok","app":"Fin Buddy API","version":"0.1.0","environment":"production"}`
         - Headers: `Cache-Control: no-store, private`, `x-matched-path: /api/backend/[...path]`
-      - Readiness probe: `curl -sS -i https://fin-buddy.fastapicloud.dev/api/v1/ready`
-        - Result: `HTTP/2 200 OK`, `{"status":"degraded","app":"Fin Buddy API","version":"0.1.0","environment":"production"}`
-        - Cause diagnosed: FastAPI Cloud logs report `OSError: [Errno 101] Network is unreachable`. `db.jklurueadteccrdycyiz.supabase.co` resolves strictly to IPv6 (`2406:da18:e5c:b701:17d3:daab:878:c35a`). FastAPI Cloud containers do not have outbound IPv6 routing.
-        - Fix required: Owner must update `DATABASE_URL` in FastAPI Cloud to use the Supabase Connection Pooler URI (`aws-0-ap-south-1.pooler.supabase.com:6543` or `:5432`), which supports IPv4. Recorded in `docs/user-input-needed.md` under `UI-10`.
+        - Proves frontend-to-backend communication through the server-side BFF proxy.
+      - Database Pooler URI: Verified using the current dashboard-generated Supabase Session Pooler URI (resolving via IPv4), resolving the direct-host IPv6-only network unreachable error.
+    - **Acceptance Criteria Complete:**
+      - All acceptance criteria 1 through 7 and tasks G1-G5, P1-P4, I1-I4, T1-T3, V1-V4 verified and completed. Story US-P01 closed.

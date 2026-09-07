@@ -35,10 +35,10 @@ human input, add a row with a stable ID rather than burying it in a story note.
 | `UI-07` | Keepalive experiment approval | `provided` | Confirm whether one protected daily Vercel Cron probe may be enabled. | 2026-09-05: Approved by owner. Daily probe `/api/v1/ready` authorized. |
 | `UI-08` | Custom domain | `not applicable` | Keep the free Vercel and FastAPI Cloud hostnames unless the owner explicitly accepts domain cost. | Domain decision only. |
 | `UI-09` | Disposable browser test identity | `needed` | Use a test Google account or local synthetic account in the owner’s password manager/local secret store; do not paste credentials. | Test identity label and browser result only. |
-| `UI-10` | Rotate `DATABASE_URL` to Supabase Pooler URI | `needed` | Reset DB password in Supabase: Project Settings → Database. In **Connection string**, select **URI** and copy the **Pooler** connection string (Host `aws-0-ap-south-1.pooler.supabase.com`, Port 6543 or 5432, User `postgres.jklurueadteccrdycyiz`). Note: The direct connection `db.jklurueadteccrdycyiz.supabase.co` is IPv6-only and unreachable from FastAPI Cloud (`[Errno 101] Network is unreachable`). Set via `printf '%s' "..." \| uv run fastapi cloud env set DATABASE_URL --value-stdin --secret --path .`. | 2026-09-06: Verified `is_secret: true` in FastAPI Cloud. Live probe revealed `[Errno 101] Network is unreachable` because direct host is IPv6-only; owner must update to Supabase pooler host (`aws-0-ap-south-1.pooler.supabase.com`). |
+| `UI-10` | Rotate `DATABASE_URL` to Supabase Session Pooler URI | `verified` | Reset DB password in Supabase: Project Settings → Database. In **Connection string**, select **URI** and copy the current dashboard-generated **Session Pooler** connection string (Port 5432). Set via `uv run fastapi cloud env set DATABASE_URL --value-stdin --secret --path .` (enter value on stdin without writing to shell history). | 2026-09-07: Verified `is_secret: true` in FastAPI Cloud. Live probe verified HTTP 200 OK for `/health` and `/ready` using the current dashboard-generated Supabase Session Pooler URI. |
 | `UI-11` | Rotate `SUPABASE_JWT_SECRET` | `verified` | Generate new JWT secret in Supabase: Project Settings → API → JWT Settings. In production `JWT_VERIFICATION_MODE=jwks_only`, ES256 tokens verify via Supabase JWKS, making this secret optional in production. | 2026-09-06: Verified `is_secret: true` in FastAPI Cloud. `JWT_VERIFICATION_MODE=jwks_only` active and verified. |
-| `UI-12` | Rotate `SUPABASE_SERVICE_ROLE_KEY` | `verified` | Roll service_role key in Supabase: Project Settings → API. Set in FastAPI Cloud via `printf '%s' "..." \| uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --path .`. | 2026-09-06: Verified `is_secret: true` in FastAPI Cloud (`sb_secret_` / opaque key handling verified). |
-| `UI-13` | Confirm replacement secrets in FastAPI Cloud | `verified` | Verified non-secret metadata only (`is_secret: true`, `has_value: true`, `JWT_VERIFICATION_MODE=jwks_only`). | 2026-09-06: Replacement secrets verified; deployment `1a039cdb` and `c016b96d` built successfully. |
+| `UI-12` | Rotate `SUPABASE_SERVICE_ROLE_KEY` | `verified` | Roll service_role key in Supabase: Project Settings → API. Set in FastAPI Cloud via `uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --path .` (enter value on stdin). | 2026-09-06: Verified `is_secret: true` in FastAPI Cloud (`sb_secret_` / opaque key handling verified). |
+| `UI-13` | Confirm replacement secrets in FastAPI Cloud | `verified` | Verified non-secret metadata only (`is_secret: true`, `has_value: true`, `JWT_VERIFICATION_MODE=jwks_only`). | 2026-09-07: All replacement credentials verified; deployment `c016b96d` active and verified. |
 
 ## Google OAuth — exact setup
 
@@ -170,11 +170,12 @@ Never print, inspect, or paste these secrets into chat, Git, or agent context.
 ### 1. Rotate Database Password (UI-10)
 1. Open Supabase Dashboard: `https://supabase.com/dashboard/project/jklurueadteccrdycyiz/settings/database`.
 2. Scroll to **Database password** and click **Reset database password**. Generate a secure random password and save.
-3. In **Connection string**, select **URI** and copy the pooler connection string with the new password.
+3. In **Connection string**, select **URI** and copy the current dashboard-generated Session Pooler URI (Port 5432).
 4. Set the new connection URI in FastAPI Cloud from `backend/`:
    ```bash
-   printf '%s' "<NEW_POSTGRES_POOLER_URI>" | uv run fastapi cloud env set DATABASE_URL --value-stdin --secret --path .
+   uv run fastapi cloud env set DATABASE_URL --value-stdin --secret --path .
    ```
+   *(Enter or paste the secret on stdin without saving it to shell history)*
 
 ### 2. Rotate JWT Secret (UI-11)
 1. Open Supabase Dashboard: `https://supabase.com/dashboard/project/jklurueadteccrdycyiz/settings/api`.
@@ -182,16 +183,18 @@ Never print, inspect, or paste these secrets into chat, Git, or agent context.
    *Note: In production `JWT_VERIFICATION_MODE=jwks_only`, tokens verify via Supabase JWKS (ES256), making `SUPABASE_JWT_SECRET` optional in production. If configuring for local hybrid compatibility:*
 3. Set the new secret in FastAPI Cloud from `backend/`:
    ```bash
-   printf '%s' "<NEW_JWT_SECRET>" | uv run fastapi cloud env set SUPABASE_JWT_SECRET --value-stdin --secret --path .
+   uv run fastapi cloud env set SUPABASE_JWT_SECRET --value-stdin --secret --path .
    ```
+   *(Enter or paste the secret on stdin without saving it to shell history)*
 
 ### 3. Rotate Service Role Key (UI-12)
 1. Open Supabase Dashboard: `https://supabase.com/dashboard/project/jklurueadteccrdycyiz/settings/api`.
 2. Under **Project API keys**, locate the `service_role` key and roll/regenerate the key.
 3. Set the new key in FastAPI Cloud from `backend/`:
    ```bash
-   printf '%s' "<NEW_SERVICE_ROLE_KEY>" | uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --path .
+   uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --path .
    ```
+   *(Enter or paste the secret on stdin without saving it to shell history)*
 
 ### 4. Confirm Replacement Secrets (UI-13)
 * Inform the agent once the secrets have been set in FastAPI Cloud. The agent will verify metadata presence (`has_value: true`, `is_secret: true`) and `JWT_VERIFICATION_MODE=jwks_only` without printing values before clearing deployment.
@@ -205,3 +208,4 @@ Never print, inspect, or paste these secrets into chat, Git, or agent context.
 | 2026-09-05 | US-P01 Production release gate | Owner confirmed UI-01 (prod URL), UI-03 (Supabase project), UI-04 (FastAPI Cloud login), UI-05 (Vercel login), and UI-07 (Keepalive probe). FastAPI Cloud env set to production matrix (`ENVIRONMENT=production`, `DEBUG=false`, etc.). Code fail-closed guards and unit tests implemented. | Remote FastAPI Cloud image build failed during `fastapi deploy` with `Installing Python interpreter (os error 2)` (deployment `8b4d5e61-5e7e-45b4-8248-c5c3e8d4f3d4`). Story left in_progress awaiting cloud deploy fix. |
 | 2026-09-05 | US-P01 Security remediation | DATABASE_URL, SUPABASE_JWT_SECRET, and SUPABASE_SERVICE_ROLE_KEY treated as compromised. Added UI-10 through UI-13 for owner rotation. Deployment locked until confirmed. | Required rotation actions documented. No secrets printed or inspected. |
 | 2026-09-05 | US-P01 Secret verification | Safe CLI check revealed FastAPI Cloud rejects `env set --secret` when variable already exists. Deleted the 3 stale non-secret variables from cloud to clear collision. Awaiting `fastapi cloud env set --secret` from owner. | `is_secret: true` verification pending. |
+| 2026-09-07 | US-P01 Release gate closure | Verified UI-10 and UI-13. Production deployment `c016b96d` active with HTTP 200 health and readiness, docs/OpenAPI disabled, demo auth disabled, frontend BFF verified, and Supabase Session Pooler URI verified. | US-P01 closed. UI-02 (Google OAuth) remains queued for US-P02. |

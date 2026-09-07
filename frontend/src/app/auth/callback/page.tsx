@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/features/auth/auth-provider";
 import { exchangeOAuthCode } from "@/lib/api/auth";
@@ -14,57 +14,60 @@ function CallbackInner() {
   const searchParams = useSearchParams();
   const { applyEstablishedSession } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const executedRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
+    if (executedRef.current) return;
+    executedRef.current = true;
 
     void (async () => {
-      try {
-        // 1. Explicitly reject implicit flow tokens in hash
-        const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
-        if (hash.includes("access_token") || hash.includes("token=")) {
-          window.history.replaceState({}, "", "/auth/callback");
-          throw new Error(
-            "Implicit token flow is not supported. Please sign in again using secure sign-in.",
-          );
-        }
-
-        // 2. Check for provider-reported errors
-        const errorParam = searchParams.get("error");
-        const errorDescription = searchParams.get("error_description");
-        if (errorParam) {
-          window.history.replaceState({}, "", "/auth/callback");
-          if (errorParam === "access_denied") {
-            throw new Error("Google sign-in was cancelled. Please try again.");
-          }
-          throw new Error(
-            errorDescription ||
-              "Google sign-in is currently unavailable. Please try again or use another login method.",
-          );
-        }
-
-        // 3. Inspect authorization code
-        const code = searchParams.get("code");
-        const state = searchParams.get("state");
-
-        if (!code) {
-          window.history.replaceState({}, "", "/auth/callback");
-          throw new Error("Authorization code is missing. Please start sign-in again.");
-        }
-
-        // 4. Consume origin-bound OAuth flow record (single-use, validated, and expired check)
-        const flow = consumeOAuthFlow(state);
-        if (!flow) {
-          window.history.replaceState({}, "", "/auth/callback");
-          throw new Error(
-            "Sign-in session expired, was invalid, or was already completed. Please start sign-in again.",
-          );
-        }
-
-        // 5. Remove credentials from the address bar immediately before network operations
+      // 1. Explicitly reject implicit flow tokens in hash
+      const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+      if (hash.includes("access_token") || hash.includes("token=")) {
         window.history.replaceState({}, "", "/auth/callback");
+        setError("Implicit token flow is not supported. Please sign in again using secure sign-in.");
+        return;
+      }
 
-        // 6. Complete PKCE code exchange with backend
+      // 2. Check for provider-reported errors
+      const errorParam = searchParams.get("error");
+      const errorDescription = searchParams.get("error_description");
+      if (errorParam) {
+        window.history.replaceState({}, "", "/auth/callback");
+        setError(
+          errorParam === "access_denied"
+            ? "Google sign-in was cancelled. Please try again."
+            : errorDescription ||
+                "Google sign-in is currently unavailable. Please try again or use another login method.",
+        );
+        return;
+      }
+
+      // 3. Inspect authorization code
+      const code = searchParams.get("code");
+      const state = searchParams.get("state");
+
+      if (!code) {
+        window.history.replaceState({}, "", "/auth/callback");
+        setError("Authorization code is missing. Please start sign-in again.");
+        return;
+      }
+
+      // 4. Consume origin-bound OAuth flow record (single-use, validated, and expired check)
+      const flow = consumeOAuthFlow(state);
+      if (!flow) {
+        window.history.replaceState({}, "", "/auth/callback");
+        setError(
+          "Sign-in session expired, was invalid, or was already completed. Please start sign-in again.",
+        );
+        return;
+      }
+
+      // 5. Remove credentials from the address bar immediately before network operations
+      window.history.replaceState({}, "", "/auth/callback");
+
+      // 6. Complete PKCE code exchange with backend and redirect
+      try {
         const backend = await exchangeOAuthCode({
           code,
           code_verifier: flow.codeVerifier,
@@ -77,27 +80,19 @@ function CallbackInner() {
         // 7. Apply the BFF-managed HttpOnly cookie session and redirect
         await applyEstablishedSession();
 
-        if (!cancelled) {
-          const destination = sanitizeAppPath(flow.next);
-          router.replace(destination);
-          router.refresh();
-        }
+        const destination = sanitizeAppPath(flow.next);
+        router.replace(destination);
+        router.refresh();
       } catch (err) {
-        if (!cancelled) {
-          setError(
-            err instanceof ApiError
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
               ? err.message
-              : err instanceof Error
-                ? err.message
-                : "Authentication callback failed",
-          );
-        }
+              : "Authentication callback failed",
+        );
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [applyEstablishedSession, router, searchParams]);
 
   if (error) {

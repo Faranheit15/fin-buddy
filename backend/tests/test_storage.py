@@ -123,7 +123,11 @@ async def test_object_metadata_probes_range_when_head_has_no_size() -> None:
             }
             return _Response(
                 206,
-                {"content-range": "bytes 0-0/322", "content-type": "text/plain"},
+                {
+                    "content-length": "1",
+                    "content-range": "bytes 0-0/322",
+                    "content-type": "text/plain",
+                },
             )
 
     original = storage.httpx.AsyncClient

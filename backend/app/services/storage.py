@@ -202,15 +202,23 @@ async def object_metadata(relative: str, settings: Settings | None = None) -> St
         raise AppError(
             "Failed to inspect statement file", code="storage_metadata_failed", status_code=502
         )
-    size = _content_length(response)
-    if size is None:
-        content_range = response.headers.get("content-range", "")
+    content_range = response.headers.get("content-range", "")
+    size: int | None
+    if content_range:
         try:
+            # A one-byte range response reports Content-Length: 1. The total
+            # object size is the value after the slash in Content-Range.
             size = int(content_range.rsplit("/", 1)[1])
         except (IndexError, ValueError):
             raise AppError(
                 "Failed to inspect statement file", code="storage_metadata_failed", status_code=502
             ) from None
+    else:
+        size = _content_length(response)
+    if size is None:
+        raise AppError(
+            "Failed to inspect statement file", code="storage_metadata_failed", status_code=502
+        )
     content_type = response.headers.get("content-type")
     logger.info(
         "supabase_storage_metadata",

@@ -188,7 +188,10 @@ async def object_metadata(relative: str, settings: Settings | None = None) -> St
         response = await client.head(url, headers=_supabase_headers(cfg))
         if response.status_code == 404:
             raise FileNotFoundError(relative)
-        if response.status_code in {405, 501}:
+        # Some Supabase/edge responses omit Content-Length for HEAD. Probe one
+        # byte so Content-Range can provide the authoritative total without
+        # downloading the object into memory.
+        if response.status_code in {405, 501} or _content_length(response) is None:
             response = await client.get(
                 url, headers={**_supabase_headers(cfg), "Range": "bytes=0-0"}
             )

@@ -99,6 +99,50 @@ async def test_signed_upload_url_is_provider_url_without_service_key(
     )
 
 
+@pytest.mark.asyncio
+async def test_object_metadata_probes_range_when_head_has_no_size() -> None:
+    class _Response:
+        def __init__(self, status_code: int, headers: dict[str, str]) -> None:
+            self.status_code = status_code
+            self.headers = headers
+
+    class _Client:
+        async def __aenter__(self) -> "_Client":
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        async def head(self, *_args: object, **_kwargs: object) -> _Response:
+            return _Response(200, {"content-type": "text/plain"})
+
+        async def get(self, *_args: object, **kwargs: object) -> _Response:
+            assert kwargs["headers"] == {
+                "apikey": "sb_secret_test",
+                "Range": "bytes=0-0",
+            }
+            return _Response(
+                206,
+                {"content-range": "bytes 0-0/322", "content-type": "text/plain"},
+            )
+
+    original = storage.httpx.AsyncClient
+    storage.httpx.AsyncClient = lambda **_kwargs: _Client()  # type: ignore[assignment]
+    try:
+        settings = Settings(
+            statement_storage_backend="supabase",
+            supabase_url="https://test.supabase.co",
+            statement_storage_bucket="statements",
+            supabase_service_role_key="sb_secret_test",
+        )
+        metadata = await storage.object_metadata("org/user/file.txt", settings)
+    finally:
+        storage.httpx.AsyncClient = original
+
+    assert metadata.size_bytes == 322
+    assert metadata.content_type == "text/plain"
+
+
 def test_supabase_headers_opaque_secret_key() -> None:
     settings = Settings(
         supabase_url="https://test.supabase.co",

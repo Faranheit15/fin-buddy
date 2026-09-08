@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { ApiError, apiFetch } from "@/lib/api/client";
 import { env } from "@/lib/env";
 
 export type StatementStatus = "uploaded" | "parsing" | "needs_review" | "imported" | "failed";
@@ -46,6 +46,16 @@ export type StatementLine = {
 
 export type StatementDetail = Statement & {
   lines: StatementLine[];
+};
+
+export type StatementUploadPrepare = {
+  mode: "signed" | "legacy";
+  statement_id: string | null;
+  object_path: string | null;
+  upload_url: string | null;
+  expires_at: string | null;
+  max_upload_bytes: number;
+  allowed_mime_types: string[];
 };
 
 export type StatementImportResult = {
@@ -98,7 +108,7 @@ export function getStatement(accessToken: string, id: string) {
   return apiFetch<StatementDetail>(`/api/v1/statements/${id}`, { method: "GET" }, { accessToken });
 }
 
-export async function uploadStatement(
+async function uploadStatementLegacy(
   accessToken: string,
   body: {
     file: File | Blob;
@@ -146,6 +156,107 @@ export async function uploadStatement(
     throw new ApiError(message, response.status);
   }
   return (await response.json()) as StatementDetail;
+}
+
+function contentTypeFor(filename: string, contentType: string): string {
+  if (contentType) return contentType;
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  if (lower.endsWith(".csv")) return "text/csv";
+  if (lower.endsWith(".tsv")) return "text/tab-separated-values";
+  if (lower.endsWith(".xlsx")) {
+    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  }
+  return "text/plain";
+}
+
+export async function uploadStatement(
+  accessToken: string,
+  body: {
+    file: File | Blob;
+    filename?: string;
+    creditCardId: string;
+    periodStart?: string;
+    periodEnd?: string;
+    statementDate?: string;
+    dueDate?: string;
+    autoParse?: boolean;
+    idempotencyKey?: string;
+    signal?: AbortSignal;
+  },
+): Promise<StatementDetail> {
+  const filename = body.filename ?? (body.file instanceof File ? body.file.name : "statement.txt");
+  const contentType = contentTypeFor(filename, body.file.type);
+  const idempotencyKey = body.idempotencyKey ?? crypto.randomUUID();
+  const prepare = await apiFetch<StatementUploadPrepare>(
+    "/api/v1/statements/upload/prepare",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        credit_card_id: body.creditCardId,
+        filename,
+        content_type: contentType,
+        size_bytes: body.file.size,
+        period_start: body.periodStart,
+        period_end: body.periodEnd,
+        statement_date: body.statementDate,
+        due_date: body.dueDate,
+      }),
+    },
+    { accessToken, idempotencyKey, signal: body.signal },
+  );
+
+  if (prepare.mode === "legacy") {
+    return uploadStatementLegacy(accessToken, body);
+  }
+  if (!prepare.upload_url || !prepare.statement_id) {
+    throw new ApiError("Statement upload could not be prepared", 502, "upload_prepare_failed");
+  }
+
+  let storageResponse: Response;
+  try {
+    storageResponse = await fetch(prepare.upload_url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "no-store",
+      },
+      body: body.file,
+      signal: body.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError(
+      "The statement could not reach secure storage. Check your connection and try again.",
+      0,
+      "storage_upload_network_error",
+    );
+  }
+
+  // A retry after a successful PUT can receive Supabase's asset-exists response;
+  // finalization verifies the object and makes the operation safe to repeat.
+  if (!storageResponse.ok && storageResponse.status !== 400 && storageResponse.status !== 409) {
+    throw new ApiError(
+      "Secure storage rejected the statement upload. Check the file type and size.",
+      storageResponse.status,
+      "storage_upload_rejected",
+    );
+  }
+
+  return apiFetch<StatementDetail>(
+    "/api/v1/statements/upload/finalize",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        statement_id: prepare.statement_id,
+        filename,
+        content_type: contentType,
+        size_bytes: body.file.size,
+        auto_parse: body.autoParse !== false,
+      }),
+    },
+    { accessToken, idempotencyKey: `${idempotencyKey}:finalize`, signal: body.signal },
+  );
 }
 
 export function parseStatement(accessToken: string, id: string) {

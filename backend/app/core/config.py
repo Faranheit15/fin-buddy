@@ -10,6 +10,19 @@ from urllib.parse import urlparse, urlunparse
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from app.core.upload_config import (
+    DEFAULT_STATEMENT_ABANDON_AFTER_SECONDS,
+    DEFAULT_STATEMENT_MAX_UPLOAD_BYTES,
+    DEFAULT_STATEMENT_UPLOAD_TTL_SECONDS,
+    PARSER_MAX_COLUMNS,
+    PARSER_MAX_DECOMPRESSED_BYTES,
+    PARSER_MAX_LINES,
+    PARSER_MAX_PDF_PAGES,
+    PARSER_MAX_ROWS,
+    PARSER_MAX_SHEETS,
+    PARSER_MAX_TEXT_CHARS,
+)
+
 
 def _parse_string_list(value: object) -> list[str]:
     """
@@ -111,7 +124,35 @@ class Settings(BaseSettings):
     statement_storage_backend: Literal["local", "supabase"] = "local"
     statement_storage_dir: str = "storage/statements"
     statement_storage_bucket: str = "statements"
-    statement_max_upload_bytes: int = 15 * 1024 * 1024  # 15 MB
+    statement_max_upload_bytes: int = Field(
+        default=DEFAULT_STATEMENT_MAX_UPLOAD_BYTES,
+        ge=1,
+        le=DEFAULT_STATEMENT_MAX_UPLOAD_BYTES,
+    )
+    statement_upload_ttl_seconds: int = Field(
+        default=DEFAULT_STATEMENT_UPLOAD_TTL_SECONDS, ge=60, le=2 * 60 * 60
+    )
+    statement_abandon_after_seconds: int = Field(
+        default=DEFAULT_STATEMENT_ABANDON_AFTER_SECONDS, ge=15 * 60, le=7 * 24 * 60 * 60
+    )
+    statement_parser_max_rows: int = Field(default=PARSER_MAX_ROWS, ge=1, le=PARSER_MAX_ROWS)
+    statement_parser_max_columns: int = Field(
+        default=PARSER_MAX_COLUMNS, ge=1, le=PARSER_MAX_COLUMNS
+    )
+    statement_parser_max_sheets: int = Field(default=PARSER_MAX_SHEETS, ge=1, le=PARSER_MAX_SHEETS)
+    statement_parser_max_pdf_pages: int = Field(
+        default=PARSER_MAX_PDF_PAGES, ge=1, le=PARSER_MAX_PDF_PAGES
+    )
+    statement_parser_max_decompressed_bytes: int = Field(
+        default=PARSER_MAX_DECOMPRESSED_BYTES,
+        ge=1,
+        le=PARSER_MAX_DECOMPRESSED_BYTES,
+    )
+    statement_parser_max_lines: int = Field(default=PARSER_MAX_LINES, ge=1, le=PARSER_MAX_LINES)
+    statement_parser_max_text_chars: int = Field(
+        default=PARSER_MAX_TEXT_CHARS, ge=1, le=PARSER_MAX_TEXT_CHARS
+    )
+    statement_parse_timeout_seconds: int = Field(default=20, ge=1, le=60)
 
     # Email provider (Resend)
     resend_api_key: str | None = None
@@ -166,7 +207,9 @@ class Settings(BaseSettings):
             if self.statement_storage_backend != "supabase":
                 raise ValueError("Production mode requires STATEMENT_STORAGE_BACKEND=supabase")
             if not self.statement_storage_bucket:
-                raise ValueError("Production mode requires STATEMENT_STORAGE_BUCKET to be configured")
+                raise ValueError(
+                    "Production mode requires STATEMENT_STORAGE_BUCKET to be configured"
+                )
             if not self.database_url:
                 raise ValueError("Production mode requires DATABASE_URL to be set")
             if not self.supabase_url:

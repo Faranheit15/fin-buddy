@@ -1,7 +1,10 @@
-"""Unit tests for statement parsers."""
+"""Unit tests for statement parsers and bounded tabular input."""
 
+import pytest
+
+from app.core.exceptions import AppError
 from app.models.enums import TransactionType
-from app.services.parsers import parse_statement_text, select_parser
+from app.services.parsers import parse_statement_bytes, parse_statement_text, select_parser
 from app.services.parsers.finbuddy_sample import FinBuddySampleParser
 from app.services.parsers.generic import GenericTextParser
 
@@ -60,3 +63,30 @@ def test_generic_parse() -> None:
 def test_empty_text_no_crash() -> None:
     result = parse_statement_text("hello world no dates")
     assert result.lines == []
+
+
+def test_csv_parser_accepts_supported_columns() -> None:
+    result = parse_statement_bytes(
+        b"Date,Description,Amount\n2026-07-01,COFFEE,125.50\n",
+        "statement.csv",
+    )
+    assert result.parser_name == "csv_excel_parser"
+    assert result.lines[0].amount_paise == 12_550
+
+
+def test_csv_parser_rejects_row_budget() -> None:
+    with pytest.raises(AppError, match="row limit"):
+        parse_statement_bytes(
+            b"Date,Description,Amount\n2026-07-01,COFFEE,1\n2026-07-02,CAFE,2\n",
+            "statement.csv",
+            max_rows=1,
+        )
+
+
+def test_text_parser_rejects_line_budget() -> None:
+    with pytest.raises(AppError, match="line limit"):
+        parse_statement_bytes(
+            SAMPLE.encode(),
+            "statement.txt",
+            max_lines=1,
+        )

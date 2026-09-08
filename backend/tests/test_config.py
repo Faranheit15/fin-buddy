@@ -127,3 +127,8 @@ def test_development_defaults_usable() -> None:
     assert settings.is_production is False
     assert settings.demo_login_allowed is True
     assert settings.jwt_verification_mode == "hybrid"
+
+
+def test_statement_upload_ceiling_cannot_exceed_provider_limit() -> None:
+    with pytest.raises(ValidationError):
+        Settings(statement_max_upload_bytes=15 * 1024 * 1024 + 1)

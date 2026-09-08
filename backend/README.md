@@ -137,11 +137,13 @@ Set the same env vars as secrets (see `.env.example`). Minimum production set:
 | `CORS_ORIGINS` | Include `https://your-app.vercel.app` |
 | `ENVIRONMENT` | `production` |
 | `DEBUG` | `false` |
-| `AUTO_MIGRATE` | `true` for single instance; release-step migrate + `false` for multi-instance |
+| `AUTO_MIGRATE` | `false` in production; apply Alembic migrations through an explicit release step |
 | `AUTO_SEED` | Prefer `false` in production |
 | `PLATFORM_ADMIN_EMAILS` | Your email(s) |
 | `STATEMENT_STORAGE_BACKEND` | `supabase` on FastAPI Cloud |
 | `STATEMENT_STORAGE_BUCKET` | Private bucket name (default `statements`) |
+| `STATEMENT_MAX_UPLOAD_BYTES` | `15728640` (15 MiB; must match the bucket restriction) |
+| `STATEMENT_UPLOAD_TTL_SECONDS` | `900` (15 minutes) |
 
 Demo login is disabled when `ENVIRONMENT=production` (unless explicitly re-enabled).
 
@@ -149,4 +151,4 @@ Entrypoint is `app.main:app` (`[tool.fastapi]` in `pyproject.toml`). Deploy with
 
 Health probe: `GET /api/v1/health`
 
-Prefer `AUTO_MIGRATE=true` for single-instance personal deploys; for multi-instance, run migrations as a release step and set `AUTO_MIGRATE=false` on app processes if needed.
+Production uses `AUTO_MIGRATE=false`; run reviewed Alembic migrations once as a release step before serving the new application image.

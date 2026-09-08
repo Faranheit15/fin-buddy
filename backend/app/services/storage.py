@@ -1,9 +1,11 @@
-"""Statement file storage — local filesystem or Supabase Storage."""
+"""Statement file storage — local filesystem or private Supabase Storage."""
 
 from __future__ import annotations
 
-from pathlib import Path
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
 from typing import Literal
+from urllib.parse import urljoin
 from uuid import UUID
 
 import httpx
@@ -16,6 +18,12 @@ from app.core.security import is_opaque_supabase_key
 logger = get_logger(__name__)
 
 StorageBackend = Literal["local", "supabase"]
+
+
+@dataclass(frozen=True, slots=True)
+class StorageObjectMetadata:
+    size_bytes: int
+    content_type: str | None
 
 
 def storage_backend(settings: Settings | None = None) -> StorageBackend:
@@ -36,13 +44,37 @@ def storage_root(settings: Settings | None = None) -> Path:
     return root
 
 
-def statement_relative_path(organization_id: UUID, statement_id: UUID, ext: str) -> str:
+def statement_relative_path(
+    organization_id: UUID,
+    statement_id: UUID,
+    ext: str,
+    user_id: UUID | None = None,
+) -> str:
+    """Build a server-owned path; the optional user segment is used for new uploads."""
     safe_ext = ext.lstrip(".").lower() or "bin"
-    return f"{organization_id}/{statement_id}.{safe_ext}"
+    if user_id is None:
+        return f"{organization_id}/{statement_id}.{safe_ext}"
+    return f"{organization_id}/{user_id}/{statement_id}.{safe_ext}"
 
 
 def absolute_path(relative: str, settings: Settings | None = None) -> Path:
-    return storage_root(settings) / relative
+    return storage_root(settings) / _safe_relative_path(relative)
+
+
+def _safe_relative_path(relative: str) -> str:
+    clean = relative.strip("/")
+    path = PurePosixPath(clean)
+    if (
+        not clean
+        or clean != relative
+        or path.is_absolute()
+        or "\\" in relative
+        or any(part in {"", ".", ".."} for part in path.parts)
+    ):
+        raise AppError(
+            "Invalid statement storage path", code="invalid_storage_path", status_code=500
+        )
+    return str(path)
 
 
 def _content_type_for(relative: str) -> str:
@@ -55,19 +87,23 @@ def _content_type_for(relative: str) -> str:
         return "text/tab-separated-values"
     if lower.endswith(".txt"):
         return "text/plain"
+    if lower.endswith(".xlsx"):
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return "application/octet-stream"
 
 
 def _supabase_object_url(settings: Settings, relative: str) -> str:
     if not settings.supabase_url:
         raise AppError(
-            "SUPABASE_URL is required for statement storage",
-            code="storage_not_configured",
-            status_code=503,
+            "Statement storage is not configured", code="storage_not_configured", status_code=503
         )
     bucket = settings.statement_storage_bucket.strip("/")
+    if not bucket or "/" in bucket:
+        raise AppError(
+            "Statement storage is not configured", code="storage_not_configured", status_code=503
+        )
     base = settings.supabase_url.rstrip("/")
-    object_path = relative.lstrip("/")
+    object_path = _safe_relative_path(relative)
     return f"{base}/storage/v1/object/{bucket}/{object_path}"
 
 
@@ -75,14 +111,52 @@ def _supabase_headers(settings: Settings) -> dict[str, str]:
     key = settings.supabase_service_role_key
     if not key:
         raise AppError(
-            "SUPABASE_SERVICE_ROLE_KEY is required for statement storage",
-            code="storage_not_configured",
-            status_code=503,
+            "Statement storage is not configured", code="storage_not_configured", status_code=503
         )
     headers = {"apikey": key}
     if not is_opaque_supabase_key(key):
         headers["Authorization"] = f"Bearer {key}"
     return headers
+
+
+async def create_signed_upload_url(
+    relative: str,
+    settings: Settings | None = None,
+) -> str:
+    """Issue a Supabase upload URL; the service-role key never leaves this process."""
+    cfg = settings or get_settings()
+    if storage_backend(cfg) != "supabase":
+        raise AppError(
+            "Direct statement uploads require Supabase Storage",
+            code="storage_not_configured",
+            status_code=503,
+        )
+    object_url = _supabase_object_url(cfg, relative)
+    sign_url = object_url.replace("/object/", "/object/upload/sign/", 1)
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
+        response = await client.post(sign_url, headers=_supabase_headers(cfg), json={})
+    if response.status_code >= 400:
+        logger.error("supabase_storage_sign_failed", status=response.status_code, path=relative)
+        raise AppError(
+            "Could not prepare statement upload", code="storage_sign_failed", status_code=502
+        )
+    try:
+        payload = response.json()
+        signed_path = payload.get("url")
+    except ValueError as exc:
+        raise AppError(
+            "Could not prepare statement upload", code="storage_sign_failed", status_code=502
+        ) from exc
+    if not isinstance(signed_path, str) or "token=" not in signed_path:
+        raise AppError(
+            "Could not prepare statement upload", code="storage_sign_failed", status_code=502
+        )
+    base = cfg.supabase_url.rstrip("/") if cfg.supabase_url else ""
+    return (
+        signed_path
+        if signed_path.startswith("http")
+        else urljoin(f"{base}/", signed_path.lstrip("/"))
+    )
 
 
 async def save_bytes(
@@ -100,14 +174,91 @@ async def save_bytes(
     return relative
 
 
-async def read_bytes(relative: str, settings: Settings | None = None) -> bytes:
+async def object_metadata(relative: str, settings: Settings | None = None) -> StorageObjectMetadata:
     cfg = settings or get_settings()
-    if storage_backend(cfg) == "supabase":
-        return await _supabase_download(relative, cfg)
-    path = absolute_path(relative, cfg)
-    if not path.is_file():
+    if storage_backend(cfg) == "local":
+        path = absolute_path(relative, cfg)
+        if not path.is_file():
+            raise FileNotFoundError(relative)
+        return StorageObjectMetadata(path.stat().st_size, _content_type_for(relative))
+
+    url = _supabase_object_url(cfg, relative)
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
+        response = await client.head(url, headers=_supabase_headers(cfg))
+        if response.status_code == 404:
+            raise FileNotFoundError(relative)
+        if response.status_code in {405, 501}:
+            response = await client.get(
+                url, headers={**_supabase_headers(cfg), "Range": "bytes=0-0"}
+            )
+    if response.status_code == 404:
         raise FileNotFoundError(relative)
-    return path.read_bytes()
+    if response.status_code >= 400:
+        raise AppError(
+            "Failed to inspect statement file", code="storage_metadata_failed", status_code=502
+        )
+    size = _content_length(response)
+    if size is None:
+        content_range = response.headers.get("content-range", "")
+        try:
+            size = int(content_range.rsplit("/", 1)[1])
+        except (IndexError, ValueError):
+            raise AppError(
+                "Failed to inspect statement file", code="storage_metadata_failed", status_code=502
+            ) from None
+    return StorageObjectMetadata(size, response.headers.get("content-type"))
+
+
+async def read_bytes(
+    relative: str,
+    settings: Settings | None = None,
+    *,
+    max_bytes: int | None = None,
+) -> bytes:
+    cfg = settings or get_settings()
+    limit = max_bytes or 15 * 1024 * 1024
+    if storage_backend(cfg) == "local":
+        path = absolute_path(relative, cfg)
+        if not path.is_file():
+            raise FileNotFoundError(relative)
+        if path.stat().st_size > limit:
+            raise AppError(
+                "Statement file exceeds the configured limit",
+                code="upload_too_large",
+                status_code=413,
+            )
+        return path.read_bytes()
+
+    url = _supabase_object_url(cfg, relative)
+    chunks: list[bytes] = []
+    total = 0
+    async with (
+        httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client,
+        client.stream("GET", url, headers=_supabase_headers(cfg)) as response,
+    ):
+        if response.status_code == 404:
+            raise FileNotFoundError(relative)
+        if response.status_code >= 400:
+            raise AppError(
+                "Failed to read statement file", code="storage_download_failed", status_code=502
+            )
+        declared_size = _content_length(response)
+        if declared_size is not None and declared_size > limit:
+            raise AppError(
+                "Statement file exceeds the configured limit",
+                code="upload_too_large",
+                status_code=413,
+            )
+        async for chunk in response.aiter_bytes(1024 * 1024):
+            total += len(chunk)
+            if total > limit:
+                raise AppError(
+                    "Statement file exceeds the configured limit",
+                    code="upload_too_large",
+                    status_code=413,
+                )
+            chunks.append(chunk)
+    return b"".join(chunks)
 
 
 async def delete_file(relative: str | None, settings: Settings | None = None) -> None:
@@ -122,60 +273,40 @@ async def delete_file(relative: str | None, settings: Settings | None = None) ->
         path.unlink()
 
 
+def _content_length(response: httpx.Response) -> int | None:
+    value = response.headers.get("content-length")
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
 async def _supabase_upload(relative: str, data: bytes, settings: Settings) -> None:
     url = _supabase_object_url(settings, relative)
     headers = {
         **_supabase_headers(settings),
         "Content-Type": _content_type_for(relative),
-        "x-upsert": "true",
+        "x-upsert": "false",
     }
     async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
         response = await client.post(url, headers=headers, content=data)
-        if response.status_code >= 400:
-            logger.error(
-                "supabase_storage_upload_failed",
-                status=response.status_code,
-                body=response.text[:500],
-                path=relative,
-            )
-            raise AppError(
-                "Failed to store statement file",
-                code="storage_upload_failed",
-                status_code=502,
-                details={"status": response.status_code},
-            )
-
-
-async def _supabase_download(relative: str, settings: Settings) -> bytes:
-    url = _supabase_object_url(settings, relative)
-    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
-        response = await client.get(url, headers=_supabase_headers(settings))
-        if response.status_code == 404:
-            raise FileNotFoundError(relative)
-        if response.status_code >= 400:
-            logger.error(
-                "supabase_storage_download_failed",
-                status=response.status_code,
-                body=response.text[:500],
-                path=relative,
-            )
-            raise AppError(
-                "Failed to read statement file",
-                code="storage_download_failed",
-                status_code=502,
-            )
-        return response.content
+    if response.status_code >= 400:
+        logger.error("supabase_storage_upload_failed", status=response.status_code, path=relative)
+        raise AppError(
+            "Failed to store statement file", code="storage_upload_failed", status_code=502
+        )
 
 
 async def _supabase_delete(relative: str, settings: Settings) -> None:
     url = _supabase_object_url(settings, relative)
     async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
         response = await client.delete(url, headers=_supabase_headers(settings))
-        if response.status_code in (404, 400):
-            return
-        if response.status_code >= 400:
-            logger.warning(
-                "supabase_storage_delete_failed",
-                status=response.status_code,
-                path=relative,
-            )
+    if response.status_code in (404, 400):
+        return
+    if response.status_code >= 400:
+        logger.warning("supabase_storage_delete_failed", status=response.status_code, path=relative)
+        raise AppError(
+            "Failed to clean up statement file", code="storage_delete_failed", status_code=502
+        )

@@ -1,12 +1,22 @@
-"""CSV and Excel statement parser."""
+"""Bounded CSV and Excel statement parser."""
 
 from __future__ import annotations
 
+import csv
 import io
+from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from typing import Any
 
-import pandas as pd
+from openpyxl import load_workbook  # type: ignore[import-untyped]
 
 from app.core.exceptions import AppError
+from app.core.upload_config import (
+    PARSER_MAX_COLUMNS,
+    PARSER_MAX_LINES,
+    PARSER_MAX_ROWS,
+    PARSER_MAX_SHEETS,
+)
 from app.models.enums import TransactionType
 from app.services.parsers.base import ParsedLine, ParseResult
 
@@ -14,113 +24,231 @@ from app.services.parsers.base import ParsedLine, ParseResult
 class CsvExcelParser:
     name = "csv_excel_parser"
 
-    def parse_bytes(self, data: bytes, filename: str, *, issuer: str | None = None) -> ParseResult:
+    def parse_bytes(
+        self,
+        data: bytes,
+        filename: str,
+        *,
+        issuer: str | None = None,
+        max_rows: int = PARSER_MAX_ROWS,
+        max_columns: int = PARSER_MAX_COLUMNS,
+        max_sheets: int = PARSER_MAX_SHEETS,
+        max_lines: int = PARSER_MAX_LINES,
+    ) -> ParseResult:
+        del issuer
         try:
-            if filename.lower().endswith(".csv"):
-                df = pd.read_csv(io.BytesIO(data))
+            if filename.lower().endswith((".csv", ".tsv")):
+                rows = self._read_delimited(
+                    data,
+                    delimiter="\t" if filename.lower().endswith(".tsv") else ",",
+                    max_rows=max_rows,
+                    max_columns=max_columns,
+                )
             else:
-                df = pd.read_excel(io.BytesIO(data))
+                rows = self._read_xlsx(
+                    data,
+                    max_rows=max_rows,
+                    max_columns=max_columns,
+                    max_sheets=max_sheets,
+                )
+        except AppError:
+            raise
         except Exception as exc:
             raise AppError(
-                f"Failed to read file as tabular data: {exc}", code="tabular_read_failed"
+                "The tabular statement is malformed or unreadable", code="tabular_read_failed"
             ) from exc
 
-        # Basic column normalization
-        # We look for common headers: Date, Description, Amount, Type (or Debit/Credit)
-        cols = {c.lower().strip(): c for c in df.columns}
+        if not rows:
+            raise AppError("The statement has no tabular rows", code="missing_columns")
 
-        date_col = next((c for c in cols if "date" in c or "time" in c), None)
+        columns = {key.lower().strip(): key for key in rows[0] if key.strip()}
+        date_col = next((key for key in columns if "date" in key or "time" in key), None)
         desc_col = next(
             (
-                c
-                for c in cols
-                if "desc" in c or "merchant" in c or "narrative" in c or "particulars" in c
+                key
+                for key in columns
+                if "desc" in key or "merchant" in key or "narrative" in key or "particulars" in key
             ),
             None,
         )
-        amt_col = next((c for c in cols if "amount" in c or "value" in c), None)
-
-        # Sometimes there's separate Debit and Credit columns
-        debit_col = next((c for c in cols if "debit" in c or "withdrawal" in c), None)
-        credit_col = next((c for c in cols if "credit" in c or "deposit" in c), None)
-        type_col = next((c for c in cols if "type" in c or "cr/dr" in c), None)
+        amt_col = next((key for key in columns if "amount" in key or "value" in key), None)
+        debit_col = next((key for key in columns if "debit" in key or "withdrawal" in key), None)
+        credit_col = next((key for key in columns if "credit" in key or "deposit" in key), None)
+        type_col = next((key for key in columns if "type" in key or "cr/dr" in key), None)
 
         if not date_col or not desc_col:
             raise AppError("Missing required columns: Date, Description", code="missing_columns")
-
         if not amt_col and not (debit_col or credit_col):
             raise AppError("Missing Amount or Debit/Credit columns", code="missing_columns")
 
-        lines = []
-        for _, row in df.iterrows():
-            # Parse Date
-            raw_date = str(row[cols[date_col]]) if not pd.isna(row[cols[date_col]]) else ""
-            if not raw_date.strip():
+        lines: list[ParsedLine] = []
+        for row in rows[1:]:
+            raw_date = _value(row, columns[date_col])
+            if not raw_date:
                 continue
-
-            try:
-                # pandas to_datetime handles many formats
-                dt = pd.to_datetime(raw_date)
-                occurred_at = dt.to_pydatetime()
-            except Exception:
-                occurred_at = None
-
-            # Parse Description
-            merchant = str(row[cols[desc_col]]) if not pd.isna(row[cols[desc_col]]) else "Unknown"
-
-            # Parse Amount and Type
-            amount = 0.0
+            occurred_at = _parse_datetime(raw_date)
+            merchant = _value(row, columns[desc_col]) or "Unknown"
+            amount = Decimal("0")
             tx_type = TransactionType.PURCHASE
 
-            if amt_col and not pd.isna(row[cols[amt_col]]):
-                amount_str = str(row[cols[amt_col]]).replace(",", "").strip()
-                try:
-                    amount = abs(float(amount_str))
-                except ValueError:
-                    amount = 0.0
-
-                # Determine type from type_col or sign
-                if type_col and not pd.isna(row[cols[type_col]]):
-                    t_val = str(row[cols[type_col]]).lower().strip()
-                    if t_val in ["cr", "credit", "deposit", "payment"]:
-                        tx_type = TransactionType.PAYMENT_TO_ISSUER
-                    else:
-                        tx_type = TransactionType.PURCHASE
-                else:
-                    if amount_str.startswith("-"):
-                        # Sometimes negative is spend, sometimes payment. Assume negative = payment for cards?
-                        # Actually standard: positive spend, negative payment (or vice versa).
-                        # Let's assume negative means credit (payment to card)
-                        tx_type = TransactionType.PAYMENT_TO_ISSUER
-                    else:
-                        tx_type = TransactionType.PURCHASE
-
-            elif debit_col and not pd.isna(row[cols[debit_col]]):
-                try:
-                    amount = float(str(row[cols[debit_col]]).replace(",", "").strip())
-                    tx_type = TransactionType.PURCHASE
-                except ValueError:
-                    pass
-            elif credit_col and not pd.isna(row[cols[credit_col]]):
-                try:
-                    amount = float(str(row[cols[credit_col]]).replace(",", "").strip())
+            if amt_col:
+                amount = _amount(_value(row, columns[amt_col]))
+                if (
+                    type_col
+                    and _value(row, columns[type_col]).lower()
+                    in {"cr", "credit", "deposit", "payment"}
+                ) or _value(row, columns[amt_col]).lstrip().startswith("-"):
                     tx_type = TransactionType.PAYMENT_TO_ISSUER
-                except ValueError:
-                    pass
+            elif debit_col and _value(row, columns[debit_col]):
+                amount = _amount(_value(row, columns[debit_col]))
+            elif credit_col and _value(row, columns[credit_col]):
+                amount = _amount(_value(row, columns[credit_col]))
+                tx_type = TransactionType.PAYMENT_TO_ISSUER
 
-            if amount == 0:
+            if amount <= 0:
                 continue
-
-            amount_paise = int(round(amount * 100))
-
+            if len(lines) >= max_lines:
+                raise AppError(
+                    "The statement exceeds the parser line limit", code="parser_resource_limit"
+                )
             lines.append(
                 ParsedLine(
                     occurred_at=occurred_at,
                     merchant=merchant[:255],
-                    amount_paise=amount_paise,
+                    amount_paise=int((amount * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)),
                     proposed_type=tx_type,
-                    raw={str(k): v for k, v in row.to_dict().items()},
+                    raw={key: _json_value(value) for key, value in row.items()},
                 )
             )
+        return ParseResult(lines=lines, parser_name=self.name)
 
-        return ParseResult(lines=lines, parser_name="csv_excel")
+    @staticmethod
+    def _read_delimited(
+        data: bytes,
+        *,
+        delimiter: str,
+        max_rows: int,
+        max_columns: int,
+    ) -> list[dict[str, object]]:
+        csv.field_size_limit(64 * 1024)
+        reader = csv.reader(io.StringIO(data.decode("utf-8-sig")), delimiter=delimiter)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return []
+        if len(header) > max_columns:
+            raise AppError(
+                "The statement exceeds the parser column limit", code="parser_resource_limit"
+            )
+        normalized_header = [
+            value.strip() or f"column_{index + 1}" for index, value in enumerate(header)
+        ]
+        rows: list[dict[str, object]] = [
+            {key: value for key, value in zip(normalized_header, header, strict=False)}
+        ]
+        for row_number, values in enumerate(reader, start=1):
+            if row_number > max_rows:
+                raise AppError(
+                    "The statement exceeds the parser row limit", code="parser_resource_limit"
+                )
+            if len(values) > max_columns:
+                raise AppError(
+                    "The statement exceeds the parser column limit", code="parser_resource_limit"
+                )
+            rows.append(
+                {
+                    key: values[index] if index < len(values) else None
+                    for index, key in enumerate(normalized_header)
+                }
+            )
+        return rows
+
+    @staticmethod
+    def _read_xlsx(
+        data: bytes,
+        *,
+        max_rows: int,
+        max_columns: int,
+        max_sheets: int,
+    ) -> list[dict[str, object]]:
+        workbook = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+        try:
+            if len(workbook.sheetnames) > max_sheets:
+                raise AppError(
+                    "The spreadsheet exceeds the parser sheet limit", code="parser_resource_limit"
+                )
+            worksheet = workbook[workbook.sheetnames[0]]
+            iterator = worksheet.iter_rows(values_only=True)
+            try:
+                header_values = next(iterator)
+            except StopIteration:
+                return []
+            header = list(header_values)
+            if len(header) > max_columns:
+                raise AppError(
+                    "The statement exceeds the parser column limit", code="parser_resource_limit"
+                )
+            normalized_header = [
+                str(value).strip()
+                if value is not None and str(value).strip()
+                else f"column_{index + 1}"
+                for index, value in enumerate(header)
+            ]
+            rows: list[dict[str, object]] = [
+                {
+                    key: value
+                    for key, value in zip(normalized_header, header_values, strict=False)
+                }
+            ]
+            for row_number, values in enumerate(iterator, start=1):
+                if row_number > max_rows:
+                    raise AppError(
+                        "The statement exceeds the parser row limit", code="parser_resource_limit"
+                    )
+                values_list = list(values)
+                if len(values_list) > max_columns:
+                    raise AppError(
+                        "The statement exceeds the parser column limit",
+                        code="parser_resource_limit",
+                    )
+                rows.append(
+                    {
+                        key: values_list[index] if index < len(values_list) else None
+                        for index, key in enumerate(normalized_header)
+                    }
+                )
+            return rows
+        finally:
+            workbook.close()
+
+
+def _value(row: dict[str, object], key: str) -> str:
+    value = row.get(key)
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _parse_datetime(value: str) -> datetime | None:
+    for fmt in (None, "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y", "%m-%d-%Y"):
+        try:
+            return datetime.fromisoformat(value) if fmt is None else datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _amount(value: str) -> Decimal:
+    cleaned = value.replace(",", "").replace("₹", "").strip()
+    if not cleaned:
+        return Decimal("0")
+    try:
+        return abs(Decimal(cleaned))
+    except InvalidOperation:
+        return Decimal("0")
+
+
+def _json_value(value: Any) -> object:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)

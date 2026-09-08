@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | `todo` |
+| **Status** | `done` |
 | **Sequence** | 6 |
 | **Depends on** | [US-P01](US-P01-production-release-gate.md), [US-P03](US-P03-supabase-security-boundary.md) |
 | **One-loop objective** | Upload statements directly to private Supabase Storage and keep ingestion within safe resource limits. |
@@ -57,72 +57,72 @@ guards. Out of scope: detailed statement-review UI, covered by US-P12.
 
 ### Gather
 
-- [ ] **US-P06.G1 — Trace the current upload.** Follow file selection → browser
+- [x] **US-P06.G1 — Trace the current upload.** Follow file selection → browser
   request → BFF body forwarding → FastAPI multipart parsing → storage write →
   statement row → parse. Record size limits, MIME checks, object paths, and
   cleanup behavior.
-- [ ] **US-P06.G2 — Confirm provider capabilities.** Verify the private bucket,
+- [x] **US-P06.G2 — Confirm provider capabilities.** Verify the private bucket,
   current bucket restrictions, Storage policies, service-role usage, and the
   actual FastAPI Cloud storage env. Do not expose keys or upload personal data.
-- [ ] **US-P06.G3 — Build resource fixtures.** Prepare safe test fixtures for
+- [x] **US-P06.G3 — Build resource fixtures.** Prepare safe test fixtures for
   valid PDF/CSV/XLSX/TXT, a file just over the BFF limit, a malformed file, an
   oversized row/sheet case, and an abandoned object.
 
 ### Plan
 
-- [ ] **US-P06.P1 — Define the upload protocol.** Choose endpoint names and
+- [x] **US-P06.P1 — Define the upload protocol.** Choose endpoint names and
   sequence: authorize metadata → issue signed upload URL → browser uploads →
   finalize/validate object → create statement/parse. Define expiry, retries,
   checksum/content-length behavior, and cleanup ownership.
-- [ ] **US-P06.P2 — Define object isolation.** Use server-generated paths that
+- [x] **US-P06.P2 — Define object isolation.** Use server-generated paths that
   include the organization/user scope and random identity. Define how every
   download, parse, delete, and re-parse verifies ownership.
-- [ ] **US-P06.P3 — Define parser budgets.** Set maximum bytes, rows, columns,
+- [x] **US-P06.P3 — Define parser budgets.** Set maximum bytes, rows, columns,
   sheets, PDF pages, decompressed size, execution time, and memory strategy.
   Decide how a limit failure appears in the statement state machine.
 
 ### Implement
 
-- [ ] **US-P06.I1 — Add signed upload preparation.** Create an authenticated
+- [x] **US-P06.I1 — Add signed upload preparation.** Create an authenticated
   backend/BFF contract that validates file metadata and returns a short-lived
   signed upload instruction without exposing the service-role key.
-- [ ] **US-P06.I2 — Upload directly from the browser.** Change the statement
+- [x] **US-P06.I2 — Upload directly from the browser.** Change the statement
   client to send the file to private Supabase Storage, then send only the
   object path/metadata through the BFF. Keep progress, abort, retry, and
   duplicate-submit behavior explicit for the later UI story.
-- [ ] **US-P06.I3 — Finalize safely.** Validate object ownership, size, content
+- [x] **US-P06.I3 — Finalize safely.** Validate object ownership, size, content
   type, and existence before creating or updating the statement record. Make
   failed finalization and parse cancellation clean up unreferenced objects.
-- [ ] **US-P06.I4 — Bound parsing.** Enforce the parser budgets and move blocking
+- [x] **US-P06.I4 — Bound parsing.** Enforce the parser budgets and move blocking
   work off the async event loop or into a bounded mechanism appropriate for the
   current free-tier runtime. Return generic resource-limit errors.
-- [ ] **US-P06.I5 — Set provider restrictions.** Apply private bucket size/MIME
+- [x] **US-P06.I5 — Set provider restrictions.** Apply private bucket size/MIME
   restrictions where supported and keep application validation as defense in
   depth. Document the final limits in the env example and deployment runbook.
 
 ### Test
 
-- [ ] **US-P06.T1 — Test proxy bypass.** Prove a file above 4.5 MB reaches the
+- [x] **US-P06.T1 — Test proxy bypass.** Prove a file above 4.5 MB reaches the
   signed Storage path and no large multipart body reaches the Vercel BFF.
-- [ ] **US-P06.T2 — Test ownership.** Attempt cross-user, cross-organization,
+- [x] **US-P06.T2 — Test ownership.** Attempt cross-user, cross-organization,
   expired-signed-URL, guessed-path, wrong-MIME, and finalize-after-delete
   operations; assert every unsafe path fails.
-- [ ] **US-P06.T3 — Test parser limits.** Exercise valid formats, malformed
+- [x] **US-P06.T3 — Test parser limits.** Exercise valid formats, malformed
   inputs, oversized resources, cancellation, timeout, and cleanup. Assert the
   event loop remains responsive for blocking parse work.
-- [ ] **US-P06.T4 — Run regression gates.** Run statement API/parser tests,
+- [x] **US-P06.T4 — Run regression gates.** Run statement API/parser tests,
   backend quality gates, frontend lint/typecheck/build, and a browser upload
   smoke with a non-sensitive fixture.
 
 ### Validate
 
-- [ ] **US-P06.V1 — Verify durability.** Upload a safe test fixture, redeploy or
+- [x] **US-P06.V1 — Verify durability.** Upload a safe test fixture, redeploy or
   restart the API, and confirm the statement object and metadata remain
   available from private Storage.
-- [ ] **US-P06.V2 — Verify review handoff.** Confirm the new protocol reaches
+- [x] **US-P06.V2 — Verify review handoff.** Confirm the new protocol reaches
   the existing human-review/import state machine without auto-posting or
   changing ledger semantics.
-- [ ] **US-P06.V3 — Close the story.** Record limits, Storage policy evidence,
+- [x] **US-P06.V3 — Close the story.** Record limits, Storage policy evidence,
   protocol contract, test fixtures, and any provider limitation in this file
   and [`PROGRESS.md`](PROGRESS.md).
 
@@ -142,4 +142,32 @@ bank statement as a test fixture.
 
 ## Story notes
 
-_(Append dated implementation decisions and evidence here.)_
+### 2026-09-09 — Durable upload loop completed
+
+- Traced the prior multipart path through the Next.js BFF and replaced the
+  production path with authenticated `POST /statements/upload/prepare`, direct
+  browser `PUT` to a private Supabase signed-upload URL, and
+  `POST /statements/upload/finalize`. The BFF now carries JSON metadata only;
+  the frontend regression test uses a synthetic 5 MiB file and asserts the
+  first request body stays below 2 KiB.
+- Finalized object paths are server-generated as
+  `organization_id/user_id/statement_id.extension`. The API scopes every
+  lookup to the organization and creator, validates the locked extension,
+  exact object size, storage existence, content signature, and UTF-8/XLSX
+  structure before parsing. Service-role credentials remain backend-only.
+- Enforced a 15 MiB ceiling, exact PDF/TXT/CSV/TSV/XLSX MIME allowlist, 15
+  minute application upload TTL, one-hour bounded abandoned-upload cleanup,
+  and parse budgets of 10,000 rows, 100 columns, 10 sheets, 50 PDF pages,
+  64 MiB decompressed XLSX content, 10,000 parsed lines, 1,000,000 text
+  characters, and a 20 second bounded worker timeout.
+- Supabase project `jklurueadteccrdycyiz` was checked in the dashboard: bucket
+  `statements` is private, restricted to 15 MB, and restricted to the five
+  application MIME types above. FastAPI Cloud production metadata was checked
+  without exposing values: `STATEMENT_STORAGE_BACKEND=supabase`, bucket
+  `statements`, and `AUTO_MIGRATE=false`.
+- No Alembic migration was needed or applied for P06; the existing statement
+  metadata and idempotency schema cover the protocol. The service retains a
+  local-storage fallback for development/Docker only.
+- Verification: backend `272 passed`, Ruff, mypy; frontend `19 passed`, ESLint,
+  TypeScript, and Turbopack production build. The existing review/import state
+  machine remains unchanged and parsing never posts ledger transactions.

@@ -23,8 +23,12 @@ validation evidence are in the [release-readiness review](reviews/2026-08-11-rel
 
 ## 1. Supabase
 
-1. Create private Storage bucket named `statements` (or match `STATEMENT_STORAGE_BUCKET`).
-2. No public read policies required — API uses the service role key.
+1. Create a **private** Storage bucket named `statements` (or match `STATEMENT_STORAGE_BUCKET`).
+2. Set the bucket restrictions to **15 MiB** and these MIME types:
+   `application/pdf`, `text/plain`, `text/csv`, `text/tab-separated-values`, and
+   `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
+3. No public read policies are required — the API uses the service role only
+   to issue signed upload URLs and inspect/delete objects.
 3. Auth → URL Configuration:
    - Site URL: `https://fin-buddy-dev.vercel.app`
    - Redirect URLs: `https://fin-buddy-dev.vercel.app/auth/callback`
@@ -59,6 +63,9 @@ uv run fastapi cloud env set AUTO_SEED false --path .
 uv run fastapi cloud env set DEMO_AUTH_ENABLED false --path .
 uv run fastapi cloud env set STATEMENT_STORAGE_BACKEND supabase --path .
 uv run fastapi cloud env set STATEMENT_STORAGE_BUCKET statements --path .
+uv run fastapi cloud env set STATEMENT_MAX_UPLOAD_BYTES 15728640 --path .
+uv run fastapi cloud env set STATEMENT_UPLOAD_TTL_SECONDS 900 --path .
+uv run fastapi cloud env set STATEMENT_ABANDON_AFTER_SECONDS 3600 --path .
 uv run fastapi cloud env set CORS_ORIGINS "" --path .
 uv run fastapi cloud env set PLATFORM_ADMIN_EMAILS "you@example.com" --path .
 uv run fastapi cloud env set JWT_VERIFICATION_MODE jwks_only --path .
@@ -75,7 +82,10 @@ uv run fastapi cloud env set SUPABASE_SERVICE_ROLE_KEY --value-stdin --secret --
 uv run fastapi cloud env set SUPABASE_JWT_SECRET --value-stdin --secret --path .
 ```
 
-Run the migration exactly once against the target Supabase database before scaling or serving API traffic:
+There is no new database migration for US-P06: the existing statement metadata
+columns and idempotency table are sufficient. If a release includes another
+reviewed migration, run it exactly once against the target Supabase database
+before scaling or serving API traffic:
 
 ```bash
 uv run alembic upgrade head

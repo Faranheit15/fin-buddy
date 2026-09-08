@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileText, FileUp, Plus } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
@@ -47,6 +47,7 @@ export default function StatementsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const uploadOperationKey = useRef<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [snapshot, setSnapshot] = useState<Snapshot>({
     items: [],
@@ -117,12 +118,20 @@ export default function StatementsPage() {
         file: payload,
         filename,
         creditCardId: cardId,
+        idempotencyKey: (uploadOperationKey.current ??= crypto.randomUUID()),
       });
+      uploadOperationKey.current = null;
       setShowUpload(false);
       setFile(null);
       setReloadKey((k) => k + 1);
       window.location.href = `/app/statements/${detail.id}`;
     } catch (err) {
+      if (
+        err instanceof ApiError &&
+        (err.code === "upload_expired" || err.code === "upload_not_ready")
+      ) {
+        uploadOperationKey.current = null;
+      }
       setUploadError(
         err instanceof ApiError
           ? err.message
@@ -157,7 +166,7 @@ export default function StatementsPage() {
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Statements</h2>
           <p className="text-sm text-muted-foreground">
-            Upload PDFs or sample text, review proposed lines, then import
+            Upload PDF, CSV, TSV, XLSX, or TXT files up to 15 MB, then review and import
           </p>
         </div>
         <Button size="sm" onClick={() => setShowUpload((v) => !v)}>
@@ -202,7 +211,7 @@ export default function StatementsPage() {
                     accept=".pdf,.txt,.csv,.xlsx,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   />
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     For CSV/Excel, required columns: Date, Description, Amount. Leave empty for a
                     FinBuddy sample.
                   </p>
@@ -276,7 +285,7 @@ export default function StatementsPage() {
                     <tr key={s.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3">
                         <p className="font-medium">{card?.nickname ?? "Card"}</p>
-                        <p className="font-mono text-[11px] text-muted-foreground">
+                        <p className="font-mono text-xs text-muted-foreground">
                           {card ? `•••• ${card.last_four}` : s.credit_card_id.slice(0, 8)}
                         </p>
                       </td>

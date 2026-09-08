@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
-from datetime import date, datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, date, datetime, timedelta
+from functools import partial
 from uuid import UUID, uuid4
 
 from sqlalchemy import delete, select
@@ -11,6 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.exceptions import AppError, NotFoundError
+from app.core.upload_limits import (
+    statement_file_spec,
+    validate_statement_bytes,
+)
 from app.models.credit_card import CreditCard
 from app.models.enums import (
     ActivityAction,
@@ -27,12 +34,25 @@ from app.services.account_service import resolve_account_id_for_card
 from app.services.logging_service import log_activity
 from app.services.org_validators import validate_contact_in_org
 
+_PARSER_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="statement-parser")
 
-def extract_text_from_bytes(data: bytes, filename: str) -> str:
+
+def extract_text_from_bytes(
+    data: bytes,
+    filename: str,
+    *,
+    max_pdf_pages: int = 50,
+    max_text_chars: int = 1_000_000,
+) -> str:
     """Extract text from PDF or plain text/CSV uploads."""
     name = (filename or "").lower()
     if name.endswith((".txt", ".csv", ".tsv")) or _looks_like_text(data):
-        return data.decode("utf-8", errors="replace")
+        text = data.decode("utf-8", errors="replace")
+        if len(text) > max_text_chars:
+            raise AppError(
+                "The statement exceeds the parser text limit", code="parser_resource_limit"
+            )
+        return text
 
     # PDF via pypdf
     try:
@@ -45,10 +65,18 @@ def extract_text_from_bytes(data: bytes, filename: str) -> str:
         ) from exc
 
     try:
-        reader = PdfReader(io.BytesIO(data))
+        reader = PdfReader(io.BytesIO(data), strict=False)
+        if len(reader.pages) > max_pdf_pages:
+            raise AppError(
+                "The statement exceeds the parser page limit", code="parser_resource_limit"
+            )
         chunks: list[str] = []
         for page in reader.pages:
             chunks.append(page.extract_text() or "")
+            if sum(len(chunk) for chunk in chunks) > max_text_chars:
+                raise AppError(
+                    "The statement exceeds the parser text limit", code="parser_resource_limit"
+                )
         text = "\n".join(chunks).strip()
         if not text:
             raise AppError(
@@ -61,7 +89,7 @@ def extract_text_from_bytes(data: bytes, filename: str) -> str:
         raise
     except Exception as exc:
         raise AppError(
-            f"Failed to read PDF: {exc}",
+            "The PDF is malformed, unreadable, or uses unsupported content",
             code="pdf_read_failed",
         ) from exc
 
@@ -80,7 +108,9 @@ def _looks_like_text(data: bytes) -> bool:
 async def get_statement_or_404(
     db: AsyncSession, org_id: UUID, statement_id: UUID, for_update: bool = False
 ) -> Statement:
-    stmt = select(Statement).where(Statement.id == statement_id, Statement.organization_id == org_id)
+    stmt = select(Statement).where(
+        Statement.id == statement_id, Statement.organization_id == org_id
+    )
     if for_update:
         stmt = stmt.with_for_update()
     result = await db.execute(stmt)
@@ -108,6 +138,7 @@ async def create_statement_from_upload(
     user_id: UUID,
     card: CreditCard,
     filename: str,
+    content_type: str,
     data: bytes,
     period_start: date | None = None,
     period_end: date | None = None,
@@ -116,32 +147,16 @@ async def create_statement_from_upload(
     ip: str | None = None,
     ua: str | None = None,
 ) -> Statement:
-    if len(data) > settings.statement_max_upload_bytes:
-        raise AppError(
-            f"File too large (max {settings.statement_max_upload_bytes // (1024 * 1024)} MB)",
-            code="upload_too_large",
-        )
-    if not data:
-        raise AppError("Empty file", code="empty_upload")
-
-    ext = "pdf"
-    lower = filename.lower()
-    if lower.endswith(".txt"):
-        ext = "txt"
-    elif lower.endswith(".csv"):
-        ext = "csv"
-    elif lower.endswith(".xlsx"):
-        ext = "xlsx"
-    elif lower.endswith(".tsv"):
-        ext = "tsv"
-    elif lower.endswith(".pdf") or data.startswith(b"%PDF"):
-        ext = "pdf"
-    else:
-        # Default to txt for unknown text-like uploads
-        ext = "txt" if _looks_like_text(data) else "bin"
+    spec = validate_statement_bytes(
+        data,
+        filename,
+        content_type,
+        max_bytes=settings.statement_max_upload_bytes,
+        max_decompressed_bytes=settings.statement_parser_max_decompressed_bytes,
+    )
 
     statement_id = uuid4()
-    relative = storage.statement_relative_path(org_id, statement_id, ext)
+    relative = storage.statement_relative_path(org_id, statement_id, spec.extension)
     await storage.save_bytes(relative, data, settings)
 
     statement = Statement(
@@ -173,6 +188,219 @@ async def create_statement_from_upload(
     return statement
 
 
+async def cleanup_abandoned_uploads(
+    db: AsyncSession,
+    *,
+    settings: Settings,
+    org_id: UUID,
+    limit: int = 5,
+) -> int:
+    """Bound cleanup to stale prepare rows; reviewed/imported statements are never touched."""
+    cutoff = datetime.now(UTC) - timedelta(seconds=settings.statement_abandon_after_seconds)
+    result = await db.execute(
+        select(Statement)
+        .where(
+            Statement.organization_id == org_id,
+            Statement.status.in_([StatementStatus.UPLOADED, StatementStatus.FAILED]),
+            Statement.pdf_storage_path.is_not(None),
+            Statement.created_at < cutoff,
+        )
+        .order_by(Statement.created_at.asc())
+        .limit(limit)
+        .with_for_update()
+    )
+    rows = list(result.scalars().all())
+    for row in rows:
+        await storage.delete_file(row.pdf_storage_path, settings)
+        await db.delete(row)
+    if rows:
+        await db.flush()
+    return len(rows)
+
+
+async def prepare_statement_upload(
+    db: AsyncSession,
+    *,
+    settings: Settings,
+    org_id: UUID,
+    user_id: UUID,
+    card: CreditCard,
+    filename: str,
+    content_type: str,
+    size_bytes: int,
+    period_start: date | None = None,
+    period_end: date | None = None,
+    statement_date: date | None = None,
+    due_date: date | None = None,
+) -> tuple[Statement, str]:
+    """Create the durable metadata row and return its server-owned Storage path."""
+    spec = statement_file_spec(
+        filename,
+        content_type,
+        size_bytes,
+        max_bytes=settings.statement_max_upload_bytes,
+    )
+    await cleanup_abandoned_uploads(db, settings=settings, org_id=org_id)
+    statement_id = uuid4()
+    statement = Statement(
+        id=statement_id,
+        organization_id=org_id,
+        credit_card_id=card.id,
+        period_start=period_start,
+        period_end=period_end,
+        statement_date=statement_date,
+        due_date=due_date,
+        pdf_storage_path=storage.statement_relative_path(
+            org_id, statement_id, spec.extension, user_id
+        ),
+        status=StatementStatus.UPLOADED,
+        created_by=user_id,
+    )
+    db.add(statement)
+    await db.flush()
+    return statement, statement.pdf_storage_path or ""
+
+
+async def log_statement_upload(
+    db: AsyncSession,
+    *,
+    statement: Statement,
+    user_id: UUID,
+    filename: str,
+    size_bytes: int,
+    ip: str | None = None,
+    ua: str | None = None,
+) -> None:
+    await log_activity(
+        db,
+        action=ActivityAction.STATEMENT_UPLOAD,
+        summary=f"Uploaded statement ({filename})",
+        actor_user_id=user_id,
+        organization_id=statement.organization_id,
+        resource_type="statement",
+        resource_id=str(statement.id),
+        ip_address=ip,
+        user_agent=ua,
+        metadata={"filename": filename, "bytes": size_bytes},
+    )
+
+
+async def reject_upload(
+    db: AsyncSession,
+    *,
+    settings: Settings,
+    statement: Statement,
+    message: str,
+) -> None:
+    """Delete untrusted content and leave an auditable failed metadata row."""
+    path = statement.pdf_storage_path
+    deleted = True
+    try:
+        await storage.delete_file(path, settings)
+    except Exception:
+        # Keep the API error truthful while the bounded stale-upload cleanup gets another chance.
+        deleted = False
+    if deleted:
+        statement.pdf_storage_path = None
+    statement.status = StatementStatus.FAILED
+    statement.parse_error = message
+    await db.flush()
+
+
+async def finalize_statement_upload(
+    db: AsyncSession,
+    *,
+    settings: Settings,
+    org_id: UUID,
+    user_id: UUID,
+    statement_id: UUID,
+    filename: str,
+    content_type: str,
+    size_bytes: int,
+) -> Statement:
+    """Verify the Storage object before it can enter parsing/review."""
+    statement = await get_statement_or_404(db, org_id, statement_id, for_update=True)
+    if statement.created_by != user_id:
+        raise NotFoundError("Statement not found")
+    if statement.status != StatementStatus.UPLOADED:
+        return statement
+    if not statement.pdf_storage_path:
+        raise AppError(
+            "Statement upload is no longer available", code="upload_not_ready", status_code=409
+        )
+    created_at = statement.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=UTC)
+    if datetime.now(UTC) - created_at > timedelta(seconds=settings.statement_upload_ttl_seconds):
+        await reject_upload(
+            db,
+            settings=settings,
+            statement=statement,
+            message="The upload session expired. Please upload the file again.",
+        )
+        raise AppError(
+            "The upload session expired. Please upload the file again.",
+            code="upload_expired",
+            status_code=409,
+        )
+
+    try:
+        expected = statement.pdf_storage_path.rsplit(".", 1)[-1]
+        requested = statement_file_spec(
+            filename,
+            content_type,
+            size_bytes,
+            max_bytes=settings.statement_max_upload_bytes,
+        )
+        if requested.extension != expected:
+            raise AppError(
+                "The uploaded file metadata does not match its upload session",
+                code="upload_metadata_mismatch",
+            )
+        metadata = await storage.object_metadata(statement.pdf_storage_path, settings)
+        if metadata.size_bytes != size_bytes:
+            raise AppError(
+                "The uploaded file size does not match its upload session",
+                code="upload_metadata_mismatch",
+            )
+        actual_content_type = (
+            (metadata.content_type or content_type).split(";", 1)[0].strip().lower()
+        )
+        data = await storage.read_bytes(
+            statement.pdf_storage_path,
+            settings,
+            max_bytes=settings.statement_max_upload_bytes,
+        )
+        validate_statement_bytes(
+            data,
+            filename,
+            actual_content_type,
+            max_bytes=settings.statement_max_upload_bytes,
+            max_decompressed_bytes=settings.statement_parser_max_decompressed_bytes,
+        )
+    except FileNotFoundError as exc:
+        await reject_upload(
+            db,
+            settings=settings,
+            statement=statement,
+            message="The upload expired before it could be finalized. Please upload the file again.",
+        )
+        raise AppError(
+            "The upload expired before it could be finalized. Please upload the file again.",
+            code="upload_not_ready",
+            status_code=409,
+        ) from exc
+    except AppError as exc:
+        await reject_upload(
+            db,
+            settings=settings,
+            statement=statement,
+            message=exc.message,
+        )
+        raise
+    return statement
+
+
 async def run_parse(
     db: AsyncSession,
     *,
@@ -191,12 +419,41 @@ async def run_parse(
     try:
         if not statement.pdf_storage_path:
             raise AppError("No file stored for statement", code="missing_file")
-        data = await storage.read_bytes(statement.pdf_storage_path, settings)
+        metadata = await storage.object_metadata(statement.pdf_storage_path, settings)
+        data = await storage.read_bytes(
+            statement.pdf_storage_path,
+            settings,
+            max_bytes=settings.statement_max_upload_bytes,
+        )
         filename = statement.pdf_storage_path.rsplit("/", 1)[-1]
+        content_type = (metadata.content_type or "").split(";", 1)[0].strip().lower()
+        validate_statement_bytes(
+            data,
+            filename,
+            content_type,
+            max_bytes=settings.statement_max_upload_bytes,
+            max_decompressed_bytes=settings.statement_parser_max_decompressed_bytes,
+        )
 
         from app.services.parsers import parse_statement_bytes
 
-        result = parse_statement_bytes(data, filename, issuer=card.issuer)
+        parse_call = partial(
+            parse_statement_bytes,
+            data,
+            filename,
+            issuer=card.issuer,
+            max_rows=settings.statement_parser_max_rows,
+            max_columns=settings.statement_parser_max_columns,
+            max_sheets=settings.statement_parser_max_sheets,
+            max_pdf_pages=settings.statement_parser_max_pdf_pages,
+            max_decompressed_bytes=settings.statement_parser_max_decompressed_bytes,
+            max_lines=settings.statement_parser_max_lines,
+            max_text_chars=settings.statement_parser_max_text_chars,
+        )
+        result = await asyncio.wait_for(
+            asyncio.get_running_loop().run_in_executor(_PARSER_EXECUTOR, parse_call),
+            timeout=settings.statement_parse_timeout_seconds,
+        )
 
         # Fill metadata if missing
         if statement.period_start is None and result.period_start:
@@ -269,12 +526,38 @@ async def run_parse(
             user_agent=ua,
             metadata={"parser": result.parser_name, "line_count": len(result.lines)},
         )
+    except TimeoutError:
+        await reject_upload(
+            db,
+            settings=settings,
+            statement=statement,
+            message="The statement took too long to parse. Try a smaller, simpler file.",
+        )
+        statement.parse_error = "The statement took too long to parse. Try a smaller, simpler file."
+    except FileNotFoundError:
+        await reject_upload(
+            db,
+            settings=settings,
+            statement=statement,
+            message="The statement file is no longer available. Upload it again.",
+        )
     except AppError as exc:
         statement.status = StatementStatus.FAILED
         statement.parse_error = exc.message
-    except Exception as exc:  # pragma: no cover
+        if exc.code in {
+            "invalid_file_content",
+            "invalid_file_type",
+            "unsupported_file_type",
+            "parser_resource_limit",
+            "pdf_read_failed",
+            "pdf_empty_text",
+            "tabular_read_failed",
+            "missing_columns",
+        }:
+            await reject_upload(db, settings=settings, statement=statement, message=exc.message)
+    except Exception:  # pragma: no cover
         statement.status = StatementStatus.FAILED
-        statement.parse_error = str(exc)
+        statement.parse_error = "Statement parsing failed. Try a smaller, supported file."
 
     await db.flush()
     return statement
@@ -449,7 +732,8 @@ async def import_statement(
     )
 
     result = await db.execute(
-        select(StatementLineCandidate).where(
+        select(StatementLineCandidate)
+        .where(
             StatementLineCandidate.statement_id == statement.id,
             StatementLineCandidate.organization_id == statement.organization_id,
             StatementLineCandidate.review_status.in_(

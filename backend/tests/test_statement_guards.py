@@ -6,7 +6,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.exceptions import AppError
+from app.core.config import Settings
+from app.core.exceptions import AppError, NotFoundError
 from app.models.enums import LineReviewStatus, StatementStatus, TransactionType
 from app.services import statement_service
 
@@ -49,6 +50,29 @@ async def test_update_line_rejects_imported_statement() -> None:
             merchant="Nope",
         )
     assert exc.value.code == "statement_already_imported"
+
+
+@pytest.mark.asyncio
+async def test_finalize_rejects_statement_created_by_another_user() -> None:
+    owner_id = uuid4()
+    statement = SimpleNamespace(
+        created_by=owner_id,
+        status=StatementStatus.UPLOADED,
+        id=uuid4(),
+        pdf_storage_path="org/owner/statement.txt",
+    )
+
+    with pytest.raises(NotFoundError):
+        await statement_service.finalize_statement_upload(
+            _FakeSession(statement),  # type: ignore[arg-type]
+            settings=Settings(statement_storage_backend="local"),
+            org_id=uuid4(),
+            user_id=uuid4(),
+            statement_id=statement.id,
+            filename="statement.txt",
+            content_type="text/plain",
+            size_bytes=10,
+        )
 
 
 @pytest.mark.asyncio

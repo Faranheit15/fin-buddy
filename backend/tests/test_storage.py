@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 
 from app.core.config import Settings
+from app.core.exceptions import AppError
 from app.services import storage
 
 
@@ -38,6 +39,66 @@ def test_statement_relative_path_shape() -> None:
     assert path == f"{org}/{stmt}.pdf"
 
 
+def test_statement_relative_path_is_user_scoped() -> None:
+    org = uuid4()
+    user = uuid4()
+    statement = uuid4()
+    assert storage.statement_relative_path(org, statement, "xlsx", user) == (
+        f"{org}/{user}/{statement}.xlsx"
+    )
+
+
+@pytest.mark.parametrize("path", ["../secret", "/absolute", "org\\user\\file.pdf", ""])
+def test_storage_path_rejects_traversal(path: str) -> None:
+    with pytest.raises(AppError, match="storage path"):
+        storage._safe_relative_path(path)
+
+
+@pytest.mark.asyncio
+async def test_signed_upload_url_is_provider_url_without_service_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class _Response:
+        status_code = 200
+
+        def json(self) -> dict[str, str]:
+            return {
+                "url": "/storage/v1/object/upload/sign/statements/org/user/file.txt?token=opaque"
+            }
+
+    class _Client:
+        async def __aenter__(self) -> "_Client":
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        async def post(
+            self, url: str, *, headers: dict[str, str], json: dict[str, object]
+        ) -> _Response:
+            captured.update({"url": url, "headers": headers, "json": json})
+            return _Response()
+
+    monkeypatch.setattr(storage.httpx, "AsyncClient", lambda **_kwargs: _Client())
+    settings = Settings(
+        statement_storage_backend="supabase",
+        supabase_url="https://test.supabase.co",
+        statement_storage_bucket="statements",
+        supabase_service_role_key="sb_secret_never_returned",
+    )
+    signed = await storage.create_signed_upload_url("org/user/file.txt", settings)
+
+    assert signed.startswith("https://test.supabase.co/")
+    assert "token=opaque" in signed
+    assert "sb_secret" not in signed
+    assert (
+        captured["url"]
+        == "https://test.supabase.co/storage/v1/object/upload/sign/statements/org/user/file.txt"
+    )
+
+
 def test_supabase_headers_opaque_secret_key() -> None:
     settings = Settings(
         supabase_url="https://test.supabase.co",
@@ -50,7 +111,9 @@ def test_supabase_headers_opaque_secret_key() -> None:
 
 
 def test_supabase_headers_legacy_jwt_key() -> None:
-    legacy_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.fake_signature"
+    legacy_jwt = (
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.fake_signature"
+    )
     settings = Settings(
         supabase_url="https://test.supabase.co",
         supabase_service_role_key=legacy_jwt,

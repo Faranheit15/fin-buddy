@@ -1,6 +1,7 @@
 """Domain CRUD schemas."""
 
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -295,6 +296,35 @@ class StatementCreate(BaseModel):
     statement_date: date | None = None
     due_date: date | None = None
     pdf_storage_path: str | None = None
+
+
+class StatementUploadPrepareRequest(BaseModel):
+    credit_card_id: UUID
+    filename: str = Field(min_length=1, max_length=255)
+    content_type: str = Field(min_length=1, max_length=150)
+    size_bytes: int = Field(gt=0)
+    period_start: date | None = None
+    period_end: date | None = None
+    statement_date: date | None = None
+    due_date: date | None = None
+
+
+class StatementUploadPrepareResponse(BaseModel):
+    mode: Literal["signed", "legacy"]
+    statement_id: UUID | None = None
+    object_path: str | None = None
+    upload_url: str | None = None
+    expires_at: datetime | None = None
+    max_upload_bytes: int
+    allowed_mime_types: list[str]
+
+
+class StatementUploadFinalizeRequest(BaseModel):
+    statement_id: UUID
+    filename: str = Field(min_length=1, max_length=255)
+    content_type: str = Field(min_length=1, max_length=150)
+    size_bytes: int = Field(gt=0)
+    auto_parse: bool = True
 
 
 class StatementResponse(ORMModel):

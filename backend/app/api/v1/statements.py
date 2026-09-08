@@ -1,6 +1,6 @@
 """Statement upload, parse, review, and import endpoints."""
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
@@ -11,6 +11,7 @@ from app.api.deps import AppSettings, CurrentUser, DbSession, OrgContext, client
 from app.core.exceptions import AppError
 from app.core.idempotency import IDEMPOTENCY_HEADER, execute_idempotent
 from app.core.rate_limit import UPLOAD_LIMIT, enforce_rate_limit
+from app.core.upload_config import SUPPORTED_STATEMENT_MIME_TYPES
 from app.core.upload_limits import read_upload_limited
 from app.models.enums import LineReviewStatus, StatementStatus
 from app.models.statement import Statement, StatementLineCandidate
@@ -22,8 +23,11 @@ from app.schemas.domain import (
     StatementLineResponse,
     StatementLineUpdate,
     StatementResponse,
+    StatementUploadFinalizeRequest,
+    StatementUploadPrepareRequest,
+    StatementUploadPrepareResponse,
 )
-from app.services import statement_service
+from app.services import statement_service, storage
 
 router = APIRouter(prefix="/statements", tags=["statements"])
 
@@ -98,6 +102,126 @@ async def list_statements(
     return PaginatedResponse(items=items, total=int(total), page=page, page_size=page_size)
 
 
+@router.post("/upload/prepare", response_model=StatementUploadPrepareResponse)
+async def prepare_statement_upload(
+    body: StatementUploadPrepareRequest,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    org_ctx: OrgContext,
+    settings: AppSettings,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
+) -> StatementUploadPrepareResponse:
+    """Authorize metadata and issue a single-use, server-owned Storage upload path."""
+    await enforce_rate_limit(
+        request, bucket="statement_upload", limit=UPLOAD_LIMIT, window_seconds=60.0
+    )
+    org, _ = org_ctx
+
+    async def _action() -> tuple[int, StatementUploadPrepareResponse]:
+        card = await statement_service.ensure_card(db, org.id, body.credit_card_id)
+        if storage.storage_backend(settings) != "supabase":
+            return 200, StatementUploadPrepareResponse(
+                mode="legacy",
+                max_upload_bytes=settings.statement_max_upload_bytes,
+                allowed_mime_types=list(SUPPORTED_STATEMENT_MIME_TYPES),
+            )
+        statement, object_path = await statement_service.prepare_statement_upload(
+            db,
+            settings=settings,
+            org_id=org.id,
+            user_id=user.id,
+            card=card,
+            filename=body.filename,
+            content_type=body.content_type,
+            size_bytes=body.size_bytes,
+            period_start=body.period_start,
+            period_end=body.period_end,
+            statement_date=body.statement_date,
+            due_date=body.due_date,
+        )
+        upload_url = await storage.create_signed_upload_url(object_path, settings)
+        expires_at = datetime.now(UTC) + timedelta(seconds=settings.statement_upload_ttl_seconds)
+        return 200, StatementUploadPrepareResponse(
+            mode="signed",
+            statement_id=statement.id,
+            object_path=object_path,
+            upload_url=upload_url,
+            expires_at=expires_at,
+            max_upload_bytes=settings.statement_max_upload_bytes,
+            allowed_mime_types=list(SUPPORTED_STATEMENT_MIME_TYPES),
+        )
+
+    _, result = await execute_idempotent(
+        db,
+        organization_id=org.id,
+        user_id=user.id,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload=body,
+        action=_action,
+        response=response,
+        result_parser=StatementUploadPrepareResponse.model_validate,
+    )
+    return result
+
+
+@router.post("/upload/finalize", response_model=StatementDetailResponse)
+async def finalize_statement_upload(
+    body: StatementUploadFinalizeRequest,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    org_ctx: OrgContext,
+    settings: AppSettings,
+) -> StatementDetailResponse:
+    """Validate the direct-uploaded object and hand it to the existing parser."""
+    org, _ = org_ctx
+    ip, ua = client_meta(request)
+    try:
+        statement = await statement_service.finalize_statement_upload(
+            db,
+            settings=settings,
+            org_id=org.id,
+            user_id=user.id,
+            statement_id=body.statement_id,
+            filename=body.filename,
+            content_type=body.content_type,
+            size_bytes=body.size_bytes,
+        )
+    except AppError:
+        # Finalization records a failed metadata row while deleting untrusted objects.
+        await db.commit()
+        raise
+
+    if statement.status == StatementStatus.UPLOADED:
+        card = await statement_service.ensure_card(db, org.id, statement.credit_card_id)
+        await statement_service.log_statement_upload(
+            db,
+            statement=statement,
+            user_id=user.id,
+            filename=body.filename,
+            size_bytes=body.size_bytes,
+            ip=ip,
+            ua=ua,
+        )
+        if body.auto_parse:
+            statement = await statement_service.run_parse(
+                db,
+                settings=settings,
+                statement=statement,
+                card=card,
+                user_id=user.id,
+                ip=ip,
+                ua=ua,
+            )
+
+    await db.commit()
+    await db.refresh(statement)
+    return await _detail(db, org.id, statement)
+
+
 @router.post("/upload", response_model=StatementDetailResponse, status_code=201)
 async def upload_statement(
     request: Request,
@@ -130,6 +254,7 @@ async def upload_statement(
         user_id=user.id,
         card=card,
         filename=filename,
+        content_type=file.content_type or "",
         data=data,
         period_start=period_start,
         period_end=period_end,
@@ -153,6 +278,28 @@ async def upload_statement(
     await db.commit()
     await db.refresh(statement)
     return await _detail(db, org.id, statement)
+
+
+@router.delete("/{statement_id}/upload", status_code=204)
+async def cancel_statement_upload(
+    statement_id: UUID,
+    db: DbSession,
+    user: CurrentUser,
+    org_ctx: OrgContext,
+    settings: AppSettings,
+) -> Response:
+    """Cancel an unfinished upload and remove its unreferenced object."""
+    org, _ = org_ctx
+    statement = await statement_service.get_statement_or_404(
+        db, org.id, statement_id, for_update=True
+    )
+    if statement.created_by != user.id:
+        raise AppError("Statement not found", code="not_found", status_code=404)
+    if statement.status == StatementStatus.UPLOADED:
+        await storage.delete_file(statement.pdf_storage_path, settings)
+        await db.delete(statement)
+        await db.commit()
+    return Response(status_code=204)
 
 
 @router.get("/{statement_id}", response_model=StatementDetailResponse)

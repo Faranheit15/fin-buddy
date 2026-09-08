@@ -4,13 +4,16 @@ import { updateSession } from "@/lib/supabase/middleware";
 
 function contentSecurityPolicy(nonce: string): string {
   const isDevelopment = process.env.NODE_ENV === "development";
+  const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin
+    : undefined;
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    `connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

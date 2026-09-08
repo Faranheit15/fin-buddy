@@ -211,7 +211,13 @@ async def object_metadata(relative: str, settings: Settings | None = None) -> St
             raise AppError(
                 "Failed to inspect statement file", code="storage_metadata_failed", status_code=502
             ) from None
-    return StorageObjectMetadata(size, response.headers.get("content-type"))
+    content_type = response.headers.get("content-type")
+    logger.info(
+        "supabase_storage_metadata",
+        size_bytes=size,
+        content_type=content_type,
+    )
+    return StorageObjectMetadata(size, content_type)
 
 
 async def read_bytes(

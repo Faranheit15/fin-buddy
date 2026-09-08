@@ -191,7 +191,8 @@ async def object_metadata(relative: str, settings: Settings | None = None) -> St
         # Some Supabase/edge responses omit Content-Length for HEAD. Probe one
         # byte so Content-Range can provide the authoritative total without
         # downloading the object into memory.
-        if response.status_code in {405, 501} or _content_length(response) is None:
+        head_size = _content_length(response)
+        if response.status_code in {405, 501} or not head_size:
             response = await client.get(
                 url, headers={**_supabase_headers(cfg), "Range": "bytes=0-0"}
             )

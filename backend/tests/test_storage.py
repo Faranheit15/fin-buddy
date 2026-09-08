@@ -114,7 +114,7 @@ async def test_object_metadata_probes_range_when_head_has_no_size() -> None:
             return None
 
         async def head(self, *_args: object, **_kwargs: object) -> _Response:
-            return _Response(200, {"content-type": "text/plain"})
+            return _Response(200, {"content-length": "0", "content-type": "text/plain"})
 
         async def get(self, *_args: object, **kwargs: object) -> _Response:
             assert kwargs["headers"] == {

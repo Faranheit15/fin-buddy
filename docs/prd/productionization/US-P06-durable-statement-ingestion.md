@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | `in_progress` |
+| **Status** | `done` |
 | **Sequence** | 6 |
 | **Depends on** | [US-P01](US-P01-production-release-gate.md), [US-P03](US-P03-supabase-security-boundary.md) |
 | **One-loop objective** | Upload statements directly to private Supabase Storage and keep ingestion within safe resource limits. |
@@ -116,13 +116,13 @@ guards. Out of scope: detailed statement-review UI, covered by US-P12.
 
 ### Validate
 
-- [ ] **US-P06.V1 — Verify durability.** Upload a safe test fixture, redeploy or
+- [x] **US-P06.V1 — Verify durability.** Upload a safe test fixture, redeploy or
   restart the API, and confirm the statement object and metadata remain
   available from private Storage.
-- [ ] **US-P06.V2 — Verify review handoff.** Confirm the new protocol reaches
+- [x] **US-P06.V2 — Verify review handoff.** Confirm the new protocol reaches
   the existing human-review/import state machine without auto-posting or
   changing ledger semantics.
-- [ ] **US-P06.V3 — Close the story.** Record limits, Storage policy evidence,
+- [x] **US-P06.V3 — Close the story.** Record limits, Storage policy evidence,
   protocol contract, test fixtures, and any provider limitation in this file
   and [`PROGRESS.md`](PROGRESS.md).
 
@@ -168,7 +168,7 @@ bank statement as a test fixture.
 - No Alembic migration was needed or applied for P06; the existing statement
   metadata and idempotency schema cover the protocol. The service retains a
   local-storage fallback for development/Docker only.
-- Verification: backend `273 passed`, Ruff, mypy; frontend `19 passed`, ESLint,
+- Verification: backend `274 passed`, Ruff, mypy; frontend `19 passed`, ESLint,
   TypeScript, and Turbopack production build. The existing review/import state
   machine remains unchanged and parsing never posts ledger transactions.
 - Release verification is not yet closable: the pushed commit `7ae1a1c` was
@@ -180,3 +180,22 @@ bank statement as a test fixture.
   HTTP 200 on the previous release, and the authenticated browser still shows
   the previous statement UI. No live P06 fixture was uploaded while the new
   release was unavailable.
+
+### 2026-09-09 — Release and durability verification
+
+- FastAPI Cloud deployment `040d949b-12a6-4c62-a1fb-90d83e0309f9` for commit
+  `d8faea9` reached `Live`/`Ready`. The metadata probe now uses the total from
+  `Content-Range` instead of the one-byte range response's `Content-Length`.
+- An authenticated browser smoke with the synthetic FinBuddy sample observed
+  JSON-only prepare, a direct multipart `PUT` to the private Supabase signed
+  upload path, and successful finalization. The resulting statement detail
+  page remained available after the backend redeploy and showed `Needs review`
+  with five pending lines; no ledger transaction was posted.
+- The live Storage bucket remained private with the 15 MiB ceiling and the
+  five exact application MIME types. Production configuration retained
+  `AUTO_MIGRATE=false`; no P06 migration was needed or applied because the
+  existing statement and idempotency schema was sufficient.
+- Final gates: backend `274 passed` with Ruff and mypy clean; frontend `19
+  passed`, ESLint, TypeScript, and Turbopack build clean; preflight clean. The
+  requested Docker Compose gate was attempted, but this runner has neither
+  the Compose plugin nor the legacy `docker-compose` executable.

@@ -7,9 +7,9 @@
 | --- | --- |
 | **Plan** | Productionization & Product Polish |
 | **Status** | Active — shared agent workflow complete; application stories queued |
-| **Last reviewed** | 2026-09-08 |
-| **Completed stories** | 6 / 15 |
-| **Current story** | US-P06 in progress — implementation complete; live release blocked by provider image build |
+| **Last reviewed** | 2026-09-09 |
+| **Completed stories** | 7 / 15 |
+| **Current story** | US-P07 queued — US-P06 durable statement ingestion complete |
 | **Loop prompt** | [`RALPH-LOOP-PROMPT.md`](RALPH-LOOP-PROMPT.md) |
 
 ## Story status
@@ -22,7 +22,7 @@
 | [US-P03](US-P03-supabase-security-boundary.md) | `done` | Reconcile RLS, grants, security-definer helpers, and Auth security settings. | Alembic migration 20260907_0015 added; RLS enabled across all 23 application tables without FORCE; symmetric WITH CHECK and DELETE policies enforced via (SELECT auth.uid()); table, sequence, routine grants and default privileges revoked from anon, authenticated, PUBLIC; 16 migration/contract tests added (backend 222 passed, frontend 18 passed, lint/types/build clean); UI-06 queued for US-P04. |
 | [US-P04](US-P04-tenant-authorization-lifecycle.md) | `done` | Close cross-organization references, role escalation, and deletion-session gaps. | Organization-aware validation across all references; UI-06 Tiered Collaborative Hybrid role enforcement; DeletedAccount tombstone lifecycle; EMI actor profile ID fix; additive reversible migration 20260907_0016; 248 backend & 18 frontend tests passed. |
 | [US-P05](US-P05-safe-financial-mutations.md) | `done` | Make financial writes idempotent and concurrency-safe. | RFC 9440 Idempotency-Key engine with SHA-256 payload hashing and cached replay; row-level locking (`with_for_update`) on reversals, drafts, EMIs, obligations, statements, and balance corrections; migration `20260908_0017` explicitly applied and verified on Supabase project `jklurueadteccrdycyiz` (`public.alembic_version`, `idempotency_records`, and all four business-invariant indexes/constraints); authenticated live replay and changed-payload `409` verified; `AUTO_MIGRATE=false` confirmed; FastAPI Cloud logs had no errors; 9 real PostgreSQL concurrency/race tests, 257 backend tests, and 18 frontend tests passed. |
-| [US-P06](US-P06-durable-statement-ingestion.md) | `in_progress` | Move uploads to durable signed Storage and bound ingestion resources. | Implementation and local gates verified; two FastAPI Cloud image builds failed before startup with provider `No such file or directory (os error 2)` while installing the Python interpreter. |
+| [US-P06](US-P06-durable-statement-ingestion.md) | `done` | Move uploads to durable signed Storage and bound ingestion resources. | Private 15 MiB/five-MIME Supabase bucket and production limits verified; server-generated tenant paths, signed browser uploads, retry-safe finalization, cleanup, bounded parsing, and truthful errors implemented. FastAPI Cloud deployment `040d949b` for commit `d8faea9` is Live/Ready. Authenticated synthetic browser smoke survived that redeploy and reached `Needs review` with 5 pending lines; no ledger transaction posted. Backend 274 tests, frontend 19 tests, Ruff, mypy, ESLint, TypeScript, Turbopack build, and preflight passed. |
 | [US-P07](US-P07-readiness-and-keepalive.md) | `todo` | Make readiness truthful and add an optional safe daily database probe. | — |
 | [US-P08](US-P08-database-api-performance.md) | `todo` | Baseline and improve queries, indexes, pools, and API payloads. | — |
 | [US-P09](US-P09-jobs-logs-errors.md) | `todo` | Make reminders, logs, and public errors safe and bounded. | — |
@@ -65,7 +65,7 @@
 
 | Blocker | Required decision or input |
 | --- | --- |
-| None | No human blockers currently blocking US-P05. |
+| None | No human blockers currently blocking US-P06. |
 
 ## Iteration log
 
@@ -79,4 +79,4 @@
 | 2026-09-07 | US-P03 | `done` | Additive Alembic migration 20260907_0015 applied RLS to all 23 application tables without FORCE; added WITH CHECK on UPDATE and full DELETE coverage; revoked Data API public grants and routines; altered default privileges; preserved FastAPI pooler access; 16 security boundary tests verified; 222 backend and 18 frontend tests passed; Turbopack production build succeeded; UI-06 queued for US-P04. |
 | 2026-09-08 | US-P04 | `done` | Closed cross-org reference gaps across contacts, cards, categories, transactions, settlements, and obligations; implemented UI-06 Tiered Collaborative Hybrid role enforcement; added DeletedAccount tombstone lifecycle preventing profile recreation; fixed EMI actor profile ID; added additive reversible migration 20260907_0016; passed 248 backend and 18 frontend tests; preflight and post-task hooks clean. US-P04 complete; US-P05 queued. |
 | 2026-09-08 | US-P05 | `done` | RFC 9440 Idempotency-Key engine with SHA-256 payload hashing and cached response replay; row-level locking (with_for_update) across reversals, drafts, EMIs, obligations, statements, and balance corrections; migration `20260908_0017` applied and verified on Supabase `jklurueadteccrdycyiz` (`public.alembic_version`, `idempotency_records`, and all four business-invariant indexes/constraints); authenticated live replay (`201` plus `Idempotency-Replayed: true`) and changed-payload `409` verified; `AUTO_MIGRATE=false` confirmed; FastAPI Cloud logs clean; 9 real PostgreSQL concurrency/race tests passed; 257 backend and 18 frontend tests passed; Turbopack build clean; preflight and post-task clean. US-P05 complete; US-P06 queued. |
-| 2026-09-09 | US-P06 | `in_progress` | Implemented private Supabase signed upload preparation/finalization, organization/user-scoped paths, exact 15 MiB/five-MIME validation, cleanup, bounded parsers, and retry-safe client protocol. Supabase bucket restrictions and FastAPI Cloud non-secret limits verified; no migration required. Backend 273 tests, frontend 19 tests, Ruff, mypy, ESLint, TypeScript, and Turbopack build passed. Commit `7ae1a1c` pushed to `origin/develop`. FastAPI Cloud deployments `793610f4-d0c1-4783-beba-1f999f60bd7a` and `9014b276-3b78-49f7-940d-b004c222a734` both failed in provider image setup (`No such file or directory` while installing Python), so live P06 upload/restart smoke remains pending. |
+| 2026-09-09 | US-P06 | `done` | Implemented private Supabase signed upload preparation/finalization, organization/user-scoped paths, exact 15 MiB/five-MIME validation, cleanup, bounded parsers, retry-safe client protocol, and the ranged metadata-size fix in `d8faea9`. Supabase bucket restrictions and FastAPI Cloud non-secret limits verified; no migration required. Deployment `040d949b` reached Live/Ready. Authenticated synthetic browser smoke survived the redeploy and reached `Needs review` with 5 pending lines; backend 274 tests, frontend 19 tests, Ruff, mypy, ESLint, TypeScript, Turbopack build, and preflight passed. |

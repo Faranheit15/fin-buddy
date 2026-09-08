@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | `done` |
+| **Status** | `in_progress` |
 | **Sequence** | 6 |
 | **Depends on** | [US-P01](US-P01-production-release-gate.md), [US-P03](US-P03-supabase-security-boundary.md) |
 | **One-loop objective** | Upload statements directly to private Supabase Storage and keep ingestion within safe resource limits. |
@@ -116,13 +116,13 @@ guards. Out of scope: detailed statement-review UI, covered by US-P12.
 
 ### Validate
 
-- [x] **US-P06.V1 — Verify durability.** Upload a safe test fixture, redeploy or
+- [ ] **US-P06.V1 — Verify durability.** Upload a safe test fixture, redeploy or
   restart the API, and confirm the statement object and metadata remain
   available from private Storage.
-- [x] **US-P06.V2 — Verify review handoff.** Confirm the new protocol reaches
+- [ ] **US-P06.V2 — Verify review handoff.** Confirm the new protocol reaches
   the existing human-review/import state machine without auto-posting or
   changing ledger semantics.
-- [x] **US-P06.V3 — Close the story.** Record limits, Storage policy evidence,
+- [ ] **US-P06.V3 — Close the story.** Record limits, Storage policy evidence,
   protocol contract, test fixtures, and any provider limitation in this file
   and [`PROGRESS.md`](PROGRESS.md).
 
@@ -142,7 +142,7 @@ bank statement as a test fixture.
 
 ## Story notes
 
-### 2026-09-09 — Durable upload loop completed
+### 2026-09-09 — Durable upload implementation and release attempt
 
 - Traced the prior multipart path through the Next.js BFF and replaced the
   production path with authenticated `POST /statements/upload/prepare`, direct
@@ -168,6 +168,15 @@ bank statement as a test fixture.
 - No Alembic migration was needed or applied for P06; the existing statement
   metadata and idempotency schema cover the protocol. The service retains a
   local-storage fallback for development/Docker only.
-- Verification: backend `272 passed`, Ruff, mypy; frontend `19 passed`, ESLint,
+- Verification: backend `273 passed`, Ruff, mypy; frontend `19 passed`, ESLint,
   TypeScript, and Turbopack production build. The existing review/import state
   machine remains unchanged and parsing never posts ledger transactions.
+- Release verification is not yet closable: the pushed commit `7ae1a1c` was
+  submitted twice to FastAPI Cloud deployments
+  `793610f4-d0c1-4783-beba-1f999f60bd7a` and
+  `9014b276-3b78-49f7-940d-b004c222a734`; both failed before application
+  startup in the provider image builder with `Installing Python interpreter`
+  / `No such file or directory (os error 2)`. The live health endpoint remains
+  HTTP 200 on the previous release, and the authenticated browser still shows
+  the previous statement UI. No live P06 fixture was uploaded while the new
+  release was unavailable.

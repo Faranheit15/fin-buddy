@@ -8,6 +8,7 @@ import { Bell, LogOut, Menu, Moon, Plus, Sun, User } from "lucide-react";
 import { BrandMark } from "@/components/brand/mark";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { appNavItems } from "@/components/layout/nav-items";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -204,7 +205,12 @@ export function AppHeader() {
           className="flex size-11 items-center justify-center rounded-lg bg-muted text-[11px] font-semibold"
           aria-label="Account menu"
         >
-          {ready ? initials(profile?.display_name, profile?.email) : "…"}
+          <Avatar size="lg" className="size-9">
+            {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
+            <AvatarFallback>
+              {ready ? initials(profile?.display_name, profile?.email) : "…"}
+            </AvatarFallback>
+          </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-52">
           <DropdownMenuGroup>

@@ -215,18 +215,18 @@ export async function uploadStatement(
 
   let storageResponse: Response;
   try {
-    // Use the raw ArrayBuffer branch of Supabase's signed-upload contract so
-    // Storage records the exact file byte count (multipart framing must not be
-    // included in the durable object).
-    const uploadBytes = await body.file.arrayBuffer();
+    // Supabase's signed-upload endpoint expects Blob/File values as multipart
+    // form data. The file bytes stay on this direct request and never pass
+    // through the backend.
+    const uploadForm = new FormData();
+    uploadForm.append("cacheControl", "3600");
+    uploadForm.append("", body.file);
     storageResponse = await fetch(prepare.upload_url, {
       method: "PUT",
       headers: {
         "x-upsert": "false",
-        "Content-Type": contentType,
-        "Cache-Control": "max-age=3600",
       },
-      body: uploadBytes,
+      body: uploadForm,
       signal: body.signal,
     });
   } catch (err) {

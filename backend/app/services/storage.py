@@ -152,11 +152,12 @@ async def create_signed_upload_url(
             "Could not prepare statement upload", code="storage_sign_failed", status_code=502
         )
     base = cfg.supabase_url.rstrip("/") if cfg.supabase_url else ""
-    return (
-        signed_path
-        if signed_path.startswith("http")
-        else urljoin(f"{base}/", signed_path.lstrip("/"))
-    )
+    if signed_path.startswith("http"):
+        return signed_path
+    normalized_path = signed_path.lstrip("/")
+    if not normalized_path.startswith("storage/v1/"):
+        normalized_path = f"storage/v1/{normalized_path}"
+    return urljoin(f"{base}/", normalized_path)
 
 
 async def save_bytes(

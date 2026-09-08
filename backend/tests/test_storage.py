@@ -65,7 +65,7 @@ async def test_signed_upload_url_is_provider_url_without_service_key(
 
         def json(self) -> dict[str, str]:
             return {
-                "url": "/storage/v1/object/upload/sign/statements/org/user/file.txt?token=opaque"
+                "url": "/object/upload/sign/statements/org/user/file.txt?token=opaque"
             }
 
     class _Client:

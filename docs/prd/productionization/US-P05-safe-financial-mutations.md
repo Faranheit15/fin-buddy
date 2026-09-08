@@ -155,9 +155,10 @@ which is US-P11/US-P12.
 
 - **Alembic Revision**: `20260908_0017_safe_financial_mutations` (down-revision `20260908_0016_tenant_authorization_lifecycle`).
 - **Table Added**: `idempotency_records`
-  - Columns: `id` (UUID PK), `organization_id` (UUID FK), `user_id` (UUID FK), `idempotency_key` (VARCHAR 128), `request_path` (VARCHAR 255), `payload_hash` (CHAR 64 SHA-256), `status_code` (INT), `response_headers` (JSONB), `response_body` (JSONB), `created_at`, `expires_at` (DateTime, 24h retention default).
-  - Constraints & Indexes: `uq_idempotency_org_key (organization_id, idempotency_key)`, index on `(organization_id, created_at)`.
+  - Columns: `id` (UUID PK), `organization_id` (UUID FK), `user_id` (UUID FK), `idempotency_key` (VARCHAR 128), `request_path` (VARCHAR 255), `request_hash` (CHAR 64 SHA-256), `status` (VARCHAR 20), `response_code` (INT), `response_body` (JSONB), `created_at`, `expires_at` (DateTime, 24h retention default).
+  - Constraints & Indexes: `uq_idempotency_org_key (organization_id, idempotency_key)`, plus `ix_idempotency_records_organization_id`, `ix_idempotency_records_user_id`, and `ix_idempotency_records_expires_at`.
 - **Constraint Added**: Partial unique index `uq_transactions_reverses_id` on `transactions(reverses_id)` where `reverses_id IS NOT NULL`.
+- **Additional business-invariant indexes/constraints**: `uq_emi_installments_plan_seq`, `uq_statement_lines_committed_tx`, and `uq_settlements_id_org`.
 - **Reversibility**: Reversible 1-step downgrade and upgrade verified cleanly on real PostgreSQL 16.
 
 ### Concurrency and Integration Test Results
@@ -214,3 +215,28 @@ without a durable delivery design.
    - Extended `ApiClientOptions` in `frontend/src/lib/api/client.ts` with `idempotencyKey?: string`.
    - Updated Next.js BFF route handler (`frontend/src/app/api/backend/[...path]/route.ts`) to forward `Idempotency-Key` upstream and proxy `Idempotency-Replayed` downstream.
    - Hardened UI dialogs and forms (`transaction-form.tsx`, `correct-balance-dialog.tsx`, `reverse-transaction-dialog.tsx`, `create-emi-dialog.tsx`, `obligation-payment-form.tsx`, `settlement-form.tsx`) with `isSubmittingRef` to prevent double-clicks and `idempotencyKeyRef` to reuse the key during retries.
+
+### 2026-09-08 — Production migration and live verification
+
+- Applied `20260908_0017_safe_financial_mutations` explicitly to Supabase project
+  `jklurueadteccrdycyiz` (`Fin Buddy`). Non-secret catalog SQL verified
+  `public.alembic_version = 20260908_0017`, confirmed that
+  `public.idempotency_records` exists, and confirmed all four business-invariant
+  indexes/constraints: `uq_transactions_reverses_id`,
+  `uq_emi_installments_plan_seq`, `uq_statement_lines_committed_tx`, and
+  `uq_settlements_id_org`. The four supporting idempotency indexes were also
+  present.
+- FastAPI Cloud production metadata remained fail-closed with
+  `ENVIRONMENT=production`, `DEBUG=false`, `AUTO_SEED=false`, and
+  `AUTO_MIGRATE=false`; no automatic production migration was enabled.
+- Authenticated live verification through the production BFF used a disposable
+  card-create operation with a ₹1 limit and no opening balance. The first
+  request returned `201`; the same `Idempotency-Key` and identical payload
+  returned `201` with `Idempotency-Replayed: true` and an identical cached
+  response; reusing the key with a changed payload returned `409` with
+  `idempotency_payload_mismatch`. Both disposable test cards were closed after
+  the check, and one completed idempotency record remains for its normal 24-hour
+  retention window.
+- FastAPI Cloud runtime logs for the linked `fin-buddy` app were inspected for
+  the preceding 30 minutes after the test. No error, exception, or traceback
+  entries were present.

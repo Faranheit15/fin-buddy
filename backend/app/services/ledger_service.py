@@ -83,12 +83,13 @@ def _with_original_join(stmt: Any) -> Any:
     return stmt.outerjoin(_OriginalTx, Transaction.reverses_id == _OriginalTx.id)
 
 
-async def card_outstanding_paise(session: AsyncSession, card_id: UUID) -> int:
-    stmt = _with_original_join(
-        select(_card_outstanding_expr()).where(
-            and_(Transaction.credit_card_id == card_id, _posted_clause())
-        )
-    )
+async def card_outstanding_paise(
+    session: AsyncSession, card_id: UUID, organization_id: UUID | None = None
+) -> int:
+    conditions = [Transaction.credit_card_id == card_id, _posted_clause()]
+    if organization_id is not None:
+        conditions.append(Transaction.organization_id == organization_id)
+    stmt = _with_original_join(select(_card_outstanding_expr()).where(and_(*conditions)))
     result = await session.execute(stmt)
     return int(result.scalar_one() or 0)
 
@@ -106,13 +107,21 @@ async def cards_outstanding_map(session: AsyncSession, organization_id: UUID) ->
     return {row[0]: int(row[1] or 0) for row in result.all()}
 
 
-async def account_balance_paise(session: AsyncSession, account_id: UUID) -> int:
+async def account_balance_paise(
+    session: AsyncSession, account_id: UUID, organization_id: UUID | None = None
+) -> int:
     """Posted G2 balance for one account (outstanding or cash held by kind)."""
+    conditions = [Transaction.account_id == account_id, _posted_clause()]
+    if organization_id is not None:
+        conditions.extend([
+            Transaction.organization_id == organization_id,
+            Account.organization_id == organization_id,
+        ])
     stmt = _with_original_join(
         select(_account_balance_sum_expr())
         .select_from(Transaction)
         .join(Account, Account.id == Transaction.account_id)
-        .where(and_(Transaction.account_id == account_id, _posted_clause()))
+        .where(and_(*conditions))
     )
     result = await session.execute(stmt)
     return int(result.scalar_one() or 0)
@@ -136,18 +145,22 @@ async def accounts_balances_map(session: AsyncSession, organization_id: UUID) ->
     return {row[0]: int(row[1] or 0) for row in result.all() if row[0] is not None}
 
 
-async def contact_balance_paise(session: AsyncSession, contact_id: UUID) -> int:
-    spend_stmt = _with_original_join(
-        select(_contact_spend_expr()).where(
-            and_(Transaction.contact_id == contact_id, _posted_clause())
-        )
-    )
+async def contact_balance_paise(
+    session: AsyncSession, contact_id: UUID, organization_id: UUID | None = None
+) -> int:
+    spend_conditions = [Transaction.contact_id == contact_id, _posted_clause()]
+    if organization_id is not None:
+        spend_conditions.append(Transaction.organization_id == organization_id)
+    spend_stmt = _with_original_join(select(_contact_spend_expr()).where(and_(*spend_conditions)))
     tx_result = await session.execute(spend_stmt)
     spends = int(tx_result.scalar_one() or 0)
 
+    settle_conditions = [Settlement.contact_id == contact_id]
+    if organization_id is not None:
+        settle_conditions.append(Settlement.organization_id == organization_id)
     settle_result = await session.execute(
         select(func.coalesce(func.sum(Settlement.amount_paise), 0)).where(
-            Settlement.contact_id == contact_id
+            and_(*settle_conditions)
         )
     )
     settlements = int(settle_result.scalar_one() or 0)

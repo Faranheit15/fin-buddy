@@ -12,6 +12,7 @@ from app.core.exceptions import AppError, NotFoundError
 from app.models.enums import ObligationStatus, ObligationType
 from app.models.obligation import Obligation
 from app.models.obligation_payment import ObligationPayment
+from app.services.org_validators import validate_account_in_org, validate_contact_in_org
 
 
 async def create_obligation(
@@ -33,6 +34,8 @@ async def create_obligation(
         raise AppError(
             "Must provide either contact_id or counterparty_name", code="missing_counterparty"
         )
+    if contact_id is not None:
+        await validate_contact_in_org(db, organization_id, contact_id)
 
     obligation = Obligation(
         id=uuid4(),
@@ -147,6 +150,9 @@ async def add_payment(
 ) -> ObligationPayment:
     if amount_paise <= 0:
         raise AppError("Payment amount must be positive", code="invalid_amount")
+
+    if account_id is not None:
+        await validate_account_in_org(db, organization_id, account_id)
 
     obl, remaining = await get_obligation_with_balance(
         db, organization_id=organization_id, obligation_id=obligation_id

@@ -47,6 +47,9 @@ class _RecordingSession:
         res = self._results.pop(0)
         return _FakeResult(res)
 
+    def add(self, _obj: object) -> None:
+        pass
+
     async def delete(self, _obj: object) -> None:
         pass
 
@@ -77,6 +80,8 @@ async def test_delete_me(
 
     db = _RecordingSession(
         [
+            # 0. select deleted_account (None = not yet deleted)
+            None,
             # 1. select orgs
             [org],
             # 2. select profile

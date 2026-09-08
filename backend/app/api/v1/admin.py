@@ -166,6 +166,20 @@ async def set_user_role(
 
         raise NotFoundError("User not found")
 
+    if profile.platform_role == PlatformRole.SUPER_ADMIN and role != PlatformRole.SUPER_ADMIN:
+        super_admin_count = (
+            await db.scalar(
+                select(func.count())
+                .select_from(Profile)
+                .where(Profile.platform_role == PlatformRole.SUPER_ADMIN)
+            )
+            or 0
+        )
+        if super_admin_count <= 1:
+            from app.core.exceptions import ForbiddenError
+
+            raise ForbiddenError("Cannot demote the last remaining super_admin")
+
     profile.platform_role = role
     ip, ua = client_meta(request)
     await log_activity(

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import DbSession, OrgContext
+from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext
 from app.models.emi import EmiPlan
 from app.schemas.domain import EmiInstallmentResponse, EmiPlanCreate, EmiPlanResponse
 from app.services.emi_service import create_emi_plan, pay_emi_installment
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/emis", tags=["emis"])
 async def create_plan(
     body: EmiPlanCreate,
     db: DbSession,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> EmiPlanResponse:
     org, _ = org_ctx
     plan = await create_emi_plan(
@@ -68,9 +68,10 @@ async def pay_installment_api(
     installment_id: UUID,
     request: Request,
     db: DbSession,
+    user: CurrentUser,
     org_ctx: OrgContext,
 ) -> EmiInstallmentResponse:
-    org, user = org_ctx
+    org, _ = org_ctx
     inst = await pay_emi_installment(
         db,
         organization_id=org.id,

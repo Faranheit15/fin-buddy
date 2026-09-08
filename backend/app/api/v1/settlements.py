@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 
-from app.api.deps import CurrentUser, DbSession, OrgContext, client_meta
+from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
 from app.core.exceptions import NotFoundError
 from app.models.contact import Contact
 from app.models.enums import ActivityAction
@@ -90,7 +90,7 @@ async def delete_settlement(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> None:
     org, _ = org_ctx
     result = await db.execute(

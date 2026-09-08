@@ -8,8 +8,10 @@ from dateutil.relativedelta import relativedelta  # type: ignore
 from sqlalchemy import func, select
 
 from app.api.deps import DbSession
+from app.core.exceptions import AppError
 from app.models.emi import EmiInstallment, EmiPlan
 from app.models.enums import EmiInstallmentStatus, EmiPlanStatus
+from app.services.org_validators import validate_card_in_org, validate_transaction_in_org
 
 
 def generate_emi_schedule(
@@ -87,17 +89,22 @@ def generate_emi_schedule(
     return installments
 
 
-async def card_emi_blocked_paise(db: DbSession, credit_card_id: UUID) -> int:
+async def card_emi_blocked_paise(
+    db: DbSession, credit_card_id: UUID, organization_id: UUID | None = None
+) -> int:
     """Get the sum of pending principal for all active EMIs on a card."""
+    filters = [
+        EmiPlan.credit_card_id == credit_card_id,
+        EmiPlan.status == EmiPlanStatus.ACTIVE,
+        EmiInstallment.status == EmiInstallmentStatus.PENDING,
+    ]
+    if organization_id is not None:
+        filters.append(EmiPlan.organization_id == organization_id)
 
     result = await db.scalar(
         select(func.sum(EmiInstallment.principal_paise))
         .join(EmiPlan, EmiInstallment.plan_id == EmiPlan.id)
-        .where(
-            EmiPlan.credit_card_id == credit_card_id,
-            EmiPlan.status == EmiPlanStatus.ACTIVE,
-            EmiInstallment.status == EmiInstallmentStatus.PENDING,
-        )
+        .where(*filters)
     )
     return int(result or 0)
 
@@ -129,6 +136,17 @@ async def create_emi_plan(
     start_date: date,
 ) -> EmiPlan:
     from uuid import uuid4
+
+    await validate_card_in_org(db, organization_id, credit_card_id)
+    if reference_transaction_id is not None:
+        ref_tx = await validate_transaction_in_org(
+            db, organization_id, reference_transaction_id
+        )
+        if ref_tx.credit_card_id != credit_card_id:
+            raise AppError(
+                "Reference transaction does not belong to the selected credit card",
+                code="card_tx_mismatch",
+            )
 
     installments = generate_emi_schedule(
         principal_paise=principal_paise,

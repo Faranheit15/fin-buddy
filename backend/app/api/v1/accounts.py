@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 
-from app.api.deps import CurrentUser, DbSession, OrgContext, client_meta
+from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
 from app.models.account import Account
 from app.models.enums import AccountKind, ActivityAction
 from app.schemas.common import PaginatedResponse
@@ -69,7 +69,7 @@ async def create_account(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> AccountResponse:
     org, _ = org_ctx
     account = await account_service.create_account(
@@ -121,7 +121,7 @@ async def update_account(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> AccountResponse:
     org, _ = org_ctx
     account = await account_service.update_account(
@@ -153,7 +153,7 @@ async def archive_account(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> AccountResponse:
     org, _ = org_ctx
     account = await account_service.archive_account(
@@ -186,7 +186,7 @@ async def correct_balance(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> TransactionResponse:
     org, _ = org_ctx
     ip, ua = client_meta(request)

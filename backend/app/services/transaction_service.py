@@ -18,6 +18,7 @@ from app.models.enums import AccountKind, ActivityAction, PostingStatus, Transac
 from app.models.transaction import Transaction
 from app.services.account_service import get_account, resolve_account_id_for_card
 from app.services.logging_service import log_activity
+from app.services.org_validators import validate_category_in_org
 
 _CREATE_BLOCKED_TYPES = {
     TransactionType.ADJUSTMENT,
@@ -57,6 +58,8 @@ async def create_transaction(
         )
     if contact_id is not None:
         await _ensure_contact(db, organization_id, contact_id)
+    if category_id is not None:
+        await validate_category_in_org(db, organization_id, category_id)
     account_id, credit_card_id = await _resolve_transaction_account(
         db,
         organization_id=organization_id,
@@ -175,6 +178,8 @@ async def update_transaction(
         )
     if "contact_id" in patch and patch["contact_id"] is not None:
         await _ensure_contact(db, organization_id, patch["contact_id"])
+    if "category_id" in patch and patch["category_id"] is not None:
+        await validate_category_in_org(db, organization_id, patch["category_id"])
     for key, value in patch.items():
         setattr(tx, key, value)
     await log_activity(
@@ -574,10 +579,13 @@ async def replace_transaction_splits(
 
     # Add new splits
     for sd in splits_data:
+        cid = sd.get("category_id")
+        if cid is not None:
+            await validate_category_in_org(db, organization_id, cid)
         split = TransactionSplit(
             id=uuid4(),
             transaction_id=tx.id,
-            category_id=sd.get("category_id"),
+            category_id=cid,
             amount_paise=sd["amount_paise"],
             notes=sd.get("notes"),
             tags=sd.get("tags", []),

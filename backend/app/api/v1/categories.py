@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter
 
-from app.api.deps import CurrentUser, DbSession, OrgContext
+from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext
 from app.schemas.domain import CategoryCreate, CategoryResponse, CategoryUpdate
 from app.services import category_service
 
@@ -68,7 +68,7 @@ async def delete_category(
     category_id: UUID,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> None:
     org, _ = org_ctx
     await category_service.delete_category(

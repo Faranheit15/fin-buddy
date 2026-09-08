@@ -25,6 +25,7 @@ from app.models.transaction import Transaction
 from app.services import storage
 from app.services.account_service import resolve_account_id_for_card
 from app.services.logging_service import log_activity
+from app.services.org_validators import validate_contact_in_org
 
 
 def extract_text_from_bytes(data: bytes, filename: str) -> str:
@@ -323,6 +324,7 @@ async def update_line(
     if clear_contact:
         line.proposed_contact_id = None
     elif proposed_contact_id is not None:
+        await validate_contact_in_org(db, org_id, proposed_contact_id)
         line.proposed_contact_id = proposed_contact_id
 
     if review_status is not None:

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings, get_settings
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.db.session import get_db
+from app.models.deleted_account import DeletedAccount
 from app.models.enums import OrgRole, PlatformRole
 from app.models.organization import OrganizationMember
 from app.models.profile import Profile
@@ -184,6 +185,12 @@ async def get_current_user(
     result = await db.execute(select(Profile).where(Profile.id == user_id))
     profile = result.scalar_one_or_none()
     if profile is None:
+        tombstone = await db.scalar(
+            select(DeletedAccount).where(DeletedAccount.user_id == user_id)
+        )
+        if tombstone is not None:
+            raise UnauthorizedError("Account has been deleted")
+
         # Lazy profile bootstrap will often run from /auth/me or login; still allow token
         email = claims.get("email")
         phone = claims.get("phone")

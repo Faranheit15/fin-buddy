@@ -13,6 +13,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy import Enum as SAEnum
@@ -34,6 +35,7 @@ class Transaction(Base):
             "delta_sign IS NULL OR delta_sign IN (-1, 1)",
             name="ck_transactions_delta_sign",
         ),
+        UniqueConstraint("id", "organization_id", name="uq_transactions_id_org"),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)

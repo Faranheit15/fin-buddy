@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import CurrentUser, DbSession, OrgContext, client_meta
+from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
 from app.core.exceptions import AppError
 from app.models.enums import PostingStatus, TransactionType
 from app.models.transaction import Transaction
@@ -78,7 +78,7 @@ async def adjust_transaction(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> TransactionResponse:
     org, _ = org_ctx
     ip, ua = client_meta(request)
@@ -190,7 +190,7 @@ async def reverse_transaction(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> TransactionResponse:
     org, _ = org_ctx
     ip, ua = client_meta(request)

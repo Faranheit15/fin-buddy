@@ -1,5 +1,6 @@
 """Authentication orchestration over Supabase Auth + local bootstrap."""
 
+import logging
 import re
 from typing import Any
 from urllib.parse import unquote, urlencode, urlsplit, urlunsplit
@@ -8,13 +9,16 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.core.exceptions import AppError
+from app.core.exceptions import AppError, UnauthorizedError
 from app.infrastructure.supabase_auth import SupabaseAuthClient, extract_user_id
+from app.models.deleted_account import DeletedAccount
 from app.models.enums import ActivityAction, OrgRole
 from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
 from app.services.logging_service import log_activity
 from app.services.user_service import ensure_profile_and_org
+
+logger = logging.getLogger(__name__)
 
 _SAFE_STATE_RE = re.compile(r"^[A-Za-z0-9_-]{8,256}$")
 _SAFE_CHALLENGE_RE = re.compile(r"^[A-Za-z0-9_-]{43,128}$")
@@ -153,6 +157,14 @@ async def _bootstrap_from_auth_response(
         auth_response = {**auth_response, "user": user}
 
     user_id = extract_user_id(auth_response)
+    from sqlalchemy import select
+
+    tombstone = await session.scalar(
+        select(DeletedAccount).where(DeletedAccount.user_id == user_id)
+    )
+    if tombstone is not None:
+        raise UnauthorizedError("Account has been deleted and cannot be re-created")
+
     meta = user.get("user_metadata") or {}
     profile, org = await ensure_profile_and_org(
         session,
@@ -427,26 +439,48 @@ async def delete_account(
 ) -> None:
     from sqlalchemy import select
 
-    # 1. Delete all organizations where user is owner
-    result = await session.execute(
-        select(Organization)
-        .join(OrganizationMember)
-        .where(
-            OrganizationMember.user_id == user_id,
-            OrganizationMember.role == OrgRole.OWNER,
-        )
+    # 1. Check if already tombstoned
+    tomb_res = await session.execute(
+        select(DeletedAccount).where(DeletedAccount.user_id == user_id)
     )
-    for org in result.scalars().all():
-        await session.delete(org)
+    tombstone = tomb_res.scalar_one_or_none()
+    if tombstone is None:
+        # Delete all organizations where user is owner
+        result = await session.execute(
+            select(Organization)
+            .join(OrganizationMember)
+            .where(
+                OrganizationMember.user_id == user_id,
+                OrganizationMember.role == OrgRole.OWNER,
+            )
+        )
+        for org in result.scalars().all():
+            await session.delete(org)
 
-    # 2. Delete the profile itself
-    prof_result = await session.execute(select(Profile).where(Profile.id == user_id))
-    profile = prof_result.scalar_one_or_none()
-    if profile:
-        await session.delete(profile)
+        # Delete the profile itself
+        prof_result = await session.execute(select(Profile).where(Profile.id == user_id))
+        profile = prof_result.scalar_one_or_none()
+        if profile:
+            await session.delete(profile)
 
-    await session.commit()
+        # Insert tombstone
+        tombstone = DeletedAccount(
+            user_id=user_id,
+            provider_deleted=False,
+        )
+        session.add(tombstone)
+        await session.commit()
 
-    # 3. Delete from Supabase Auth
-    client = SupabaseAuthClient(settings)
-    await client.admin_delete_user(user_id)
+    # 2. Delete from Supabase Auth if not yet marked provider_deleted
+    if not tombstone.provider_deleted:
+        client = SupabaseAuthClient(settings)
+        try:
+            await client.admin_delete_user(user_id)
+            tombstone.provider_deleted = True
+            await session.commit()
+        except Exception as err:
+            logger.error("Supabase Auth admin deletion failed for user %s: %s", user_id, err)
+            raise AppError(
+                "Account deletion completed locally, but provider sync failed. The operation can be retried.",
+                code="provider_deletion_failed",
+            ) from err

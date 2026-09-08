@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AppSettings, CurrentUser, DbSession, client_meta
@@ -412,16 +412,20 @@ async def delete_me(
     user: CurrentUser,
 ) -> MessageResponse:
     ip, ua = client_meta(request)
-    await log_activity(
-        db,
-        action=ActivityAction.OTHER,
-        summary="User deleted account",
-        actor_user_id=user.id,
-        resource_type="profile",
-        resource_id=str(user.id),
-        ip_address=ip,
-        user_agent=ua,
-        commit=True,
+    prof_exists = await db.scalar(
+        select(func.count()).select_from(Profile).where(Profile.id == user.id)
     )
+    if prof_exists:
+        await log_activity(
+            db,
+            action=ActivityAction.OTHER,
+            summary="User deleted account",
+            actor_user_id=user.id,
+            resource_type="profile",
+            resource_id=str(user.id),
+            ip_address=ip,
+            user_agent=ua,
+            commit=True,
+        )
     await auth_service.delete_account(db, settings, user.id)
     return MessageResponse(message="Account deleted successfully")

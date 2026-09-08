@@ -4,6 +4,7 @@ from app.models.account import Account
 from app.models.category import Category
 from app.models.contact import Contact
 from app.models.credit_card import CreditCard
+from app.models.deleted_account import DeletedAccount
 from app.models.emi import EmiInstallment, EmiPlan
 from app.models.logging import ActivityLog, ApiRequestLog, ErrorLog, SeedHistory
 from app.models.notification import InAppNotification
@@ -20,6 +21,7 @@ from app.models.transaction_split import TransactionSplit
 
 __all__ = [
     "Profile",
+    "DeletedAccount",
     "RateLimitWindow",
     "Organization",
     "OrganizationMember",

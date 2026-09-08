@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 
-from app.api.deps import CurrentUser, DbSession, OrgContext, client_meta
+from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
 from app.core.exceptions import NotFoundError
 from app.domain.billing import (
     DueRuleType as DomainDueRuleType,
@@ -25,6 +25,7 @@ from app.schemas.domain import CreditCardCreate, CreditCardResponse, CreditCardU
 from app.services.emi_service import card_emi_blocked_paise, cards_emi_blocked_map
 from app.services.ledger_service import card_outstanding_paise, cards_outstanding_map
 from app.services.logging_service import log_activity
+from app.services.org_validators import validate_contact_in_org
 
 router = APIRouter(prefix="/cards", tags=["cards"])
 IST = ZoneInfo("Asia/Kolkata")
@@ -113,9 +114,11 @@ async def create_card(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> CreditCardResponse:
     org, _ = org_ctx
+    if body.held_by_contact_id is not None:
+        await validate_contact_in_org(db, org.id, body.held_by_contact_id)
     card = CreditCard(
         id=uuid4(),
         organization_id=org.id,
@@ -198,10 +201,12 @@ async def update_card(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> CreditCardResponse:
     org, _ = org_ctx
     card = await _get(db, org.id, card_id)
+    if body.held_by_contact_id is not None:
+        await validate_contact_in_org(db, org.id, body.held_by_contact_id)
     for key, value in body.model_dump(exclude_unset=True).items():
         setattr(card, key, value)
     ip, ua = client_meta(request)

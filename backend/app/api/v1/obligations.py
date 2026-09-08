@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, DbSession, OrgContext, client_meta
+from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
 from app.core.exceptions import NotFoundError
 from app.models.contact import Contact
 from app.models.enums import ActivityAction, ObligationStatus, ObligationType
@@ -174,7 +174,7 @@ async def delete_obligation(
     request: Request,
     db: DbSession,
     user: CurrentUser,
-    org_ctx: OrgContext,
+    org_ctx: OrgAdminContext,
 ) -> None:
     org, _ = org_ctx
     obl = await db.scalar(

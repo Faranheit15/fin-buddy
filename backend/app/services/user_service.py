@@ -9,6 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
+from app.core.exceptions import UnauthorizedError
+from app.models.deleted_account import DeletedAccount
 from app.models.enums import ActivityAction, OrgRole, PlatformRole
 from app.models.organization import Organization, OrganizationMember
 from app.models.profile import Profile
@@ -47,6 +49,12 @@ async def ensure_profile_and_org(
     """
     profile = await get_profile(session, user_id)
     created_profile = False
+
+    tombstone = await session.scalar(
+        select(DeletedAccount).where(DeletedAccount.user_id == user_id)
+    )
+    if tombstone is not None:
+        raise UnauthorizedError("Account has been deleted and cannot be re-created")
 
     admin_emails = {e.lower() for e in settings.platform_admin_emails}
     is_platform_admin = bool(email and email.lower() in admin_emails)

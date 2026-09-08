@@ -1,12 +1,14 @@
 """Settlement endpoints."""
 
+from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Header, Query, Request, Response
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
 from app.core.exceptions import NotFoundError
+from app.core.idempotency import IDEMPOTENCY_HEADER, execute_idempotent
 from app.models.contact import Contact
 from app.models.enums import ActivityAction
 from app.models.settlement import Settlement
@@ -48,40 +50,57 @@ async def create_settlement(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> SettlementResponse:
     org, _ = org_ctx
-    contact = await db.execute(
-        select(Contact.id).where(Contact.id == body.contact_id, Contact.organization_id == org.id)
-    )
-    if contact.scalar_one_or_none() is None:
-        raise NotFoundError("Contact not found")
-    row = Settlement(
-        id=uuid4(),
-        organization_id=org.id,
-        contact_id=body.contact_id,
-        amount_paise=body.amount_paise,
-        currency=body.currency,
-        settled_at=body.settled_at,
-        method=body.method,
-        notes=body.notes,
-        created_by=user.id,
-    )
-    db.add(row)
-    ip, ua = client_meta(request)
-    await log_activity(
+
+    async def _action() -> tuple[int, SettlementResponse]:
+        contact = await db.execute(
+            select(Contact.id).where(Contact.id == body.contact_id, Contact.organization_id == org.id)
+        )
+        if contact.scalar_one_or_none() is None:
+            raise NotFoundError("Contact not found")
+        row = Settlement(
+            id=uuid4(),
+            organization_id=org.id,
+            contact_id=body.contact_id,
+            amount_paise=body.amount_paise,
+            currency=body.currency,
+            settled_at=body.settled_at,
+            method=body.method,
+            notes=body.notes,
+            created_by=user.id,
+        )
+        db.add(row)
+        ip, ua = client_meta(request)
+        await log_activity(
+            db,
+            action=ActivityAction.SETTLEMENT_CREATE,
+            summary=f"Settlement {body.amount_paise} paise from contact {body.contact_id}",
+            actor_user_id=user.id,
+            organization_id=org.id,
+            resource_type="settlement",
+            resource_id=str(row.id),
+            ip_address=ip,
+            user_agent=ua,
+        )
+        await db.flush()
+        await db.refresh(row)
+        return 201, SettlementResponse.model_validate(row)
+
+    _, final_result = await execute_idempotent(
         db,
-        action=ActivityAction.SETTLEMENT_CREATE,
-        summary=f"Settlement {body.amount_paise} paise from contact {body.contact_id}",
-        actor_user_id=user.id,
         organization_id=org.id,
-        resource_type="settlement",
-        resource_id=str(row.id),
-        ip_address=ip,
-        user_agent=ua,
+        user_id=user.id,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload=body,
+        action=_action,
+        response=response,
+        result_parser=SettlementResponse.model_validate,
     )
-    await db.commit()
-    await db.refresh(row)
-    return SettlementResponse.model_validate(row)
+    return final_result
 
 
 @router.delete("/{settlement_id}", status_code=204)

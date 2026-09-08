@@ -88,6 +88,7 @@ async def create_transaction(
         transfer_group_id=transfer_group_id,
         tags=tags,
         category_id=category_id,
+        splits=[],
     )
     db.add(tx)
     await log_activity(
@@ -134,7 +135,7 @@ async def post_draft(
     ip: str | None = None,
     ua: str | None = None,
 ) -> Transaction:
-    tx = await get_transaction(db, organization_id, transaction_id)
+    tx = await get_transaction(db, organization_id, transaction_id, for_update=True)
     if tx.posting_status == PostingStatus.POSTED:
         raise ConflictError("Transaction is already posted", code="already_posted")
     if tx.posting_status != PostingStatus.DRAFT:
@@ -242,7 +243,7 @@ async def reverse_transaction(
     if not reason_clean:
         raise AppError("Reason is required", code="invalid_reason")
 
-    original = await get_transaction(db, organization_id, transaction_id)
+    original = await get_transaction(db, organization_id, transaction_id, for_update=True)
     if original.posting_status != PostingStatus.POSTED:
         raise AppError("Only posted transactions can be reversed", code="cannot_reverse")
     if original.type == TransactionType.REVERSAL:
@@ -279,6 +280,7 @@ async def reverse_transaction(
         delta_sign=None,
         reverses_id=original.id,
         created_by=user_id,
+        splits=[],
     )
     db.add(reversal)
     await db.flush()
@@ -537,14 +539,19 @@ async def create_transfer(
 
 
 async def get_transaction(
-    db: AsyncSession, organization_id: UUID, transaction_id: UUID
+    db: AsyncSession,
+    organization_id: UUID,
+    transaction_id: UUID,
+    *,
+    for_update: bool = False,
 ) -> Transaction:
-    result = await db.execute(
-        select(Transaction).where(
-            Transaction.id == transaction_id,
-            Transaction.organization_id == organization_id,
-        )
+    stmt = select(Transaction).where(
+        Transaction.id == transaction_id,
+        Transaction.organization_id == organization_id,
     )
+    if for_update:
+        stmt = stmt.with_for_update()
+    result = await db.execute(stmt)
     tx = result.scalar_one_or_none()
     if tx is None:
         raise NotFoundError("Transaction not found")

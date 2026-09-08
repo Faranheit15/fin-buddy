@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AppError, NotFoundError
+from app.core.exceptions import AppError, ConflictError, NotFoundError
 from app.models.enums import ObligationStatus, ObligationType
 from app.models.obligation import Obligation
 from app.models.obligation_payment import ObligationPayment
@@ -60,12 +60,35 @@ async def get_obligation_with_balance(
     *,
     organization_id: UUID,
     obligation_id: UUID,
+    for_update: bool = False,
 ) -> tuple[Obligation, int]:
     """Returns (Obligation, remaining_balance_paise)."""
-    paid_sum = func.coalesce(func.sum(ObligationPayment.amount_paise), 0)
+    if for_update:
+        lock_stmt = (
+            select(Obligation)
+            .where(
+                Obligation.id == obligation_id,
+                Obligation.organization_id == organization_id,
+            )
+            .with_for_update()
+        )
+        raw = (await db.execute(lock_stmt)).scalar_one_or_none()
+        if raw is None:
+            raise NotFoundError("Obligation not found")
+        obligation = raw[0] if isinstance(raw, (tuple, list)) else raw
 
+        paid_sum = await db.scalar(
+            select(func.coalesce(func.sum(ObligationPayment.amount_paise), 0)).where(
+                ObligationPayment.obligation_id == obligation_id,
+                ObligationPayment.organization_id == organization_id,
+            )
+        )
+        remaining = obligation.amount_paise - (paid_sum or 0)
+        return obligation, remaining
+
+    paid_sum_expr = func.coalesce(func.sum(ObligationPayment.amount_paise), 0)
     stmt = (
-        select(Obligation, paid_sum)
+        select(Obligation, paid_sum_expr)
         .outerjoin(ObligationPayment, ObligationPayment.obligation_id == Obligation.id)
         .where(
             Obligation.id == obligation_id,
@@ -155,11 +178,10 @@ async def add_payment(
         await validate_account_in_org(db, organization_id, account_id)
 
     obl, remaining = await get_obligation_with_balance(
-        db, organization_id=organization_id, obligation_id=obligation_id
+        db, organization_id=organization_id, obligation_id=obligation_id, for_update=True
     )
-
-    # Overpayment policy: warn and allow.
-    # The API layer will decide whether to emit a warning, but the service allows it.
+    if obl.status == ObligationStatus.PAID:
+        raise ConflictError("Obligation is already paid in full", code="obligation_already_paid")
 
     payment = ObligationPayment(
         id=uuid4(),

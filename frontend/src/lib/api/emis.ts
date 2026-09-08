@@ -38,11 +38,15 @@ export type EmiPlanCreate = {
   start_date: string;
 };
 
-export function createEmiPlan(accessToken: string, body: EmiPlanCreate) {
+export function createEmiPlan(
+  accessToken: string,
+  body: EmiPlanCreate,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<EmiPlan>(
     "/api/v1/emis",
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }
 
@@ -50,10 +54,14 @@ export function listCardEmiPlans(accessToken: string, cardId: string) {
   return apiFetch<EmiPlan[]>(`/api/v1/emis/card/${cardId}`, { method: "GET" }, { accessToken });
 }
 
-export function payInstallment(accessToken: string, installmentId: string) {
+export function payInstallment(
+  accessToken: string,
+  installmentId: string,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<EmiInstallment>(
     `/api/v1/emis/installments/${installmentId}/pay`,
     { method: "POST" },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }

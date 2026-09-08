@@ -137,19 +137,27 @@ export function listTransactions(accessToken: string, opts: ListTransactionsOpts
   );
 }
 
-export function createTransaction(accessToken: string, body: TransactionCreate) {
+export function createTransaction(
+  accessToken: string,
+  body: TransactionCreate,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<Transaction>(
     "/api/v1/transactions",
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }
 
-export function postTransaction(accessToken: string, id: string) {
+export function postTransaction(
+  accessToken: string,
+  id: string,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<Transaction>(
     `/api/v1/transactions/${id}/post`,
     { method: "POST" },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }
 
@@ -157,11 +165,12 @@ export function reverseTransaction(
   accessToken: string,
   id: string,
   body: { reason: string; occurred_at?: string },
+  options?: { idempotencyKey?: string },
 ) {
   return apiFetch<Transaction>(
     `/api/v1/transactions/${id}/reverse`,
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,9 +43,13 @@ export function SettlementForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnOverpay, setWarnOverpay] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -54,18 +58,24 @@ export function SettlementForm({
       if (amountPaise > currentBalancePaise && currentBalancePaise > 0 && !warnOverpay) {
         setWarnOverpay(true);
         setLoading(false);
+        isSubmittingRef.current = false;
         return;
       }
       const settled = new Date(settledAt);
       if (Number.isNaN(settled.getTime())) throw new Error("Invalid date/time");
 
-      const settlement = await createSettlement(accessToken, {
-        contact_id: contactId,
-        amount_paise: amountPaise,
-        settled_at: settled.toISOString(),
-        method,
-        notes: notes.trim() || null,
-      });
+      const settlement = await createSettlement(
+        accessToken,
+        {
+          contact_id: contactId,
+          amount_paise: amountPaise,
+          settled_at: settled.toISOString(),
+          method,
+          notes: notes.trim() || null,
+        },
+        { idempotencyKey: idempotencyKeyRef.current },
+      );
+      idempotencyKeyRef.current = crypto.randomUUID();
       onCreated(settlement);
     } catch (err) {
       setError(
@@ -76,6 +86,7 @@ export function SettlementForm({
             : "Could not record settlement",
       );
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   }

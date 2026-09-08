@@ -16,6 +16,7 @@ export class ApiError extends Error {
 export type ApiClientOptions = {
   accessToken?: string | null;
   signal?: AbortSignal;
+  idempotencyKey?: string;
 };
 
 type ErrorBody = {
@@ -52,6 +53,9 @@ export async function apiFetch<T>(
   const headers = new Headers(init.headers);
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
+  }
+  if (options.idempotencyKey) {
+    headers.set("Idempotency-Key", options.idempotencyKey);
   }
   if (options.accessToken && typeof window === "undefined") {
     headers.set("Authorization", `Bearer ${options.accessToken}`);

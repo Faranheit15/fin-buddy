@@ -91,11 +91,15 @@ export function getObligation(accessToken: string, id: string) {
   return apiFetch<Obligation>(`/api/v1/obligations/${id}`, { method: "GET" }, { accessToken });
 }
 
-export function createObligation(accessToken: string, body: ObligationCreate) {
+export function createObligation(
+  accessToken: string,
+  body: ObligationCreate,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<Obligation>(
     "/api/v1/obligations",
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }
 
@@ -123,10 +127,11 @@ export function addObligationPayment(
   accessToken: string,
   obligationId: string,
   body: ObligationPaymentCreate,
+  options?: { idempotencyKey?: string },
 ) {
   return apiFetch<ObligationPayment>(
     `/api/v1/obligations/${obligationId}/payments`,
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }

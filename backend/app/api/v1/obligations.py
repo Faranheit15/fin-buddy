@@ -1,12 +1,14 @@
 """Obligation endpoints."""
 
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Header, Query, Request, Response
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
 from app.core.exceptions import NotFoundError
+from app.core.idempotency import IDEMPOTENCY_HEADER, execute_idempotent
 from app.models.contact import Contact
 from app.models.enums import ActivityAction, ObligationStatus, ObligationType
 from app.models.obligation import Obligation
@@ -84,49 +86,65 @@ async def create_obligation(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> ObligationResponse:
     org, _ = org_ctx
-    if body.contact_id:
-        contact = await db.execute(
-            select(Contact.id).where(
-                Contact.id == body.contact_id, Contact.organization_id == org.id
-            )
-        )
-        if contact.scalar_one_or_none() is None:
-            raise NotFoundError("Contact not found")
 
-    obl = await obligation_service.create_obligation(
+    async def _action() -> tuple[int, ObligationResponse]:
+        if body.contact_id:
+            contact = await db.execute(
+                select(Contact.id).where(
+                    Contact.id == body.contact_id, Contact.organization_id == org.id
+                )
+            )
+            if contact.scalar_one_or_none() is None:
+                raise NotFoundError("Contact not found")
+
+        obl = await obligation_service.create_obligation(
+            db,
+            organization_id=org.id,
+            user_id=user.id,
+            type=body.type,
+            amount_paise=body.amount_paise,
+            currency=body.currency,
+            contact_id=body.contact_id,
+            counterparty_name=body.counterparty_name,
+            due_date=body.due_date,
+            notes=body.notes,
+        )
+
+        ip, ua = client_meta(request)
+        await log_activity(
+            db,
+            action=ActivityAction.OBLIGATION_CREATE,
+            summary=f"Created {body.type.value} obligation for {body.amount_paise} paise",
+            actor_user_id=user.id,
+            organization_id=org.id,
+            resource_type="obligation",
+            resource_id=str(obl.id),
+            ip_address=ip,
+            user_agent=ua,
+        )
+        await db.flush()
+        await db.refresh(obl)
+
+        res = ObligationResponse.model_validate(obl)
+        res.remaining_paise = obl.amount_paise
+        return 201, res
+
+    _, result = await execute_idempotent(
         db,
         organization_id=org.id,
         user_id=user.id,
-        type=body.type,
-        amount_paise=body.amount_paise,
-        currency=body.currency,
-        contact_id=body.contact_id,
-        counterparty_name=body.counterparty_name,
-        due_date=body.due_date,
-        notes=body.notes,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload=body,
+        action=_action,
+        response=response,
+        result_parser=ObligationResponse.model_validate,
     )
-
-    ip, ua = client_meta(request)
-    await log_activity(
-        db,
-        action=ActivityAction.OBLIGATION_CREATE,
-        summary=f"Created {body.type.value} obligation for {body.amount_paise} paise",
-        actor_user_id=user.id,
-        organization_id=org.id,
-        resource_type="obligation",
-        resource_id=str(obl.id),
-        ip_address=ip,
-        user_agent=ua,
-    )
-
-    await db.commit()
-    await db.refresh(obl)
-
-    res = ObligationResponse.model_validate(obl)
-    res.remaining_paise = obl.amount_paise
-    return res
+    return result
 
 
 @router.patch("/{obligation_id}", response_model=ObligationResponse)
@@ -209,36 +227,51 @@ async def add_payment(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> ObligationPaymentResponse:
     org, _ = org_ctx
 
-    payment = await obligation_service.add_payment(
+    async def _action() -> tuple[int, ObligationPaymentResponse]:
+        payment = await obligation_service.add_payment(
+            db,
+            organization_id=org.id,
+            user_id=user.id,
+            obligation_id=obligation_id,
+            amount_paise=body.amount_paise,
+            date=body.date,
+            account_id=body.account_id,
+            notes=body.notes,
+        )
+
+        ip, ua = client_meta(request)
+        await log_activity(
+            db,
+            action=ActivityAction.OBLIGATION_PAYMENT,
+            summary=f"Added payment of {body.amount_paise} paise to obligation {obligation_id}",
+            actor_user_id=user.id,
+            organization_id=org.id,
+            resource_type="obligation",
+            resource_id=str(obligation_id),
+            ip_address=ip,
+            user_agent=ua,
+        )
+        await db.flush()
+        await db.refresh(payment)
+        return 201, ObligationPaymentResponse.model_validate(payment)
+
+    _, result = await execute_idempotent(
         db,
         organization_id=org.id,
         user_id=user.id,
-        obligation_id=obligation_id,
-        amount_paise=body.amount_paise,
-        date=body.date,
-        account_id=body.account_id,
-        notes=body.notes,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload={"obligation_id": str(obligation_id), **body.model_dump(mode="json")},
+        action=_action,
+        response=response,
+        result_parser=ObligationPaymentResponse.model_validate,
     )
-
-    ip, ua = client_meta(request)
-    await log_activity(
-        db,
-        action=ActivityAction.OBLIGATION_PAYMENT,
-        summary=f"Added payment of {body.amount_paise} paise to obligation {obligation_id}",
-        actor_user_id=user.id,
-        organization_id=org.id,
-        resource_type="obligation",
-        resource_id=str(obligation_id),
-        ip_address=ip,
-        user_agent=ua,
-    )
-
-    await db.commit()
-    await db.refresh(payment)
-    return ObligationPaymentResponse.model_validate(payment)
+    return result
 
 
 @router.get("/{obligation_id}/payments", response_model=list[ObligationPaymentResponse])

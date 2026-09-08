@@ -61,11 +61,15 @@ export function getAccount(accessToken: string, id: string) {
   return apiFetch<AccountResponse>(`/api/v1/accounts/${id}`, { method: "GET" }, { accessToken });
 }
 
-export function createAccount(accessToken: string, body: AccountCreate) {
+export function createAccount(
+  accessToken: string,
+  body: AccountCreate,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<AccountResponse>(
     "/api/v1/accounts",
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }
 
@@ -85,10 +89,15 @@ export function archiveAccount(accessToken: string, id: string) {
   );
 }
 
-export function correctBalance(accessToken: string, id: string, body: CorrectBalanceRequest) {
+export function correctBalance(
+  accessToken: string,
+  id: string,
+  body: CorrectBalanceRequest,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<Transaction>(
     `/api/v1/accounts/${id}/correct-balance`,
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }

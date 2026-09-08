@@ -1,14 +1,16 @@
 """Credit card CRUD."""
 
 from datetime import UTC, datetime
+from typing import Annotated
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Header, Query, Request, Response
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
 from app.core.exceptions import NotFoundError
+from app.core.idempotency import IDEMPOTENCY_HEADER, execute_idempotent
 from app.domain.billing import (
     DueRuleType as DomainDueRuleType,
 )
@@ -115,74 +117,91 @@ async def create_card(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgAdminContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> CreditCardResponse:
     org, _ = org_ctx
-    if body.held_by_contact_id is not None:
-        await validate_contact_in_org(db, org.id, body.held_by_contact_id)
-    card = CreditCard(
-        id=uuid4(),
-        organization_id=org.id,
-        nickname=body.nickname,
-        issuer=body.issuer,
-        network=body.network,
-        last_four=body.last_four,
-        credit_limit_paise=body.credit_limit_paise,
-        currency=body.currency,
-        statement_day=body.statement_day,
-        due_rule_type=body.due_rule_type,
-        due_rule_value=body.due_rule_value,
-        held_by_contact_id=body.held_by_contact_id,
-        notes=body.notes,
-    )
-    db.add(card)
-    await db.flush()
 
-    account = Account(
-        id=uuid4(),
-        organization_id=org.id,
-        kind=AccountKind.CREDIT_CARD,
-        name=card.nickname,
-        institution=card.issuer,
-        currency=card.currency,
-        credit_card_id=card.id,
-    )
-    db.add(account)
-    await db.flush()
-
-    if body.opening_balance_paise:
-        db.add(
-            Transaction(
-                id=uuid4(),
-                organization_id=org.id,
-                account_id=account.id,
-                credit_card_id=card.id,
-                type=TransactionType.OPENING_BALANCE,
-                posting_status=PostingStatus.POSTED,
-                amount_paise=body.opening_balance_paise,
-                currency=body.currency,
-                occurred_at=datetime.now(UTC),
-                merchant="Opening balance",
-                created_by=user.id,
-            )
+    async def _action() -> tuple[int, CreditCardResponse]:
+        if body.held_by_contact_id is not None:
+            await validate_contact_in_org(db, org.id, body.held_by_contact_id)
+        card = CreditCard(
+            id=uuid4(),
+            organization_id=org.id,
+            nickname=body.nickname,
+            issuer=body.issuer,
+            network=body.network,
+            last_four=body.last_four,
+            credit_limit_paise=body.credit_limit_paise,
+            currency=body.currency,
+            statement_day=body.statement_day,
+            due_rule_type=body.due_rule_type,
+            due_rule_value=body.due_rule_value,
+            held_by_contact_id=body.held_by_contact_id,
+            notes=body.notes,
         )
+        db.add(card)
+        await db.flush()
 
-    ip, ua = client_meta(request)
-    await log_activity(
+        account = Account(
+            id=uuid4(),
+            organization_id=org.id,
+            kind=AccountKind.CREDIT_CARD,
+            name=card.nickname,
+            institution=card.issuer,
+            currency=card.currency,
+            credit_card_id=card.id,
+        )
+        db.add(account)
+        await db.flush()
+
+        if body.opening_balance_paise:
+            db.add(
+                Transaction(
+                    id=uuid4(),
+                    organization_id=org.id,
+                    account_id=account.id,
+                    credit_card_id=card.id,
+                    type=TransactionType.OPENING_BALANCE,
+                    posting_status=PostingStatus.POSTED,
+                    amount_paise=body.opening_balance_paise,
+                    currency=body.currency,
+                    occurred_at=datetime.now(UTC),
+                    merchant="Opening balance",
+                    created_by=user.id,
+                )
+            )
+
+        ip, ua = client_meta(request)
+        await log_activity(
+            db,
+            action=ActivityAction.CARD_CREATE,
+            summary=f"Created card {card.nickname}",
+            actor_user_id=user.id,
+            organization_id=org.id,
+            resource_type="credit_card",
+            resource_id=str(card.id),
+            ip_address=ip,
+            user_agent=ua,
+        )
+        await db.flush()
+        await db.refresh(card)
+        outstanding = await card_outstanding_paise(db, card.id)
+        emi_blocked = await card_emi_blocked_paise(db, card.id)
+        return 201, _to_response(card, outstanding, emi_blocked)
+
+    _, final_result = await execute_idempotent(
         db,
-        action=ActivityAction.CARD_CREATE,
-        summary=f"Created card {card.nickname}",
-        actor_user_id=user.id,
         organization_id=org.id,
-        resource_type="credit_card",
-        resource_id=str(card.id),
-        ip_address=ip,
-        user_agent=ua,
+        user_id=user.id,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload=body,
+        action=_action,
+        response=response,
+        result_parser=CreditCardResponse.model_validate,
     )
-    await db.commit()
-    await db.refresh(card)
-    outstanding = await card_outstanding_paise(db, card.id)
-    emi_blocked = await card_emi_blocked_paise(db, card.id)
-    return _to_response(card, outstanding, emi_blocked)
+    return final_result
 
 
 @router.get("/{card_id}", response_model=CreditCardResponse)

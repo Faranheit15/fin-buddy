@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,8 @@ export function ReverseTransactionDialog({
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false);
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   function resetLocal() {
     setReason("");
@@ -45,17 +47,23 @@ export function ReverseTransactionDialog({
 
   async function onConfirm() {
     if (!transaction) return;
+    if (isSubmittingRef.current) return;
     const trimmed = reason.trim();
     if (!trimmed) {
       setError("Add a short reason so the ledger stays auditable.");
       return;
     }
+    isSubmittingRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      const tx = await reverseTransaction(accessToken, transaction.id, {
-        reason: trimmed,
-      });
+      const tx = await reverseTransaction(
+        accessToken,
+        transaction.id,
+        { reason: trimmed },
+        { idempotencyKey: idempotencyKeyRef.current },
+      );
+      idempotencyKeyRef.current = crypto.randomUUID();
       resetLocal();
       onReversed(tx);
       onOpenChange(false);
@@ -74,6 +82,7 @@ export function ReverseTransactionDialog({
         setError("Could not reverse. Check your connection and try again.");
       }
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   }

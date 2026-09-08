@@ -82,7 +82,14 @@ function backendRequestHeaders(request: Request, accessToken: string | null): He
 
 function backendResponseHeaders(response: Response): Headers {
   const headers = new Headers(NO_STORE_HEADERS);
-  for (const name of ["content-disposition", "content-type", "etag", "x-request-id"]) {
+  for (const name of [
+    "content-disposition",
+    "content-type",
+    "etag",
+    "x-request-id",
+    "idempotency-key",
+    "idempotency-replayed",
+  ]) {
     const value = response.headers.get(name);
     if (value) headers.set(name, value);
   }

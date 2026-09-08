@@ -190,7 +190,7 @@ async def pay_emi_installment(
 ) -> EmiInstallment:
     from datetime import UTC, datetime, time
 
-    from app.core.exceptions import AppError, NotFoundError
+    from app.core.exceptions import ConflictError, NotFoundError
     from app.models.enums import PostingStatus, TransactionType
     from app.services.transaction_service import create_transaction
 
@@ -201,6 +201,7 @@ async def pay_emi_installment(
             EmiInstallment.id == installment_id,
             EmiPlan.organization_id == organization_id,
         )
+        .with_for_update(of=EmiInstallment)
     )
     row = result.first()
     if not row:
@@ -210,7 +211,7 @@ async def pay_emi_installment(
     plan: EmiPlan = row[1]
 
     if inst.status == EmiInstallmentStatus.PAID:
-        raise AppError("Installment is already paid")
+        raise ConflictError("Installment is already paid", code="installment_already_paid")
 
     occurred_at = datetime.combine(inst.due_date, time.min, tzinfo=UTC)
 
@@ -270,5 +271,5 @@ async def pay_emi_installment(
     if result_pending == 0:
         plan.status = EmiPlanStatus.COMPLETED
 
-    await db.commit()
+    await db.flush()
     return inst

@@ -1,13 +1,15 @@
 """Statement upload, parse, review, and import endpoints."""
 
 from datetime import date
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, File, Form, Header, Query, Request, Response, UploadFile
 from sqlalchemy import func, select
 
 from app.api.deps import AppSettings, CurrentUser, DbSession, OrgContext, client_meta
 from app.core.exceptions import AppError
+from app.core.idempotency import IDEMPOTENCY_HEADER, execute_idempotent
 from app.core.rate_limit import UPLOAD_LIMIT, enforce_rate_limit
 from app.core.upload_limits import read_upload_limited
 from app.models.enums import LineReviewStatus, StatementStatus
@@ -291,26 +293,46 @@ async def import_statement(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> StatementImportResult:
     org, _ = org_ctx
-    statement = await statement_service.get_statement_or_404(db, org.id, statement_id)
     ip, ua = client_meta(request)
-    result = await statement_service.import_statement(
+
+    async def _action() -> tuple[int, StatementImportResult]:
+        statement = await statement_service.get_statement_or_404(
+            db, org.id, statement_id, for_update=True
+        )
+        result = await statement_service.import_statement(
+            db,
+            statement=statement,
+            user_id=user.id,
+            ip=ip,
+            ua=ua,
+        )
+        await db.flush()
+        await db.refresh(statement)
+        counts = await _line_counts(db, [statement.id])
+        res = StatementImportResult(
+            created=result["created"],
+            skipped=result["skipped"],
+            status=statement.status,
+            statement=_to_response(statement, counts.get(statement.id)),
+        )
+        return 200, res
+
+    _, final_result = await execute_idempotent(
         db,
-        statement=statement,
+        organization_id=org.id,
         user_id=user.id,
-        ip=ip,
-        ua=ua,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload={"statement_id": str(statement_id)},
+        action=_action,
+        response=response,
+        result_parser=StatementImportResult.model_validate,
     )
-    await db.commit()
-    await db.refresh(statement)
-    counts = await _line_counts(db, [statement.id])
-    return StatementImportResult(
-        created=result["created"],
-        skipped=result["skipped"],
-        status=statement.status,
-        statement=_to_response(statement, counts.get(statement.id)),
-    )
+    return final_result
 
 
 async def _detail(db: DbSession, org_id: UUID, statement: Statement) -> StatementDetailResponse:

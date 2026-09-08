@@ -11,10 +11,14 @@ export type TransferCreate = {
   posting_status?: "draft" | "posted";
 };
 
-export function createTransfer(accessToken: string, body: TransferCreate) {
+export function createTransfer(
+  accessToken: string,
+  body: TransferCreate,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<[Transaction, Transaction]>(
     "/api/v1/transfers",
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }

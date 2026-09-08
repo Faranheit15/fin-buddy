@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,9 +37,13 @@ export function ObligationPaymentForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnOverpay, setWarnOverpay] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -48,16 +52,23 @@ export function ObligationPaymentForm({
       if (amountPaise > currentBalancePaise && currentBalancePaise > 0 && !warnOverpay) {
         setWarnOverpay(true);
         setLoading(false);
+        isSubmittingRef.current = false;
         return;
       }
       const paidAt = new Date(date);
       if (Number.isNaN(paidAt.getTime())) throw new Error("Invalid date/time");
 
-      const payment = await addObligationPayment(accessToken, obligationId, {
-        amount_paise: amountPaise,
-        date: paidAt.toISOString(),
-        notes: notes.trim() || null,
-      });
+      const payment = await addObligationPayment(
+        accessToken,
+        obligationId,
+        {
+          amount_paise: amountPaise,
+          date: paidAt.toISOString(),
+          notes: notes.trim() || null,
+        },
+        { idempotencyKey: idempotencyKeyRef.current },
+      );
+      idempotencyKeyRef.current = crypto.randomUUID();
       onCreated(payment);
     } catch (err) {
       setError(
@@ -68,6 +79,7 @@ export function ObligationPaymentForm({
             : "Could not record payment",
       );
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   }

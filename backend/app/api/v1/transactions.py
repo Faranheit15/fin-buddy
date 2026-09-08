@@ -1,14 +1,16 @@
 """Transaction ledger endpoints — draft/posted, reverse, adjust."""
 
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Header, Query, Request, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
 from app.core.exceptions import AppError
+from app.core.idempotency import IDEMPOTENCY_HEADER, execute_idempotent
 from app.models.enums import PostingStatus, TransactionType
 from app.models.transaction import Transaction
 from app.schemas.common import PaginatedResponse
@@ -79,30 +81,36 @@ async def adjust_transaction(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgAdminContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> TransactionResponse:
     org, _ = org_ctx
     ip, ua = client_meta(request)
-    if body.account_id is not None:
-        if body.contact_id is not None:
-            raise AppError(
-                "Account adjustments cannot include a contact", code="invalid_adjustment"
+
+    async def _action() -> tuple[int, TransactionResponse]:
+        if body.account_id is not None:
+            if body.contact_id is not None:
+                raise AppError(
+                    "Account adjustments cannot include a contact", code="invalid_adjustment"
+                )
+            account = await account_service.get_account(
+                db, organization_id=org.id, account_id=body.account_id, for_update=True
             )
-        account = await account_service.get_account(
-            db, organization_id=org.id, account_id=body.account_id
-        )
-        tx = await transaction_service.adjust_account_balance(
-            db,
-            organization_id=org.id,
-            user_id=user.id,
-            account=account,
-            delta_paise=body.delta_paise,
-            reason=body.reason,
-            occurred_at=body.occurred_at,
-            merchant=body.merchant,
-            ip=ip,
-            ua=ua,
-        )
-    else:
+            tx = await transaction_service.adjust_account_balance(
+                db,
+                organization_id=org.id,
+                user_id=user.id,
+                account=account,
+                delta_paise=body.delta_paise,
+                reason=body.reason,
+                occurred_at=body.occurred_at,
+                merchant=body.merchant,
+                ip=ip,
+                ua=ua,
+            )
+            await db.flush()
+            await db.refresh(tx)
+            return 201, TransactionResponse.model_validate(tx)
         if body.credit_card_id is None:
             raise AppError("account_id or credit_card_id is required", code="missing_account")
         tx = await transaction_service.adjust_balance(
@@ -118,9 +126,22 @@ async def adjust_transaction(
             ip=ip,
             ua=ua,
         )
-    await db.commit()
-    await db.refresh(tx)
-    return TransactionResponse.model_validate(tx)
+        await db.flush()
+        await db.refresh(tx)
+        return 201, TransactionResponse.model_validate(tx)
+
+    _, result = await execute_idempotent(
+        db,
+        organization_id=org.id,
+        user_id=user.id,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload=body,
+        action=_action,
+        response=response,
+        result_parser=TransactionResponse.model_validate,
+    )
+    return result
 
 
 @router.post("", response_model=TransactionResponse, status_code=201)
@@ -130,34 +151,51 @@ async def create_transaction(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> TransactionResponse:
     org, _ = org_ctx
     ip, ua = client_meta(request)
-    tx = await transaction_service.create_transaction(
+
+    async def _action() -> tuple[int, TransactionResponse]:
+        tx = await transaction_service.create_transaction(
+            db,
+            organization_id=org.id,
+            user_id=user.id,
+            account_id=body.account_id,
+            credit_card_id=body.credit_card_id,
+            tx_type=body.type,
+            amount_paise=body.amount_paise,
+            occurred_at=body.occurred_at,
+            merchant=body.merchant,
+            contact_id=body.contact_id,
+            category_id=body.category_id,
+            category=body.category,
+            gst_paise=body.gst_paise,
+            notes=body.notes,
+            tags=body.tags,
+            transfer_group_id=body.transfer_group_id,
+            currency=body.currency,
+            posting_status=body.posting_status,
+            ip=ip,
+            ua=ua,
+        )
+        await db.flush()
+        await db.refresh(tx)
+        return 201, TransactionResponse.model_validate(tx)
+
+    _, result = await execute_idempotent(
         db,
         organization_id=org.id,
         user_id=user.id,
-        account_id=body.account_id,
-        credit_card_id=body.credit_card_id,
-        tx_type=body.type,
-        amount_paise=body.amount_paise,
-        occurred_at=body.occurred_at,
-        merchant=body.merchant,
-        contact_id=body.contact_id,
-        category_id=body.category_id,
-        category=body.category,
-        gst_paise=body.gst_paise,
-        notes=body.notes,
-        tags=body.tags,
-        transfer_group_id=body.transfer_group_id,
-        currency=body.currency,
-        posting_status=body.posting_status,
-        ip=ip,
-        ua=ua,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload=body,
+        action=_action,
+        response=response,
+        result_parser=TransactionResponse.model_validate,
     )
-    await db.commit()
-    await db.refresh(tx)
-    return TransactionResponse.model_validate(tx)
+    return result
 
 
 @router.post("/{transaction_id}/post", response_model=TransactionResponse)
@@ -167,20 +205,37 @@ async def post_transaction(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> TransactionResponse:
     org, _ = org_ctx
     ip, ua = client_meta(request)
-    tx = await transaction_service.post_draft(
+
+    async def _action() -> tuple[int, TransactionResponse]:
+        tx = await transaction_service.post_draft(
+            db,
+            organization_id=org.id,
+            user_id=user.id,
+            transaction_id=transaction_id,
+            ip=ip,
+            ua=ua,
+        )
+        await db.flush()
+        await db.refresh(tx)
+        return 200, TransactionResponse.model_validate(tx)
+
+    _, result = await execute_idempotent(
         db,
         organization_id=org.id,
         user_id=user.id,
-        transaction_id=transaction_id,
-        ip=ip,
-        ua=ua,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload={"transaction_id": str(transaction_id)},
+        action=_action,
+        response=response,
+        result_parser=TransactionResponse.model_validate,
     )
-    await db.commit()
-    await db.refresh(tx)
-    return TransactionResponse.model_validate(tx)
+    return result
 
 
 @router.post("/{transaction_id}/reverse", response_model=TransactionResponse, status_code=201)
@@ -191,22 +246,39 @@ async def reverse_transaction(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgAdminContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> TransactionResponse:
     org, _ = org_ctx
     ip, ua = client_meta(request)
-    tx = await transaction_service.reverse_transaction(
+
+    async def _action() -> tuple[int, TransactionResponse]:
+        tx = await transaction_service.reverse_transaction(
+            db,
+            organization_id=org.id,
+            user_id=user.id,
+            transaction_id=transaction_id,
+            reason=body.reason,
+            occurred_at=body.occurred_at,
+            ip=ip,
+            ua=ua,
+        )
+        await db.flush()
+        await db.refresh(tx)
+        return 201, TransactionResponse.model_validate(tx)
+
+    _, result = await execute_idempotent(
         db,
         organization_id=org.id,
         user_id=user.id,
-        transaction_id=transaction_id,
-        reason=body.reason,
-        occurred_at=body.occurred_at,
-        ip=ip,
-        ua=ua,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload={"transaction_id": str(transaction_id), **body.model_dump(mode="json")},
+        action=_action,
+        response=response,
+        result_parser=TransactionResponse.model_validate,
     )
-    await db.commit()
-    await db.refresh(tx)
-    return TransactionResponse.model_validate(tx)
+    return result
 
 
 @router.patch("/{transaction_id}", response_model=TransactionResponse)

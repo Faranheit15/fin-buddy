@@ -123,7 +123,10 @@ class Transaction(Base):
         index=True,
     )
     splits: Mapped[list["TransactionSplit"]] = relationship(
-        "TransactionSplit", back_populates="transaction", cascade="all, delete-orphan"
+        "TransactionSplit",
+        back_populates="transaction",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
     category_rel: Mapped[Optional["Category"]] = relationship(
         "Category", back_populates="transactions"

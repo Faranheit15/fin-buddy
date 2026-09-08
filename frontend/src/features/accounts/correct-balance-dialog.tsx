@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -48,12 +48,16 @@ export function CorrectBalanceDialog({
   const [occurredAt, setOccurredAt] = useState(todayLocalInput);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false);
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const targetPaise = targetBalance.trim() ? rupeesToPaise(targetBalance) : null;
   const deltaPaise = targetPaise !== null ? targetPaise - currentBalancePaise : null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -65,11 +69,17 @@ export function CorrectBalanceDialog({
       const occurred = new Date(occurredAt);
       if (Number.isNaN(occurred.getTime())) throw new Error("Invalid date");
 
-      await correctBalance(accessToken, accountId, {
-        target_balance_paise: targetPaise,
-        reason: r,
-        occurred_at: occurred.toISOString(),
-      });
+      await correctBalance(
+        accessToken,
+        accountId,
+        {
+          target_balance_paise: targetPaise,
+          reason: r,
+          occurred_at: occurred.toISOString(),
+        },
+        { idempotencyKey: idempotencyKeyRef.current },
+      );
+      idempotencyKeyRef.current = crypto.randomUUID();
       onOpenChange(false);
       onCorrected();
 
@@ -85,6 +95,7 @@ export function CorrectBalanceDialog({
           : "Could not correct balance",
       );
     } finally {
+      isSubmittingRef.current = false;
       setBusy(false);
     }
   }

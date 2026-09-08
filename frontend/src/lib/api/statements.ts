@@ -185,11 +185,15 @@ export function bulkReviewLines(
   );
 }
 
-export function importStatement(accessToken: string, id: string) {
+export function importStatement(
+  accessToken: string,
+  id: string,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<StatementImportResult>(
     `/api/v1/statements/${id}/import`,
     { method: "POST" },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }
 

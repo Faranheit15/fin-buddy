@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,8 @@ export function CreateEmiDialog({ cardId, onCreated }: { cardId: string; onCreat
   const { accessToken } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false);
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const [principalRupees, setPrincipalRupees] = useState("");
   const [interestPercent, setInterestPercent] = useState("");
@@ -36,6 +38,8 @@ export function CreateEmiDialog({ cardId, onCreated }: { cardId: string; onCreat
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!accessToken) return;
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
 
     setBusy(true);
     setError(null);
@@ -48,13 +52,18 @@ export function CreateEmiDialog({ cardId, onCreated }: { cardId: string; onCreat
       if (tenure <= 0) throw new Error("Tenure must be > 0");
       if (interestRateBps < 0) throw new Error("Interest rate must be >= 0");
 
-      await createEmiPlan(accessToken, {
-        credit_card_id: cardId,
-        principal_paise: principalPaise,
-        interest_rate_bps: interestRateBps,
-        tenure_months: tenure,
-        start_date: startDate,
-      });
+      await createEmiPlan(
+        accessToken,
+        {
+          credit_card_id: cardId,
+          principal_paise: principalPaise,
+          interest_rate_bps: interestRateBps,
+          tenure_months: tenure,
+          start_date: startDate,
+        },
+        { idempotencyKey: idempotencyKeyRef.current },
+      );
+      idempotencyKeyRef.current = crypto.randomUUID();
 
       setOpen(false);
       onCreated();
@@ -67,6 +76,7 @@ export function CreateEmiDialog({ cardId, onCreated }: { cardId: string; onCreat
             : "Failed to create EMI",
       );
     } finally {
+      isSubmittingRef.current = false;
       setBusy(false);
     }
   }

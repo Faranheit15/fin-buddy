@@ -75,11 +75,15 @@ export function getCard(accessToken: string, id: string) {
   return apiFetch<CreditCard>(`/api/v1/cards/${id}`, { method: "GET" }, { accessToken });
 }
 
-export function createCard(accessToken: string, body: CreditCardCreate) {
+export function createCard(
+  accessToken: string,
+  body: CreditCardCreate,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<CreditCard>(
     "/api/v1/cards",
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }
 

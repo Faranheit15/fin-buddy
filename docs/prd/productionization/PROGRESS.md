@@ -8,8 +8,8 @@
 | **Plan** | Productionization & Product Polish |
 | **Status** | Active — shared agent workflow complete; application stories queued |
 | **Last reviewed** | 2026-09-08 |
-| **Completed stories** | 5 / 15 |
-| **Current story** | None — US-P04 complete; US-P05 queued |
+| **Completed stories** | 6 / 15 |
+| **Current story** | None — US-P05 complete; US-P06 queued |
 | **Loop prompt** | [`RALPH-LOOP-PROMPT.md`](RALPH-LOOP-PROMPT.md) |
 
 ## Story status
@@ -21,7 +21,7 @@
 | [US-P02](US-P02-google-oauth.md) | `done` | Complete and test the Google OAuth redirect and session flow. | Live Google provider verified enabled; fixed callback contract enforced; PKCE S256 code exchange implemented; origin-bound single-use state management implemented; safe relative path validator enforced; backend tests (206 passed) and frontend tests (18 passed) verified; UI-09 real browser verification succeeded end-to-end on `https://fin-buddy-dev.vercel.app/login?next=/app/cards`. |
 | [US-P03](US-P03-supabase-security-boundary.md) | `done` | Reconcile RLS, grants, security-definer helpers, and Auth security settings. | Alembic migration 20260907_0015 added; RLS enabled across all 23 application tables without FORCE; symmetric WITH CHECK and DELETE policies enforced via (SELECT auth.uid()); table, sequence, routine grants and default privileges revoked from anon, authenticated, PUBLIC; 16 migration/contract tests added (backend 222 passed, frontend 18 passed, lint/types/build clean); UI-06 queued for US-P04. |
 | [US-P04](US-P04-tenant-authorization-lifecycle.md) | `done` | Close cross-organization references, role escalation, and deletion-session gaps. | Organization-aware validation across all references; UI-06 Tiered Collaborative Hybrid role enforcement; DeletedAccount tombstone lifecycle; EMI actor profile ID fix; additive reversible migration 20260907_0016; 248 backend & 18 frontend tests passed. |
-| [US-P05](US-P05-safe-financial-mutations.md) | `todo` | Make financial writes idempotent and concurrency-safe. | — |
+| [US-P05](US-P05-safe-financial-mutations.md) | `done` | Make financial writes idempotent and concurrency-safe. | RFC 9440 Idempotency-Key engine with SHA-256 payload hashing and cached replay; row-level locking (`with_for_update`) on reversals, drafts, EMIs, obligations, statements, and balance corrections; additive reversible migration 20260908_0017 with partial unique index on reversals; 9 real PostgreSQL concurrency/race tests passed; 257 backend tests & 18 frontend tests passed. |
 | [US-P06](US-P06-durable-statement-ingestion.md) | `todo` | Move uploads to durable signed Storage and bound ingestion resources. | — |
 | [US-P07](US-P07-readiness-and-keepalive.md) | `todo` | Make readiness truthful and add an optional safe daily database probe. | — |
 | [US-P08](US-P08-database-api-performance.md) | `todo` | Baseline and improve queries, indexes, pools, and API payloads. | — |

@@ -6,6 +6,7 @@ from app.models.contact import Contact
 from app.models.credit_card import CreditCard
 from app.models.deleted_account import DeletedAccount
 from app.models.emi import EmiInstallment, EmiPlan
+from app.models.idempotency import IdempotencyRecord
 from app.models.logging import ActivityLog, ApiRequestLog, ErrorLog, SeedHistory
 from app.models.notification import InAppNotification
 from app.models.obligation import Obligation
@@ -33,6 +34,7 @@ __all__ = [
     "Category",
     "Transaction",
     "TransactionSplit",
+    "IdempotencyRecord",
     "Settlement",
     "Obligation",
     "ObligationPayment",

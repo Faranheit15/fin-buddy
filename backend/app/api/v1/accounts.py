@@ -1,12 +1,14 @@
 """Accounts CRUD and balance corrections."""
 
 from datetime import UTC, datetime
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Header, Query, Request, Response
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession, OrgAdminContext, OrgContext, client_meta
+from app.core.idempotency import IDEMPOTENCY_HEADER, execute_idempotent
 from app.models.account import Account
 from app.models.enums import AccountKind, ActivityAction
 from app.schemas.common import PaginatedResponse
@@ -70,41 +72,59 @@ async def create_account(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgAdminContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> AccountResponse:
     org, _ = org_ctx
-    account = await account_service.create_account(
-        db,
-        organization_id=org.id,
-        kind=body.kind,
-        name=body.name,
-        institution=body.institution,
-        currency=body.currency,
-    )
-    if body.opening_balance_paise:
-        await adjust_account_balance(
+
+    async def _action() -> tuple[int, AccountResponse]:
+        account = await account_service.create_account(
             db,
             organization_id=org.id,
-            user_id=user.id,
-            account=account,
-            delta_paise=body.opening_balance_paise,
-            reason="Opening balance",
-            merchant="Opening balance",
+            kind=body.kind,
+            name=body.name,
+            institution=body.institution,
+            currency=body.currency,
         )
-    ip, ua = client_meta(request)
-    await log_activity(
+        if body.opening_balance_paise:
+            await adjust_account_balance(
+                db,
+                organization_id=org.id,
+                user_id=user.id,
+                account=account,
+                delta_paise=body.opening_balance_paise,
+                reason="Opening balance",
+                merchant="Opening balance",
+            )
+        ip, ua = client_meta(request)
+        await log_activity(
+            db,
+            action=ActivityAction.OTHER,
+            summary=f"Created account {account.name}",
+            actor_user_id=user.id,
+            organization_id=org.id,
+            resource_type="account",
+            resource_id=str(account.id),
+            ip_address=ip,
+            user_agent=ua,
+        )
+        await db.flush()
+        await db.refresh(account)
+        bal = await account_balance_paise(db, account.id)
+        return 201, _to_response(account, bal)
+
+    _, final_result = await execute_idempotent(
         db,
-        action=ActivityAction.OTHER,
-        summary=f"Created account {account.name}",
-        actor_user_id=user.id,
         organization_id=org.id,
-        resource_type="account",
-        resource_id=str(account.id),
-        ip_address=ip,
-        user_agent=ua,
+        user_id=user.id,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload=body,
+        action=_action,
+        response=response,
+        result_parser=AccountResponse.model_validate,
     )
-    await db.commit()
-    await db.refresh(account)
-    return _to_response(account, await account_balance_paise(db, account.id))
+    return final_result
 
 
 @router.get("/{account_id}", response_model=AccountResponse)
@@ -187,20 +207,37 @@ async def correct_balance(
     db: DbSession,
     user: CurrentUser,
     org_ctx: OrgAdminContext,
+    response: Response = Response(),
+    idempotency_key: Annotated[str | None, Header(alias=IDEMPOTENCY_HEADER)] = None,
 ) -> TransactionResponse:
     org, _ = org_ctx
     ip, ua = client_meta(request)
-    transaction = await account_service.correct_balance(
+
+    async def _action() -> tuple[int, TransactionResponse]:
+        transaction = await account_service.correct_balance(
+            db,
+            organization_id=org.id,
+            user_id=user.id,
+            account_id=account_id,
+            target_balance_paise=body.target_balance_paise,
+            reason=body.reason,
+            occurred_at=body.occurred_at,
+            ip=ip,
+            ua=ua,
+        )
+        await db.flush()
+        await db.refresh(transaction)
+        return 201, TransactionResponse.model_validate(transaction)
+
+    _, final_result = await execute_idempotent(
         db,
         organization_id=org.id,
         user_id=user.id,
-        account_id=account_id,
-        target_balance_paise=body.target_balance_paise,
-        reason=body.reason,
-        occurred_at=body.occurred_at,
-        ip=ip,
-        ua=ua,
+        idempotency_key=idempotency_key,
+        request_path=request.url.path,
+        payload=body,
+        action=_action,
+        response=response,
+        result_parser=TransactionResponse.model_validate,
     )
-    await db.commit()
-    await db.refresh(transaction)
-    return TransactionResponse.model_validate(transaction)
+    return final_result

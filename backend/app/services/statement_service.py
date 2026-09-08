@@ -77,10 +77,13 @@ def _looks_like_text(data: bytes) -> bool:
     return printable / len(sample) > 0.85
 
 
-async def get_statement_or_404(db: AsyncSession, org_id: UUID, statement_id: UUID) -> Statement:
-    result = await db.execute(
-        select(Statement).where(Statement.id == statement_id, Statement.organization_id == org_id)
-    )
+async def get_statement_or_404(
+    db: AsyncSession, org_id: UUID, statement_id: UUID, for_update: bool = False
+) -> Statement:
+    stmt = select(Statement).where(Statement.id == statement_id, Statement.organization_id == org_id)
+    if for_update:
+        stmt = stmt.with_for_update()
+    result = await db.execute(stmt)
     row = result.scalar_one_or_none()
     if row is None:
         raise NotFoundError("Statement not found")
@@ -426,6 +429,7 @@ async def import_statement(
     Import confirm never creates drafts — candidates stay off the ledger until
     this path writes `posting_status=posted` rows only (FR-T9 / US-01.I5).
     """
+
     if statement.status == StatementStatus.IMPORTED:
         return {"created": 0, "skipped": 0}
     if statement.status in {
@@ -453,6 +457,7 @@ async def import_statement(
             ),
             StatementLineCandidate.committed_transaction_id.is_(None),
         )
+        .with_for_update()
     )
     lines = list(result.scalars().all())
     created = 0

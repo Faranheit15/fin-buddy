@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,8 +58,12 @@ export function TransactionForm({
   const [occurredAt, setOccurredAt] = useState(todayLocalInput);
   const [loading, setLoading] = useState<"posted" | "draft" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false);
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   async function submit(postingStatus: PostingStatus) {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setLoading(postingStatus);
     setError(null);
     try {
@@ -79,32 +83,42 @@ export function TransactionForm({
         if (!toAccountId) throw new Error("Select destination account");
         if (accountId === toAccountId)
           throw new Error("Source and destination accounts must be different");
-        const [outTx] = await createTransfer(accessToken, {
-          from_account_id: accountId,
-          to_account_id: toAccountId,
-          amount_paise: amountPaise,
-          occurred_at: occurred.toISOString(),
-          merchant: merch,
-          notes: notes.trim() || null,
-          posting_status: postingStatus,
-        });
+        const [outTx] = await createTransfer(
+          accessToken,
+          {
+            from_account_id: accountId,
+            to_account_id: toAccountId,
+            amount_paise: amountPaise,
+            occurred_at: occurred.toISOString(),
+            merchant: merch,
+            notes: notes.trim() || null,
+            posting_status: postingStatus,
+          },
+          { idempotencyKey: idempotencyKeyRef.current },
+        );
+        idempotencyKeyRef.current = crypto.randomUUID();
         onCreated(outTx);
         return;
       }
 
-      const tx = await createTransaction(accessToken, {
-        account_id: accountId,
-        credit_card_id: isCard ? acc.credit_card_id : null,
-        type,
-        amount_paise: amountPaise,
-        occurred_at: occurred.toISOString(),
-        merchant: merch,
-        contact_id: contactId || null,
-        category_id: categoryId || null,
-        gst_paise: gstPaise,
-        notes: notes.trim() || null,
-        posting_status: postingStatus,
-      });
+      const tx = await createTransaction(
+        accessToken,
+        {
+          account_id: accountId,
+          credit_card_id: isCard ? acc.credit_card_id : null,
+          type,
+          amount_paise: amountPaise,
+          occurred_at: occurred.toISOString(),
+          merchant: merch,
+          contact_id: contactId || null,
+          category_id: categoryId || null,
+          gst_paise: gstPaise,
+          notes: notes.trim() || null,
+          posting_status: postingStatus,
+        },
+        { idempotencyKey: idempotencyKeyRef.current },
+      );
+      idempotencyKeyRef.current = crypto.randomUUID();
       onCreated(tx);
     } catch (err) {
       setError(
@@ -117,6 +131,7 @@ export function TransactionForm({
             : "Could not create transaction",
       );
     } finally {
+      isSubmittingRef.current = false;
       setLoading(null);
     }
   }

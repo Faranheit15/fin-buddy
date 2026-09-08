@@ -48,11 +48,15 @@ export function listSettlements(
   );
 }
 
-export function createSettlement(accessToken: string, body: SettlementCreate) {
+export function createSettlement(
+  accessToken: string,
+  body: SettlementCreate,
+  options?: { idempotencyKey?: string },
+) {
   return apiFetch<Settlement>(
     "/api/v1/settlements",
     { method: "POST", body: JSON.stringify(body) },
-    { accessToken },
+    { accessToken, idempotencyKey: options?.idempotencyKey },
   );
 }
 

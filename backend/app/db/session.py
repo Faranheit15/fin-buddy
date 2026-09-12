@@ -30,7 +30,9 @@ def init_db(settings: Settings | None = None) -> None:
 
     if _async_engine is None:
         db_url = settings.async_database_url()
-        connect_args: dict[str, object] = {}
+        connect_args: dict[str, object] = {
+            "timeout": 5.0,
+        }
         if "pooler.supabase.com" in db_url or ":6543" in db_url:
             connect_args["statement_cache_size"] = 0
 
@@ -40,6 +42,7 @@ def init_db(settings: Settings | None = None) -> None:
             pool_size=settings.db_pool_size,
             max_overflow=settings.db_max_overflow,
             pool_timeout=settings.db_pool_timeout,
+            pool_recycle=1800,
             pool_pre_ping=True,
             connect_args=connect_args,
         )

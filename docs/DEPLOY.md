@@ -115,6 +115,21 @@ Do **not** put service role or JWT secret in Vercel.
 
 **Gotcha:** `output: "standalone"` is Docker-only (`DOCKER_BUILD=1`). Enabling it on Vercel can yield a green build that still returns platform `404 NOT_FOUND`.
 
+### Keepalive probe (optional Vercel Cron)
+
+A low-frequency database activity probe is defined in `frontend/vercel.json` (`/api/cron/supabase-keepalive` scheduled at `0 5 * * *` UTC / 10:30 AM IST).
+
+| Variable | Optional? | Description |
+|---|---|---|
+| `CRON_SECRET` | Recommended | Secret token automatically sent by Vercel Cron (`Authorization: Bearer <CRON_SECRET>`). If unset, the route fails closed (HTTP 503). |
+| `ENABLE_KEEPALIVE_CRON` | Optional | Set to `"false"` to disable the keepalive probe with zero code changes (returns HTTP 200 without calling backend). |
+
+**Caveats & Guardrails:**
+- Bounded to once daily (`0 5 * * *`) to stay within Vercel Hobby tier quotas.
+- Calls backend `/api/v1/ready` using `cache: "no-store"`, stripped of all user cookies and credentials.
+- Excluded from `api_request_logs` table writes and writes zero dummy application data.
+- **Best-effort only**: Supabase Free pauses projects after ~7 days of inactivity; this probe provides an activity signal but **does not guarantee** that Supabase will never pause, nor does it keep FastAPI Cloud warm (FastAPI Cloud Hobby scales to zero).
+
 ## 4. Smoke checklist
 
 1. Sign in (email and/or Google). Demo login must be unavailable.

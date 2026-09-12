@@ -17,7 +17,14 @@ from app.services.logging_service import log_api_request, log_error
 
 logger = get_logger(__name__)
 
-SKIP_PATH_PREFIXES = ("/docs", "/redoc", "/openapi.json", "/favicon")
+SKIP_PATH_PREFIXES = (
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+    "/favicon",
+    "/api/v1/health",
+    "/api/v1/ready",
+)
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):

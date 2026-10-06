@@ -38,27 +38,21 @@ async def list_obligations(
 ) -> PaginatedResponse[ObligationResponse]:
     org, _ = org_ctx
 
-    # Use the service to get obligations with calculated remaining balance
-    # Currently this service method returns all records, so we apply python-side pagination.
-    # In a very large table, we'd paginate inside the DB.
-    # But since it's user-level data, python pagination of the list is acceptable for now.
-    all_obligations = await obligation_service.list_obligations_with_balance(
+    offset = (page - 1) * page_size
+    page_items, total = await obligation_service.list_obligations_with_balance_paginated(
         db,
         organization_id=org.id,
         status=status,
         type=type,
         contact_id=contact_id,
+        limit=page_size,
+        offset=offset,
     )
-
-    total = len(all_obligations)
-    start = (page - 1) * page_size
-    end = start + page_size
-    page_items = all_obligations[start:end]
 
     items = []
     for obl, remaining in page_items:
         res = ObligationResponse.model_validate(obl)
-        res.remaining_paise = remaining
+        res.remaining_paise = int(remaining)
         items.append(res)
 
     return PaginatedResponse(items=items, total=total, page=page, page_size=page_size)

@@ -40,6 +40,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             status_code = response.status_code
             response.headers["X-Request-Id"] = correlation_id
+            if "Cache-Control" not in response.headers:
+                response.headers["Cache-Control"] = "no-store, private"
             return response
         except Exception as exc:
             error_message = f"Unhandled {type(exc).__name__}"

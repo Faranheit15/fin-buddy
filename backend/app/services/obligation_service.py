@@ -83,7 +83,7 @@ async def get_obligation_with_balance(
                 ObligationPayment.organization_id == organization_id,
             )
         )
-        remaining = obligation.amount_paise - (paid_sum or 0)
+        remaining = int(obligation.amount_paise - (paid_sum or 0))
         return obligation, remaining
 
     paid_sum_expr = func.coalesce(func.sum(ObligationPayment.amount_paise), 0)
@@ -102,7 +102,7 @@ async def get_obligation_with_balance(
         raise NotFoundError("Obligation not found")
 
     obligation, total_paid = row
-    remaining = obligation.amount_paise - total_paid
+    remaining = int(obligation.amount_paise - total_paid)
     return obligation, remaining
 
 
@@ -135,7 +135,46 @@ async def list_obligations_with_balance(
     result = await db.execute(stmt)
     rows = result.all()
 
-    return [(obl, obl.amount_paise - paid) for obl, paid in rows]
+    return [(obl, int(obl.amount_paise - paid)) for obl, paid in rows]
+
+
+async def list_obligations_with_balance_paginated(
+    db: AsyncSession,
+    *,
+    organization_id: UUID,
+    status: ObligationStatus | None = None,
+    type: ObligationType | None = None,
+    contact_id: UUID | None = None,
+    limit: int = 25,
+    offset: int = 0,
+) -> tuple[list[tuple[Obligation, int]], int]:
+    """Returns (list of (Obligation, remaining_balance_paise), total_count) with SQL pagination."""
+    where_conditions = [Obligation.organization_id == organization_id]
+    if status is not None:
+        where_conditions.append(Obligation.status == status)
+    if type is not None:
+        where_conditions.append(Obligation.type == type)
+    if contact_id is not None:
+        where_conditions.append(Obligation.contact_id == contact_id)
+
+    count_stmt = select(func.count()).select_from(Obligation).where(*where_conditions)
+    total_count = int(await db.scalar(count_stmt) or 0)
+
+    paid_sum = func.coalesce(func.sum(ObligationPayment.amount_paise), 0)
+    stmt = (
+        select(Obligation, paid_sum)
+        .outerjoin(ObligationPayment, ObligationPayment.obligation_id == Obligation.id)
+        .where(*where_conditions)
+        .group_by(Obligation.id)
+        .order_by(Obligation.created_at.desc(), Obligation.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    items = [(obl, int(obl.amount_paise - paid)) for obl, paid in rows]
+    return items, total_count
 
 
 async def update_obligation(

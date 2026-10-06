@@ -2,7 +2,7 @@
 
 > **Feature focus:** Productionization and product polish — story plan active
 >
-> **Last recorded:** 2026-09-05 · **Last reviewed:** 2026-09-05
+> **Last recorded:** 2026-10-06 · **Last reviewed:** 2026-10-06
 
 ## Current release state
 
@@ -16,6 +16,14 @@ the $0 operating posture, and focused improvements to the daily finance
 workflow and UI. The shared agent workflow and human-input handoff are now in
 place so Codex, Claude Code, and Google Antigravity can continue the same
 one-story loop without putting credentials in the repository.
+
+As of 2026-10-06, 9 of 15 productionization stories are done (US-P00–US-P08):
+the production release gate, Google OAuth, the Supabase security boundary,
+tenant authorization, idempotent financial writes, durable statement uploads,
+truthful readiness with a verified daily keepalive cron, and database/API
+performance tuning. The next story is US-P09 (jobs, logs, and error hygiene).
+Live progress and evidence are in
+[`prd/productionization/PROGRESS.md`](prd/productionization/PROGRESS.md).
 
 ## Deferred to Release 3+
 

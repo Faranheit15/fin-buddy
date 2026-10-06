@@ -3,7 +3,7 @@
 from collections.abc import AsyncGenerator, Generator
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -11,12 +11,13 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.core.config import Settings, get_settings
 
 _async_engine: AsyncEngine | None = None
 _async_session_factory: async_sessionmaker[AsyncSession] | None = None
-_sync_engine = None
+_sync_engine: Engine | None = None
 _sync_session_factory: sessionmaker[Session] | None = None
 
 
@@ -30,8 +31,11 @@ def init_db(settings: Settings | None = None) -> None:
 
     if _async_engine is None:
         db_url = settings.async_database_url()
+        statement_timeout_ms = getattr(settings, "db_statement_timeout_ms", 10000)
         connect_args: dict[str, object] = {
             "timeout": 5.0,
+            "command_timeout": statement_timeout_ms / 1000.0,
+            "server_settings": {"statement_timeout": str(statement_timeout_ms)},
         }
         if "pooler.supabase.com" in db_url or ":6543" in db_url:
             connect_args["statement_cache_size"] = 0
@@ -39,8 +43,8 @@ def init_db(settings: Settings | None = None) -> None:
         _async_engine = create_async_engine(
             db_url,
             echo=settings.database_echo,
-            pool_size=settings.db_pool_size,
-            max_overflow=settings.db_max_overflow,
+            pool_size=min(settings.db_pool_size, 3),
+            max_overflow=min(settings.db_max_overflow, 2),
             pool_timeout=settings.db_pool_timeout,
             pool_recycle=1800,
             pool_pre_ping=True,
@@ -57,9 +61,7 @@ def init_db(settings: Settings | None = None) -> None:
         _sync_engine = create_engine(
             settings.sync_database_url(),
             echo=settings.database_echo,
-            pool_pre_ping=True,
-            pool_size=settings.db_pool_size,
-            max_overflow=settings.db_max_overflow,
+            poolclass=NullPool,
         )
         _sync_session_factory = sessionmaker(
             _sync_engine,
@@ -79,6 +81,18 @@ async def dispose_db() -> None:
         _sync_engine.dispose()
         _sync_engine = None
         _sync_session_factory = None
+
+
+def get_async_engine() -> AsyncEngine | None:
+    if _async_engine is None:
+        init_db()
+    return _async_engine
+
+
+def get_sync_engine() -> Engine | None:
+    if _sync_engine is None:
+        init_db()
+    return _sync_engine
 
 
 def get_async_session_factory() -> async_sessionmaker[AsyncSession]:

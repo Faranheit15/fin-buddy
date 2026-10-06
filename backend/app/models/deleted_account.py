@@ -19,7 +19,7 @@ class DeletedAccount(Base):
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True), nullable=False, unique=True, index=True
+        PGUUID(as_uuid=True), nullable=False, unique=True
     )
     deleted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

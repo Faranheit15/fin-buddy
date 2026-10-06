@@ -6,10 +6,10 @@
 | Field | Value |
 | --- | --- |
 | **Plan** | Productionization & Product Polish |
-| **Status** | Active — US-P00–US-P07 done; US-P08 in progress; US-P09–US-P14 not started |
+| **Status** | Active — US-P00–US-P08 done; US-P09–US-P14 not started |
 | **Last reviewed** | 2026-10-06 (code, Supabase, Vercel, and FastAPI Cloud re-audit) |
-| **Completed stories** | 8 / 15 |
-| **Current story** | US-P08 `in_progress` — code shipped; migration `20261006_0018` awaits production apply and advisor re-run |
+| **Completed stories** | 9 / 15 |
+| **Current story** | US-P09 queued — US-P08 closed 2026-10-06 after `20261006_0018` was applied to production |
 | **Loop prompt** | [`RALPH-LOOP-PROMPT.md`](RALPH-LOOP-PROMPT.md) |
 
 ## Story status
@@ -24,7 +24,7 @@
 | [US-P05](US-P05-safe-financial-mutations.md) | `done` | Make financial writes idempotent and concurrency-safe. | RFC 9440 Idempotency-Key engine with SHA-256 payload hashing and cached replay; row-level locking (`with_for_update`) on reversals, drafts, EMIs, obligations, statements, and balance corrections; migration `20260908_0017` explicitly applied and verified on Supabase project `jklurueadteccrdycyiz` (`public.alembic_version`, `idempotency_records`, and all four business-invariant indexes/constraints); authenticated live replay and changed-payload `409` verified; `AUTO_MIGRATE=false` confirmed; FastAPI Cloud logs had no errors; 9 real PostgreSQL concurrency/race tests, 257 backend tests, and 18 frontend tests passed. **Re-audit 2026-10-06:** the 9 PostgreSQL tests skip unless a test DB is reachable at `localhost:5433`, so default local runs do not exercise them. Live head `20260908_0017` confirmed. Statement import (`statements/[id]/page.tsx`) and account/card/obligation create forms send no `Idempotency-Key`; import relies on the server-side statement row lock. |
 | [US-P06](US-P06-durable-statement-ingestion.md) | `done` | Move uploads to durable signed Storage and bound ingestion resources. | Private 15 MiB/five-MIME Supabase bucket and production limits verified; server-generated tenant paths, signed browser uploads, retry-safe finalization, cleanup, bounded parsing, and truthful errors implemented. FastAPI Cloud deployment `040d949b` for commit `d8faea9` is Live/Ready. Authenticated synthetic browser smoke survived that redeploy and reached `Needs review` with 5 pending lines; no ledger transaction posted. Backend 274 tests, frontend 19 tests, Ruff, mypy, ESLint, TypeScript, Turbopack build, and preflight passed. |
 | [US-P07](US-P07-readiness-and-keepalive.md) | `done` | Make readiness truthful and add an optional safe daily database probe. | Code complete: bounded 2.5s DB readiness check returning HTTP 503 on degradation/timeout; probe logging excluded from api_request_logs; asyncpg handshake timeout (5.0s) & pool recycle (1800s); protected /api/cron/supabase-keepalive route with timing-safe CRON_SECRET check and ENABLE_KEEPALIVE_CRON toggle; Vercel once-daily schedule (0 5 * * * UTC). Backend verified live 2026-10-06 (FastAPI Cloud `539db25c`: `/ready` 200, probes not written to `api_request_logs`). **AC4:** `CRON_SECRET` was missing until 2026-10-06; the owner set it and redeployed (`dpl_9ZBuYcsb…`). The route returns 401 for a missing or wrong token and 405 for POST. Authorized run verified 2026-10-06: a manual Vercel Cron run on `dpl_9ZBuYcsb…` returned 200 at 15:36:30 UTC, and FastAPI Cloud logged the upstream `GET /api/v1/ready` at 15:36:34 UTC (from a Vercel/AWS egress IP). No `api_request_logs` row was written. The earlier "281 backend tests passed" figure counted 9 skipped PostgreSQL tests (actual: 272 passed, 9 skipped). |
-| [US-P08](US-P08-database-api-performance.md) | `in_progress` | Baseline and improve queries, indexes, pools, and API payloads. | Additive Alembic migration 20261006_0018 (8 single FK indexes and 6 composite tenant FK indexes matching the 14 advisor findings, plus `deleted_accounts` duplicate index removal); SQL-level pagination for obligations (LIMIT/OFFSET/COUNT); cash flow trend consolidated from 12 sequential queries to 2 grouped queries; pool defaults `DB_POOL_SIZE=3`, `DB_MAX_OVERFLOW=2` (configurable), NullPool for sync, and `DB_STATEMENT_TIMEOUT_MS=10000`; Cache-Control: no-store, private enforced on API responses; synthetic small/medium/large benchmarks recorded (dashboard queries reduced 28 -> 18, cash flow trend queries reduced 12 -> 2, obligation queries reduced to 2); 287 backend tests passed (0 skipped), Ruff & mypy clean, frontend lint/types/build clean. **Open:** live `alembic_version` is still `20260908_0017`; AC2/V3 need `0018` applied to `jklurueadteccrdycyiz` and a performance-advisor re-run. RLS InitPlan pattern (AC3) already shipped in `0015`. |
+| [US-P08](US-P08-database-api-performance.md) | `done` | Baseline and improve queries, indexes, pools, and API payloads. | Additive Alembic migration 20261006_0018 (8 single FK indexes and 6 composite tenant FK indexes matching the 14 advisor findings, plus `deleted_accounts` duplicate index removal); SQL-level pagination for obligations (LIMIT/OFFSET/COUNT); cash flow trend consolidated from 12 sequential queries to 2 grouped queries; pool defaults `DB_POOL_SIZE=3`, `DB_MAX_OVERFLOW=2` (configurable), NullPool for sync, and `DB_STATEMENT_TIMEOUT_MS=10000`; Cache-Control: no-store, private enforced on API responses; synthetic small/medium/large benchmarks recorded (dashboard queries reduced 28 -> 18, cash flow trend queries reduced 12 -> 2, obligation queries reduced to 2); 287 backend tests passed (0 skipped), Ruff & mypy clean, frontend lint/types/build clean. Migration `20261006_0018` applied to `jklurueadteccrdycyiz` 2026-10-06 via the Supabase connector (version-guarded); live advisor: 0 unindexed foreign keys, 0 duplicate indexes. RLS InitPlan pattern (AC3) already shipped in `0015`. |
 | [US-P09](US-P09-jobs-logs-errors.md) | `todo` | Make reminders, logs, and public errors safe and bounded. | — |
 | [US-P10](US-P10-dues-billing-cockpit.md) | `todo` | Turn the dashboard into a single dues-and-actions cockpit. | — |
 | [US-P11](US-P11-fast-capture-relationships.md) | `todo` | Improve capture, corrections, settlements, and debt clarity. | — |
@@ -54,17 +54,17 @@ FastAPI Cloud CLI. No code, data, or cloud configuration changed.
   (Production, sensitive) and redeployed as `dpl_9ZBuYcsb…`; the route now
   returns 401 without a valid bearer token. A manual authorized run returned
   200 and reached `/api/v1/ready` (15:36 UTC).
-- **Supabase `jklurueadteccrdycyiz`:** ACTIVE_HEALTHY. Alembic `20260908_0017`
-  (repo head is `20261006_0018`, pending production apply for US-P08). 26/26 public tables have RLS on, none FORCE. No
+- **Supabase `jklurueadteccrdycyiz`:** ACTIVE_HEALTHY. Alembic `20261006_0018`
+  matches the repo head (applied 2026-10-06 for US-P08). 26/26 public tables have RLS on, none FORCE. No
   `anon`/`authenticated` table grants, and no publicly executable SECURITY
   DEFINER routines. The private `statements` bucket has a 15 MiB limit and five
   MIME types. No application API traffic logged since 2026-09-12.
 - **Security advisors:** 1 WARN (leaked-password protection disabled, waived in
   US-P03) and 7 INFO `rls_enabled_no_policy` (backend-only tables, intentional).
-- **Performance advisors (input for US-P08):** 14 unindexed foreign keys (the
-  story baseline said 9), 65 unused indexes, and 1 duplicate index on
-  `deleted_accounts` (`deleted_accounts_user_id_key` /
-  `ix_deleted_accounts_user_id`, introduced by US-P04).
+- **Performance advisors (after US-P08):** 0 unindexed foreign keys and 0
+  duplicate indexes (baseline was 14 and 1). 75 INFO `unused_index` findings
+  (61 earlier plus the 14 new FK indexes); expected with no production traffic
+  and intentionally kept.
 
 ## Baseline evidence (2026-09-03 to 2026-09-05, historical)
 
@@ -122,3 +122,4 @@ original audit baseline; see the section above for the current state.
 | 2026-10-06 | US-P07 | `in_progress` | Owner set `CRON_SECRET` in Vercel Production and redeployed (`dpl_9ZBuYcsb…`, commit `437bc30`). Verified: env var present (name only); cron route returns 401 with no or wrong token, 405 for POST. Awaiting one successful authorized cron run to close AC4. README, US-P07 story, `docs/CONTEXT.md`, and `UI-14` synced. |
 | 2026-10-06 | US-P07 | `done` | Authorized run verified 2026-10-06: a manual Vercel Cron run on `dpl_9ZBuYcsb…` returned 200 at 15:36:30 UTC, and FastAPI Cloud logged the upstream `GET /api/v1/ready` at 15:36:34 UTC (from a Vercel/AWS egress IP). No `api_request_logs` row was written. US-P07 closed; US-P08 queued. |
 | 2026-10-06 | US-P08 | `in_progress` | Validation pass on `35fee69`: removed the `cash_flow_trend` broad-exception fallback (it could not run inside an aborted Postgres transaction and hid errors); moved pool caps into config defaults (`3`/`2`) and added a real `db_statement_timeout_ms` setting instead of hardcoded `min()`/`getattr`; dropped redundant `ix_transactions_reversed_by_id` from `0018` (already covered by partial unique `uq_transactions_reversed_by_id`); narrowed agent-hook secret scanning to added lines. Migration round trip re-verified locally; 287 backend tests (0 skipped), Ruff, mypy, ESLint, TypeScript, Turbopack build, and 27 frontend tests passed. Live Supabase still at `20260908_0017`, so the story stays `in_progress`. |
+| 2026-10-06 | US-P08 | `done` | Applied `20261006_0018` to Supabase `jklurueadteccrdycyiz` through the Supabase connector (`apply_migration`, guarded on `alembic_version = 20260908_0017`, SQL rendered by `alembic upgrade --sql`). Verified: `alembic_version = 20261006_0018`, 14/14 new indexes present and valid, `ix_deleted_accounts_user_id` dropped, `deleted_accounts_user_id_key` kept. Performance advisor: 0 unindexed foreign keys, 0 duplicate indexes; security advisor unchanged (1 WARN waived, 7 INFO intentional). Live `/api/v1/ready` and BFF `/api/backend/api/v1/ready` returned 200 on FastAPI Cloud `33cbd6d7` and Vercel `fin-buddy-rb4n888ph` (`80e7c5b`); CI green. US-P08 complete; US-P09 queued. |

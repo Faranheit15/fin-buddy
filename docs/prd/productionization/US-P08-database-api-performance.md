@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | `in_progress` |
+| **Status** | `done` |
 | **Sequence** | 8 |
 | **Depends on** | [US-P03](US-P03-supabase-security-boundary.md), [US-P05](US-P05-safe-financial-mutations.md) |
 | **One-loop objective** | Reduce avoidable database work and connection pressure while preserving financial correctness. |
@@ -238,3 +238,25 @@ filters or posted-only ledger semantics for a faster query.
   re-run the advisor and record the result here before closing.
 - AC3 note: the `(SELECT auth.uid())` InitPlan pattern was already shipped in
   `20260907_0015` (US-P03); the live advisor reports no `auth_rls_initplan` lint.
+
+### 2026-10-06 — Production migration applied (story closed)
+- Rendered `20261006_0018` with `alembic upgrade 20260908_0017:20261006_0018 --sql`
+  and applied it to Supabase `jklurueadteccrdycyiz` with the Supabase connector
+  (`apply_migration`), guarded to abort unless `alembic_version = 20260908_0017`.
+  The SQL includes the Alembic version bump, so `alembic current` stays accurate;
+  the connector also records it in `supabase_migrations`.
+- Verified: `alembic_version = 20261006_0018`; 14/14 new indexes present and
+  valid; `ix_deleted_accounts_user_id` dropped; `deleted_accounts_user_id_key`
+  kept.
+- **V3 advisor state:** performance advisor reports 0 unindexed foreign keys
+  (baseline 14) and 0 duplicate indexes (baseline 1). It reports 75 INFO
+  `unused_index` findings (61 earlier plus the 14 new indexes); these are expected
+  with no production traffic and are intentionally kept per the safety notes.
+  Security advisor unchanged: 1 WARN (leaked-password protection, waived in
+  US-P03) and 7 INFO `rls_enabled_no_policy` (backend-only tables).
+- Live after migration: FastAPI Cloud `33cbd6d7` `/api/v1/ready` 200 and Vercel
+  `fin-buddy-rb4n888ph` BFF `/api/backend/api/v1/ready` 200 (commit `80e7c5b`);
+  no errors in FastAPI Cloud logs; GitHub Actions CI green.
+- Residual limits: the benchmark table is from local synthetic fixtures, not
+  production traffic; cards, transactions, statements, and BFF health were not
+  separately benchmarked.

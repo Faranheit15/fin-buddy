@@ -21,7 +21,7 @@ fi
 
 secret_pattern='-----BEGIN [A-Z ]*PRIVATE KEY-----|GOCSPX-[A-Za-z0-9_-]{20,}|SUPABASE_SERVICE_ROLE_KEY[[:space:]]*[:=][[:space:]]*[A-Za-z0-9._-]{16,}|GOOGLE_CLIENT_SECRET[[:space:]]*[:=][[:space:]]*[A-Za-z0-9._-]{16,}|CRON_SECRET[[:space:]]*[:=][[:space:]]*[A-Za-z0-9._-]{24,}|postgres(ql)?://[^[:space:]]+:[^[:space:]]+@'
 if [[ -z "$failure" ]] && command -v git >/dev/null 2>&1; then
-  diff_text="$(git -C "$root" diff --no-ext-diff; git -C "$root" diff --cached --no-ext-diff)"
+  diff_text="$({ git -C "$root" diff --no-ext-diff -U0; git -C "$root" diff --cached --no-ext-diff -U0; } | grep -E "^\+" || true)"
   while IFS= read -r untracked_path; do
     if [[ -f "$root/$untracked_path" ]]; then
       diff_text+=$'\n'"$(sed -n '1,20000p' "$root/$untracked_path")"

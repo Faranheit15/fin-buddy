@@ -15,7 +15,6 @@ from app.models.enums import PostingStatus, TransactionType
 from app.models.transaction import Transaction
 from app.models.transaction_split import TransactionSplit
 from app.schemas.domain import DashboardCashFlowMonth, DashboardSpendCategory
-from app.services.ledger_service import income_expense_summary
 
 EXCLUDED_REPORTING_TYPES = {
     TransactionType.TRANSFER_OUT,
@@ -57,101 +56,76 @@ async def cash_flow_trend(
     following = date(months[-1].year + (months[-1].month == 12), months[-1].month % 12 + 1, 1)
     end_dt = datetime.combine(following, time.min, tzinfo=IST) - timedelta(microseconds=1)
 
-    try:
-        month_expr = func.date_trunc(
-            "month", func.timezone("Asia/Kolkata", Transaction.occurred_at)
+    # Bucket by IST calendar month in SQL: two grouped queries instead of one per month.
+    month_expr = func.date_trunc("month", func.timezone("Asia/Kolkata", Transaction.occurred_at))
+
+    # 1. Whole transactions
+    tx_stmt = (
+        select(
+            month_expr.label("month_bucket"),
+            Category.kind,
+            func.sum(Transaction.amount_paise),
         )
-
-        # 1. Whole transactions
-        tx_stmt = (
-            select(
-                month_expr.label("month_bucket"),
-                Category.kind,
-                func.sum(Transaction.amount_paise),
-            )
-            .select_from(Transaction)
-            .join(Category, Category.id == Transaction.category_id)
-            .where(
-                Transaction.organization_id == organization_id,
-                Transaction.posting_status == PostingStatus.POSTED,
-                Transaction.type.not_in(EXCLUDED_REPORTING_TYPES),
-                Transaction.occurred_at >= start_dt,
-                Transaction.occurred_at <= end_dt,
-            )
-            .group_by(month_expr, Category.kind)
+        .select_from(Transaction)
+        .join(Category, Category.id == Transaction.category_id)
+        .where(
+            Transaction.organization_id == organization_id,
+            Transaction.posting_status == PostingStatus.POSTED,
+            Transaction.type.not_in(EXCLUDED_REPORTING_TYPES),
+            Transaction.occurred_at >= start_dt,
+            Transaction.occurred_at <= end_dt,
         )
+        .group_by(month_expr, Category.kind)
+    )
 
-        # 2. Splits
-        split_stmt = (
-            select(
-                month_expr.label("month_bucket"),
-                Category.kind,
-                func.sum(TransactionSplit.amount_paise),
-            )
-            .select_from(TransactionSplit)
-            .join(Transaction, Transaction.id == TransactionSplit.transaction_id)
-            .join(Category, Category.id == TransactionSplit.category_id)
-            .where(
-                Transaction.organization_id == organization_id,
-                Transaction.posting_status == PostingStatus.POSTED,
-                Transaction.type.not_in(EXCLUDED_REPORTING_TYPES),
-                Transaction.occurred_at >= start_dt,
-                Transaction.occurred_at <= end_dt,
-            )
-            .group_by(month_expr, Category.kind)
+    # 2. Splits
+    split_stmt = (
+        select(
+            month_expr.label("month_bucket"),
+            Category.kind,
+            func.sum(TransactionSplit.amount_paise),
         )
+        .select_from(TransactionSplit)
+        .join(Transaction, Transaction.id == TransactionSplit.transaction_id)
+        .join(Category, Category.id == TransactionSplit.category_id)
+        .where(
+            Transaction.organization_id == organization_id,
+            Transaction.posting_status == PostingStatus.POSTED,
+            Transaction.type.not_in(EXCLUDED_REPORTING_TYPES),
+            Transaction.occurred_at >= start_dt,
+            Transaction.occurred_at <= end_dt,
+        )
+        .group_by(month_expr, Category.kind)
+    )
 
-        tx_res = await session.execute(tx_stmt)
-        split_res = await session.execute(split_stmt)
+    tx_res = await session.execute(tx_stmt)
+    split_res = await session.execute(split_stmt)
 
-        monthly_totals: dict[date, dict[str, int]] = {
-            m: {"income": 0, "expense": 0} for m in months
-        }
+    monthly_totals: dict[date, dict[str, int]] = {m: {"income": 0, "expense": 0} for m in months}
 
-        def record_row(m_raw: object, kind: CategoryKind, amount: object) -> None:
-            if m_raw is None:
-                return
-            m_date = m_raw.date() if isinstance(m_raw, datetime) else m_raw
-            if isinstance(m_date, date) and m_date in monthly_totals:
-                key = "income" if kind == CategoryKind.income else "expense"
-                val = int(amount) if isinstance(amount, (int, float, Decimal)) else 0
-                monthly_totals[m_date][key] += val
+    def record_row(m_raw: object, kind: CategoryKind, amount: object) -> None:
+        if m_raw is None:
+            return
+        m_date = m_raw.date() if isinstance(m_raw, datetime) else m_raw
+        if isinstance(m_date, date) and m_date in monthly_totals:
+            key = "income" if kind == CategoryKind.income else "expense"
+            val = int(amount) if isinstance(amount, (int, float, Decimal)) else 0
+            monthly_totals[m_date][key] += val
 
-        for m_raw, kind, amount in tx_res.all():
-            record_row(m_raw, kind, amount)
+    for m_raw, kind, amount in tx_res.all():
+        record_row(m_raw, kind, amount)
 
-        for m_raw, kind, amount in split_res.all():
-            record_row(m_raw, kind, amount)
+    for m_raw, kind, amount in split_res.all():
+        record_row(m_raw, kind, amount)
 
-        return [
-            DashboardCashFlowMonth(
-                month=m,
-                income_paise=monthly_totals[m]["income"],
-                expense_paise=monthly_totals[m]["expense"],
-            )
-            for m in months
-        ]
-    except Exception:
-        # Fallback to sequential monthly calculation if date_trunc/timezone is unsupported
-        result: list[DashboardCashFlowMonth] = []
-        for month in months:
-            m_start = datetime.combine(month, time.min, tzinfo=IST)
-            m_following = date(month.year + (month.month == 12), month.month % 12 + 1, 1)
-            m_end = datetime.combine(m_following, time.min, tzinfo=IST) - timedelta(microseconds=1)
-            summary = await income_expense_summary(
-                session,
-                organization_id=organization_id,
-                start_date=m_start,
-                end_date=m_end,
-            )
-            result.append(
-                DashboardCashFlowMonth(
-                    month=month,
-                    income_paise=summary["income"],
-                    expense_paise=summary["expense"],
-                )
-            )
-        return result
+    return [
+        DashboardCashFlowMonth(
+            month=m,
+            income_paise=monthly_totals[m]["income"],
+            expense_paise=monthly_totals[m]["expense"],
+        )
+        for m in months
+    ]
 
 
 async def spending_categories(

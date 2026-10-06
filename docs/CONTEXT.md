@@ -17,11 +17,13 @@ workflow and UI. The shared agent workflow and human-input handoff are now in
 place so Codex, Claude Code, and Google Antigravity can continue the same
 one-story loop without putting credentials in the repository.
 
-As of 2026-10-06, 9 of 15 productionization stories are done (US-P00–US-P08):
+As of 2026-10-06, 8 of 15 productionization stories are done (US-P00–US-P07):
 the production release gate, Google OAuth, the Supabase security boundary,
 tenant authorization, idempotent financial writes, durable statement uploads,
-truthful readiness with a verified daily keepalive cron, and database/API
-performance tuning. The next story is US-P09 (jobs, logs, and error hygiene).
+and truthful readiness with a verified daily keepalive cron. US-P08 (database
+and API performance) is `in_progress`: its code is shipped, and migration
+`20261006_0018` still needs a production apply and advisor re-run. US-P09 (jobs,
+logs, and error hygiene) follows.
 Live progress and evidence are in
 [`prd/productionization/PROGRESS.md`](prd/productionization/PROGRESS.md).
 

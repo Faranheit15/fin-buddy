@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | `done` |
+| **Status** | `in_progress` |
 | **Sequence** | 8 |
 | **Depends on** | [US-P03](US-P03-supabase-security-boundary.md), [US-P05](US-P05-safe-financial-mutations.md) |
 | **One-loop objective** | Reduce avoidable database work and connection pressure while preserving financial correctness. |
@@ -154,7 +154,7 @@ scope: frontend rendering optimization, covered by US-P14.
 
 ### Index & Migration Evidence
 - **Migration**: `backend/alembic/versions/20261006_0018_performance_indexes_and_tuning.py` (down revision `20260908_0017`).
-- **9 Single-column FK indexes**:
+- **8 Single-column FK indexes**:
   - `ix_credit_cards_held_by_contact_id`
   - `ix_emi_plans_reference_transaction_id`
   - `ix_obligation_payments_created_by`
@@ -163,7 +163,6 @@ scope: frontend rendering optimization, covered by US-P14.
   - `ix_statement_line_candidates_proposed_contact_id`
   - `ix_statements_created_by`
   - `ix_transactions_created_by`
-  - `ix_transactions_reversed_by_id`
 - **6 Composite tenant FK indexes**:
   - `ix_statements_card_org` on `statements (credit_card_id, organization_id)`
   - `ix_statement_lines_statement_org` on `statement_line_candidates (statement_id, organization_id)`
@@ -174,11 +173,14 @@ scope: frontend rendering optimization, covered by US-P14.
 - **Duplicate index cleanup**:
   - Dropped redundant `ix_deleted_accounts_user_id` on `deleted_accounts` while preserving unique constraint index `deleted_accounts_user_id_key`.
   - Intentionally preserved existing and unused indexes to protect future paths and low-frequency integrity checks.
+- **Not added**: `transactions.reversed_by_id` is already covered by the partial
+  unique index `uq_transactions_reversed_by_id` (the advisor does not flag it), so
+  a second index would be redundant.
 - **Reversibility**: Upgrade and downgrade verified cleanly on PostgreSQL.
 
 ### Engine Pools & Timeouts
-- **Async Engine**: Conservative `pool_size = min(settings.db_pool_size, 3)`, `max_overflow = min(settings.db_max_overflow, 2)` (bounded to max 5 connections per worker), `pool_recycle = 1800s`, `pool_pre_ping = True`.
-- **Timeouts**: asyncpg `command_timeout = 10.0s`, PostgreSQL `server_settings = {"statement_timeout": "10000"}`, handshake `timeout = 5.0s`.
+- **Async Engine**: Config defaults `db_pool_size = 3`, `db_max_overflow = 2` (at most 5 connections per worker; overridable via `DB_POOL_SIZE` / `DB_MAX_OVERFLOW`, which production does not set), `pool_recycle = 1800s`, `pool_pre_ping = True`.
+- **Timeouts**: `db_statement_timeout_ms = 10000` drives asyncpg `command_timeout = 10.0s` and PostgreSQL `server_settings = {"statement_timeout": "10000"}` (forwarded by the Session Pooler on port 5432); handshake `timeout = 5.0s`.
 - **Sync Engine**: Configured with `NullPool` (no idle connections hoarded by sync bootstrap/seed engine).
 
 ### Cache & Boundary Protection
@@ -212,8 +214,27 @@ filters or posted-only ledger semantics for a faster query.
 ### 2026-10-06 — Completed
 - Implemented additive Alembic migration `20261006_0018_performance_indexes_and_tuning.py` with 9 foreign key indexes and 6 composite tenant indexes, plus duplicate index deduplication on `deleted_accounts`.
 - Implemented SQL-level pagination for obligations with `LIMIT`, `OFFSET`, and separate `COUNT(*)` in `obligation_service.py`.
-- Consolidated dashboard cash flow trend queries from 12 sequential monthly queries to 2 grouped queries with graceful fallback.
+- Consolidated dashboard cash flow trend queries from 12 sequential monthly queries to 2 grouped queries.
 - Right-sized database engine connection pools (`pool_size=3, max_overflow=2`, `NullPool` for sync engine) and set statement/command timeouts (10.0s).
 - Enforced `Cache-Control: no-store, private` on API responses.
 - Verified query plans with `EXPLAIN ANALYZE` on Postgres.
 - Added 6 automated tests in `test_performance_p08.py`. All 287 backend tests passed, Ruff clean, mypy clean, frontend lint/types/build clean. All acceptance criteria met.
+
+### 2026-10-06 — Validation pass (story reopened to `in_progress`)
+- Removed the broad `except Exception` fallback in `cash_flow_trend`: on Postgres a
+  failed grouped query aborts the transaction, so the fallback could never succeed
+  and only hid the original error. No non-Postgres caller exists.
+- Replaced the hardcoded `min(..., 3)` / `min(..., 2)` pool caps with config
+  defaults (`3` / `2`, also in `docker-compose.yml`) and added a typed
+  `db_statement_timeout_ms` setting instead of `getattr`.
+- Dropped `ix_transactions_reversed_by_id` from `0018` (redundant with
+  `uq_transactions_reversed_by_id`); the migration now adds 14 indexes matching
+  the 14 live advisor findings one to one.
+- Re-verified: local migration downgrade/upgrade on PostgreSQL, 287 backend tests
+  (0 skipped), Ruff, mypy, ESLint, TypeScript, Turbopack build, 27 frontend tests.
+- **Open (AC2, V3):** live Supabase `jklurueadteccrdycyiz` is still at
+  `20260908_0017`; the performance advisor still reports 14 unindexed foreign keys
+  and the `deleted_accounts` duplicate. Apply `0018` once to production, then
+  re-run the advisor and record the result here before closing.
+- AC3 note: the `(SELECT auth.uid())` InitPlan pattern was already shipped in
+  `20260907_0015` (US-P03); the live advisor reports no `auth_rls_initplan` lint.

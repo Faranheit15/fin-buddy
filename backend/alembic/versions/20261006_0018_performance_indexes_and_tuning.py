@@ -34,7 +34,6 @@ NEW_INDEXES = [
     ),
     ("ix_statements_created_by", "statements", ["created_by"]),
     ("ix_transactions_created_by", "transactions", ["created_by"]),
-    ("ix_transactions_reversed_by_id", "transactions", ["reversed_by_id"]),
     # Composite tenant foreign keys matching (fk_col, organization_id)
     ("ix_statements_card_org", "statements", ["credit_card_id", "organization_id"]),
     (

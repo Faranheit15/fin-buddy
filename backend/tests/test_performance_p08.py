@@ -96,7 +96,7 @@ def test_migration_0018_metadata_and_structure() -> None:
     assert mod.down_revision == "20260908_0017"
     assert hasattr(mod, "upgrade")
     assert hasattr(mod, "downgrade")
-    assert len(mod.NEW_INDEXES) == 15
+    assert len(mod.NEW_INDEXES) == 14
 
 
 @pytest.mark.asyncio

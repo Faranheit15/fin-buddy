@@ -31,7 +31,7 @@ def init_db(settings: Settings | None = None) -> None:
 
     if _async_engine is None:
         db_url = settings.async_database_url()
-        statement_timeout_ms = getattr(settings, "db_statement_timeout_ms", 10000)
+        statement_timeout_ms = settings.db_statement_timeout_ms
         connect_args: dict[str, object] = {
             "timeout": 5.0,
             "command_timeout": statement_timeout_ms / 1000.0,
@@ -43,8 +43,8 @@ def init_db(settings: Settings | None = None) -> None:
         _async_engine = create_async_engine(
             db_url,
             echo=settings.database_echo,
-            pool_size=min(settings.db_pool_size, 3),
-            max_overflow=min(settings.db_max_overflow, 2),
+            pool_size=settings.db_pool_size,
+            max_overflow=settings.db_max_overflow,
             pool_timeout=settings.db_pool_timeout,
             pool_recycle=1800,
             pool_pre_ping=True,

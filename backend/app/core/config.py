@@ -81,12 +81,14 @@ class Settings(BaseSettings):
     trusted_proxy_ips: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     # Database (Supabase Postgres connection string)
-    # Example: postgresql://postgres.[project-ref]:[password]@aws-0-...pooler.supabase.com:6543/postgres
+    # Example: Supabase Session Pooler URI (port 5432); see backend/.env.example
     database_url: str | None = None
     database_echo: bool = False
-    db_pool_size: int = 5
-    db_max_overflow: int = 10
+    # Conservative defaults keep Supabase Free pooler connections low per worker.
+    db_pool_size: int = 3
+    db_max_overflow: int = 2
     db_pool_timeout: int = 30
+    db_statement_timeout_ms: int = 10_000
 
     # Auto migrate + seed on startup
     auto_migrate: bool = True

@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | `done` |
+| **Status** | `in_progress` |
 | **Sequence** | 7 |
 | **Depends on** | [US-P01](US-P01-production-release-gate.md) |
 | **One-loop objective** | Make liveness/readiness truthful and add a low-frequency, optional database activity probe. |
@@ -152,3 +152,4 @@ be handled separately.
 - **2026-09-12**: US-P07 completed. Implemented bounded DB readiness check (2.5s `asyncio.timeout`), HTTP 503 on DB failure/timeout/unconfigured production, request log write suppression for health probes, asyncpg connection timeout hygiene (5.0s handshake timeout, 1800s pool recycle), protected Next.js App Router `/api/cron/supabase-keepalive` route with timing-safe `CRON_SECRET` verification, `ENABLE_KEEPALIVE_CRON` toggle, and Vercel once-daily schedule (`0 5 * * *` UTC). All acceptance criteria met and verified.
 - **2026-10-06**: Reopened by re-audit. `CRON_SECRET` had never been set in Vercel Production, so the deployed cron route returned `503 CRON_SECRET is not configured` and AC4 had no live evidence. The backend half is verified live (FastAPI Cloud `539db25c`: `/ready` 200; probes not written to `api_request_logs`). The owner set `CRON_SECRET` and redeployed (`dpl_9ZBuYcsb…`); the route now returns 401 for a missing or wrong token. Close the story after one successful authorized cron run is seen in the logs (`UI-14`). The test count is 272 passed / 9 skipped; the 9 PostgreSQL tests need `localhost:5433`.
 - **2026-10-06**: Closed. Authorized run verified 2026-10-06: a manual Vercel Cron run on `dpl_9ZBuYcsb…` returned 200 at 15:36:30 UTC, and FastAPI Cloud logged the upstream `GET /api/v1/ready` at 15:36:34 UTC (from a Vercel/AWS egress IP). No `api_request_logs` row was written. AC4 now has live evidence; `UI-14` verified.
+- **2026-10-10**: Reopened for keepalive cold-start regression fix. Baseline: upstream `GET /api/v1/ready` timed out after 8s because FastAPI Cloud scales to zero after ~1h idle and cold starts take 8–16s. On 2026-10-10 05:13 UTC the cron failed with 504 and `/ready` was not reached. Intended approach: raise upstream timeout to 25s (named constant), export route `maxDuration = 60`, add at most one retry on network error/timeout/5xx with short backoff, keep timing-safe `CRON_SECRET` check and no-store headers, update frontend unit tests, and verify against a cold FastAPI Cloud instance before closing. Touched boundary: `frontend/src/app/api/cron/supabase-keepalive/route.ts` and test.

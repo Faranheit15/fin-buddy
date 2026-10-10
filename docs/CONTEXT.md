@@ -17,13 +17,11 @@ workflow and UI. The shared agent workflow and human-input handoff are now in
 place so Codex, Claude Code, and Google Antigravity can continue the same
 one-story loop without putting credentials in the repository.
 
-As of 2026-10-06, 9 of 15 productionization stories are done (US-P00–US-P08):
-the production release gate, Google OAuth, the Supabase security boundary,
-tenant authorization, idempotent financial writes, durable statement uploads,
-truthful readiness with a verified daily keepalive cron, and database/API
-performance tuning (production schema at `20261006_0018`). The next story is
-US-P09 (jobs, logs, and error hygiene).
-Live progress and evidence are in
+As of 2026-10-10, 8 of 15 productionization stories are done (US-P00–US-P06,
+US-P08); US-P07 is reopened in_progress for a keepalive cold-start timeout fix.
+FastAPI Cloud scale-to-zero cold starts take 8–16s, causing the previous 8s
+keepalive timeout to abort and return 504. The next unstarted story is US-P09
+(jobs, logs, and error hygiene). Live progress and evidence are in
 [`prd/productionization/PROGRESS.md`](prd/productionization/PROGRESS.md).
 
 ## Deferred to Release 3+

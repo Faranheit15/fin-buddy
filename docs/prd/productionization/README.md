@@ -6,7 +6,7 @@
 | **Status** | Active — implementation loops in progress |
 | **Created** | 2026-09-03 |
 | **Source** | Live audit of the repository, Vercel deployment, FastAPI endpoint, and Supabase project |
-| **Progress** | [`PROGRESS.md`](PROGRESS.md) — 9 / 15 stories complete |
+| **Progress** | [`PROGRESS.md`](PROGRESS.md) — 8 / 15 stories complete (US-P07 reopened in_progress) |
 | **Loop contract** | [`RALPH-LOOP-PROMPT.md`](RALPH-LOOP-PROMPT.md) |
 | **Human handoff** | [`../../user-input-needed.md`](../../user-input-needed.md) |
 | **Agent tooling** | [`../../AGENT-TOOLING.md`](../../AGENT-TOOLING.md) |
@@ -68,7 +68,7 @@ story without starting the next story.
 | 4 | [US-P04 — Tenant authorization and account lifecycle](US-P04-tenant-authorization-lifecycle.md) | Users cannot cross-link organizations or regain access after deletion. | US-P01, US-P03 | `done` |
 | 5 | [US-P05 — Safe financial mutations](US-P05-safe-financial-mutations.md) | Retries and concurrent requests cannot duplicate or corrupt ledger events. | US-P04 | `done` |
 | 6 | [US-P06 — Durable statement ingestion](US-P06-durable-statement-ingestion.md) | Statement files bypass the BFF size limit and remain durable on FastAPI Cloud. | US-P01, US-P03 | `done` |
-| 7 | [US-P07 — Readiness and Supabase keepalive](US-P07-readiness-and-keepalive.md) | Health probes are meaningful and an optional daily DB activity check is safe. | US-P01 | `done` |
+| 7 | [US-P07 — Readiness and Supabase keepalive](US-P07-readiness-and-keepalive.md) | Health probes are meaningful and an optional daily DB activity check is safe. | US-P01 | `in_progress` |
 | 8 | [US-P08 — Database and API performance](US-P08-database-api-performance.md) | Core requests stay fast and within free-tier connection/resource limits. | US-P03, US-P05 | `done` |
 | 9 | [US-P09 — Jobs, logs, and error hygiene](US-P09-jobs-logs-errors.md) | Background reminders and operational telemetry are bounded, private, and retry-safe. | US-P05, US-P07 | `todo` |
 | 10 | [US-P10 — Dues and billing cockpit](US-P10-dues-billing-cockpit.md) | The dashboard becomes the single action-oriented daily command center. | US-P04, US-P08 | `todo` |

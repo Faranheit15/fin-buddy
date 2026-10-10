@@ -1,7 +1,29 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { GET } from "./route";
+import {
+  GET,
+  MAX_ATTEMPTS,
+  RETRY_BACKOFF_MS,
+  UPSTREAM_TIMEOUT_MS,
+  dynamic,
+  maxDuration,
+  runtime,
+} from "./route";
 
 const originalFetch = globalThis.fetch;
+
+describe("GET /api/cron/supabase-keepalive configuration", () => {
+  test("exports route segment configuration covering cold starts", () => {
+    expect(dynamic).toBe("force-dynamic");
+    expect(runtime).toBe("nodejs");
+    expect(maxDuration).toBe(60);
+    expect(UPSTREAM_TIMEOUT_MS).toBe(25_000);
+    expect(RETRY_BACKOFF_MS).toBe(1_000);
+    expect(MAX_ATTEMPTS).toBe(2);
+    // maxDuration (seconds) must safely exceed upstream timeout (seconds)
+    expect(maxDuration).toBeGreaterThanOrEqual(30);
+    expect(maxDuration).toBeGreaterThan(UPSTREAM_TIMEOUT_MS / 1000);
+  });
+});
 
 describe("GET /api/cron/supabase-keepalive", () => {
   const originalCronSecret = process.env.CRON_SECRET;
@@ -69,11 +91,13 @@ describe("GET /api/cron/supabase-keepalive", () => {
     expect(res.status).toBe(401);
   });
 
-  test("proxies upstream /ready with cache: no-store and returns 200 on success", async () => {
+  test("proxies upstream /ready with cache: no-store and returns 200 on success without retrying", async () => {
     let capturedUrl = "";
     let capturedInit: RequestInit | undefined;
+    let callCount = 0;
 
     globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+      callCount++;
       capturedUrl = String(input);
       capturedInit = init;
       return new Response(JSON.stringify({ status: "ok" }), {
@@ -88,10 +112,17 @@ describe("GET /api/cron/supabase-keepalive", () => {
 
     const res = await GET(req);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { ok: boolean; status: string; requestId: string };
+    const body = (await res.json()) as {
+      ok: boolean;
+      status: string;
+      requestId: string;
+      attempts: number;
+    };
     expect(body.ok).toBe(true);
     expect(body.status).toBe("ok");
     expect(body.requestId).toMatch(/^cron-keepalive-/);
+    expect(body.attempts).toBe(1);
+    expect(callCount).toBe(1);
 
     expect(capturedUrl).toBe("http://127.0.0.1:8001/api/v1/ready");
     expect(capturedInit?.cache).toBe("no-store");
@@ -101,8 +132,98 @@ describe("GET /api/cron/supabase-keepalive", () => {
     expect(headers?.["Cookie"]).toBeUndefined();
   });
 
-  test("returns 503 degraded when upstream returns non-200", async () => {
+  test("retries once and succeeds when initial request fails with network error or timeout", async () => {
+    let callCount = 0;
+
     globalThis.fetch = mock(async () => {
+      callCount++;
+      if (callCount === 1) {
+        throw new Error("Connection timeout during container cold start");
+      }
+      return new Response(JSON.stringify({ status: "ok" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+
+    const req = new Request("http://localhost:3000/api/cron/supabase-keepalive", {
+      headers: { authorization: "Bearer mock-secret-1234" },
+    });
+
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; status: string; attempts: number };
+    expect(body.ok).toBe(true);
+    expect(body.status).toBe("ok");
+    expect(body.attempts).toBe(2);
+    expect(callCount).toBe(2);
+  });
+
+  test("retries once and succeeds when initial request returns 5xx error", async () => {
+    let callCount = 0;
+
+    globalThis.fetch = mock(async () => {
+      callCount++;
+      if (callCount === 1) {
+        return new Response(JSON.stringify({ status: "degraded" }), {
+          status: 503,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ status: "ok" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+
+    const req = new Request("http://localhost:3000/api/cron/supabase-keepalive", {
+      headers: { authorization: "Bearer mock-secret-1234" },
+    });
+
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; status: string; attempts: number };
+    expect(body.ok).toBe(true);
+    expect(body.status).toBe("ok");
+    expect(body.attempts).toBe(2);
+    expect(callCount).toBe(2);
+  });
+
+  test("does not retry on 4xx client errors and returns 503 degraded immediately", async () => {
+    let callCount = 0;
+
+    globalThis.fetch = mock(async () => {
+      callCount++;
+      return new Response(JSON.stringify({ detail: "Not found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+
+    const req = new Request("http://localhost:3000/api/cron/supabase-keepalive", {
+      headers: { authorization: "Bearer mock-secret-1234" },
+    });
+
+    const res = await GET(req);
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as {
+      ok: boolean;
+      status: string;
+      upstreamStatus: number;
+      attempts: number;
+    };
+    expect(body.ok).toBe(false);
+    expect(body.status).toBe("degraded");
+    expect(body.upstreamStatus).toBe(404);
+    expect(body.attempts).toBe(1);
+    expect(callCount).toBe(1);
+  });
+
+  test("returns 503 degraded after retrying once when 5xx persists", async () => {
+    let callCount = 0;
+
+    globalThis.fetch = mock(async () => {
+      callCount++;
       return new Response(JSON.stringify({ status: "degraded" }), {
         status: 503,
         headers: { "content-type": "application/json" },
@@ -115,15 +236,25 @@ describe("GET /api/cron/supabase-keepalive", () => {
 
     const res = await GET(req);
     expect(res.status).toBe(503);
-    const body = (await res.json()) as { ok: boolean; status: string; upstreamStatus: number };
+    const body = (await res.json()) as {
+      ok: boolean;
+      status: string;
+      upstreamStatus: number;
+      attempts: number;
+    };
     expect(body.ok).toBe(false);
     expect(body.status).toBe("degraded");
     expect(body.upstreamStatus).toBe(503);
+    expect(body.attempts).toBe(2);
+    expect(callCount).toBe(2);
   });
 
-  test("returns 504 error when upstream request fails or times out", async () => {
+  test("returns 504 error after retrying once when upstream request persistently times out or fails", async () => {
+    let callCount = 0;
+
     globalThis.fetch = mock(async () => {
-      throw new Error("Connection timed out");
+      callCount++;
+      throw new Error("Connection timed out after 25s");
     }) as unknown as typeof fetch;
 
     const req = new Request("http://localhost:3000/api/cron/supabase-keepalive", {
@@ -132,9 +263,16 @@ describe("GET /api/cron/supabase-keepalive", () => {
 
     const res = await GET(req);
     expect(res.status).toBe(504);
-    const body = (await res.json()) as { ok: boolean; status: string; error: string };
+    const body = (await res.json()) as {
+      ok: boolean;
+      status: string;
+      error: string;
+      attempts: number;
+    };
     expect(body.ok).toBe(false);
     expect(body.status).toBe("error");
     expect(body.error).toBe("Upstream probe request timed out or failed");
+    expect(body.attempts).toBe(2);
+    expect(callCount).toBe(2);
   });
 });
